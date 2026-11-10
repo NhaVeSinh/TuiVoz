@@ -60,7 +60,7 @@ window.addEventListener('popstate', () => {
   route();
 });
 
-// Cài đặt → Giao diện → "Hiện thị số liệu không rút gọn" changes how every number and date is
+// Cài đặt → Hệ thống → "Hiện thị số liệu không rút gọn" changes how every number and date is
 // formatted, and those strings are baked into the markup at render time. Re-running the current
 // route rebuilds the view in place so the switch is visible immediately. The settings page is
 // skipped: it shows no statistics, and re-rendering it would drop the reader's tab and focus.

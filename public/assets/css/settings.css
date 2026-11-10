@@ -65,7 +65,7 @@
 .shortcut-form { border-top: 1px solid var(--border); padding-top: 14px; }
 .shortcut-form-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
-/* Radio-card groups (Giao diện theme/font, Cuộn trang liên tục). */
+/* Radio-card groups (Giao diện theme/font, Hệ thống số liệu/cuộn trang). */
 .settings-subhead { margin: 16px 0 4px; font-size: calc(15px * var(--ui-scale)); font-weight: var(--fw-bold); color: var(--text); }
 .settings-subhead:first-child { margin-top: 0; }
 .option-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }

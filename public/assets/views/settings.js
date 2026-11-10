@@ -151,7 +151,7 @@ function recentPreviewHtml() {
 // detached nodes.
 const TABS = [
   { id: 'appearance', label: 'Giao diện' },
-  { id: 'scroll', label: 'Cuộn trang liên tục' },
+  { id: 'system', label: 'Hệ thống' },
   { id: 'shortcuts', label: 'Phím tắt' },
   { id: 'stickers', label: 'Sticker' },
   { id: 'backup', label: 'Sao lưu / phục hồi' },
@@ -159,11 +159,16 @@ const TABS = [
 
 const TAB_IDS = new Set(TABS.map((tab) => tab.id));
 
+// Old fragments that no longer name a tab: `#scroll` was its own tab before its settings moved
+// into Hệ thống, so a saved link still lands on the panel that now holds them.
+const TAB_ALIASES = { scroll: 'system' };
+
 // The active tab lives in the fragment so the choice survives a reload, and so the sticker
 // picker's "Quản lý sticker" link (/cai-dat-tuivoz#stickers) opens the right panel.
 export function settingsTabFromHash(hash = location.hash) {
   const id = String(hash || '').replace(/^#/, '');
-  return TAB_IDS.has(id) ? id : TABS[0].id;
+  if (TAB_IDS.has(id)) return id;
+  return TAB_ALIASES[id] || TABS[0].id;
 }
 
 function tabsHtml(active) {
@@ -198,6 +203,10 @@ function settingsHtml(active = settingsTabFromHash()) {
           <p class="formHint">Tính theo % so với cỡ mặc định (100%). Hai mục dưới đây độc lập nhau nên có thể chỉnh riêng phần nội dung bài viết.</p>
           ${sizeRow('size-post', 'Cỡ chữ nội dung bài viết', SIZE_HELP.post, postSize)}
           ${sizeRow('size-ui', 'Cỡ chữ những chỗ khác', SIZE_HELP.ui, uiSize)}
+        </div>
+      </section>
+      <section class="settings-panel" id="panel-system" role="tabpanel" aria-labelledby="tab-system"${active === 'system' ? '' : ' hidden'}>
+        <div class="block-body--pad">
           <h3 class="settings-subhead">Hiện thị số liệu không rút gọn</h3>
           <p class="formHint">voz.vn rút gọn số liệu (13K, 1M) và thời gian tương đối (3 giờ trước). Bật mục này để thấy số đầy đủ và mốc thời gian chính xác.</p>
           ${optionCards('full-numbers', FULL_NUMBERS_MODES, FULL_NUMBERS_LABELS, FULL_NUMBERS_HELP, fullNumbers)}
@@ -224,10 +233,7 @@ function settingsHtml(active = settingsTabFromHash()) {
             </span>
             <input type="checkbox" id="static-avatars"${staticAvatars ? ' checked' : ''}>
           </label>
-        </div>
-      </section>
-      <section class="settings-panel" id="panel-scroll" role="tabpanel" aria-labelledby="tab-scroll"${active === 'scroll' ? '' : ' hidden'}>
-        <div class="block-body--pad">
+          <h3 class="settings-subhead">Cuộn trang liên tục</h3>
           <p class="formHint">Áp dụng cho danh sách chủ đề và trong chủ đề: khi cuộn tới cuối trang, trang kế tiếp được nối thêm vào bên dưới thay vì phải bấm số trang.</p>
           ${optionCards('infinite-scroll', SCROLL_MODES, SCROLL_LABELS, SCROLL_HELP, infiniteScroll)}
         </div>
@@ -1060,6 +1066,17 @@ export function viewSettings() {
 function wireSettingsTabs() {
   const list = app.querySelector('.settings-tabs');
   if (!list) return;
+
+  // A legacy fragment (#scroll) opens a different tab than it names; rewrite it so the URL
+  // matches the panel on screen instead of leaving a stale id in the address bar.
+  const legacy = String(location.hash || '').replace(/^#/, '');
+  if (legacy && !TAB_IDS.has(legacy) && TAB_ALIASES[legacy]) {
+    try {
+      history.replaceState(null, '', `${location.pathname}${location.search}#${TAB_ALIASES[legacy]}`);
+    } catch {
+      /* the panel is already correct; only the URL lags. */
+    }
+  }
 
   const activate = (id, { focus = false } = {}) => {
     if (!TAB_IDS.has(id)) return;

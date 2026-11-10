@@ -8,7 +8,7 @@ export const esc = (value) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-// voz.vn rounds to whole K/M (12301 → 12K, 443764 → 444K, 1274095 → 1M). Cài đặt → Giao diện
+// voz.vn rounds to whole K/M (12301 → 12K, 443764 → 444K, 1274095 → 1M). Cài đặt → Hệ thống
 // can turn that off, either inside threads only or across the whole site, so every formatter
 // takes an optional scope: 'thread' marks a call site that renders inside a thread view, and
 // the default covers everything else. The mode itself is pushed in by ui/theme.js from the
