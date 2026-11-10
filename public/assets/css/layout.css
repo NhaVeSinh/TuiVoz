@@ -80,6 +80,9 @@
   max-width: var(--max-width);
   margin: 0 auto;
   padding: 0 12px;
+  /* The nav items are rendered by JS, so the bar would start empty and grow on boot; reserving one row keeps the
+     sticky bars from shifting the page. 36px is one row of `.p-nav-list a` (6px + 24px + the list's own line). */
+  min-height: 36px;
 }
 .p-nav-list {
   display: flex;

@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /direct-messages
+Disallow: /cai-dat-tuivoz
+Disallow: /login

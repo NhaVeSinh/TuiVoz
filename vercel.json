@@ -5,13 +5,26 @@
   "rewrites": [
     { "source": "/api", "destination": "/api/handler?__path=" },
     { "source": "/api/(.*)", "destination": "/api/handler?__path=$1" },
-    { "source": "/((?!api/|assets/|userscript/).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|assets/|userscript/|robots\\.txt$|sitemap\\.xml$).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
       "source": "/api/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "private, no-store, max-age=0" }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" }
+      ]
+    },
+    {
+      "source": "/robots.txt",
+      "headers": [
+        { "key": "Content-Type", "value": "text/plain; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
       ]
     }
   ]
