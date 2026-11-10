@@ -4,7 +4,7 @@ import { loadSmilies, smilieChoices } from '../lib/smilies.js';
 import { renderStickerPicker } from './stickerPicker.js';
 import { uploadImageFiles, pikBbcode } from '../lib/pikUpload.js';
 
-// Original SVG artwork; the toolbar grouping follows the forum's editor conventions.
+// Original SVG artwork; the grouping follows the forum's editor conventions.
 const paths = {
   bold: 'M7 4h6a4 4 0 0 1 0 8H7m0-8v16h7a4 4 0 0 0 0-8H7',
   italic: 'M10 4h8M6 20h8M14 4 10 20', underline: 'M6 4v8a6 6 0 0 0 12 0V4M4 21h16',
@@ -57,11 +57,8 @@ export function editorToolbar(id) {
   </div>`;
 }
 
-// Upload one or more images to pik.vn and insert them as [IMG] BBCode. The panel stays
-// open after a batch so several rounds can be uploaded in a row, like the sticker picker.
-// Compact pik.vn upload strip shown inside the shared image panel. Uploads one or more
-// files and inserts them as [IMG] BBCode; the panel stays open after a batch so several
-// rounds can be uploaded in a row, like the sticker picker.
+// Compact pik.vn upload strip inside the shared image panel. Uploads files and inserts them as [IMG]; the panel
+// stays open after a batch, like the sticker picker.
 function renderUploadStrip(container, insert) {
   container.innerHTML = `
     <div class="editor-upload">
@@ -139,7 +136,7 @@ export function showToolPanel(panel, kind, insert, selectionText) {
         img.src = smilie.image_url;
         img.alt = code;
         img.loading = 'lazy';
-        // voz.vn caps picker smilies at 32px; the 2x variant keeps them sharp on hi-dpi.
+        // voz.vn caps picker smilies at 32px; the 2x variant stays sharp on hi-dpi.
         if (smilie.image_url_2x && safeEditorUrl(smilie.image_url_2x)) img.srcset = `${smilie.image_url} 1x, ${smilie.image_url_2x} 2x`;
         button.append(img);
       } else button.textContent = code;
@@ -159,8 +156,7 @@ export function showToolPanel(panel, kind, insert, selectionText) {
   const fields = urlTool ? `<label>URL http(s)<input data-field="url" type="url" placeholder="https://…" value="${esc(/^https?:\/\//i.test(selectionText) ? selectionText : '')}"></label>${kind === 'url' ? `<label>Văn bản liên kết<input data-field="label" value="${esc(selectionText)}"></label>` : ''}`
     : kind === 'table' ? '<label>Hàng<input data-field="rows" type="number" min="1" max="20" value="2"></label><label>Cột<input data-field="cols" type="number" min="1" max="10" value="2"></label>'
       : `<label>${kind === 'spoiler' ? 'Tiêu đề spoiler' : 'Tác giả (không bắt buộc)'}<input data-field="label"></label>`;
-  // "Ảnh từ URL" also accepts files: the upload strip shares the panel instead of
-  // occupying its own toolbar button.
+  // "Ảnh từ URL" also accepts files, so the upload strip shares the panel.
   const upload = kind === 'img' ? '<div class="editor-upload-slot"></div>' : '';
   panel.innerHTML = `${fields}<button type="button" data-insert>Chèn</button><button type="button" data-dismiss>Huỷ</button><span role="alert"></span>${upload}`;
   panel.querySelector('[data-dismiss]').onclick = close;

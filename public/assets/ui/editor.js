@@ -50,8 +50,8 @@ function wireOneEditor(editor) {
     restoreButton.disabled = !stored?.value;
     if (stored?.value) status.textContent = 'Có bản nháp cục bộ. Nhấn Khôi phục nháp để mở.';
     const value = () => native.get.call(textarea);
-    // Smilies are images in the visual editor but stay as their BBCode code in the textarea,
-    // so the caret is tracked against a virtual text where an image counts as its code.
+    // Smilies are images in the visual editor but their code in the textarea, so the caret is tracked against a
+    // virtual text where an image counts as its code.
     const virtualLength = (node) => {
       if (node.nodeType === 3) return node.nodeValue.length;
       // cloneContents() returns a DocumentFragment (nodeType 11), not an element.
@@ -67,8 +67,7 @@ function wireOneEditor(editor) {
       if (!selection?.rangeCount) return null;
       const range = selection.getRangeAt(0);
       if (!visual.contains(range.startContainer)) return null;
-      // Measure everything before the caret instead of matching the container node,
-      // which also works when the caret sits on the editor element itself.
+      // Measure everything before the caret; this also works when the caret sits on the editor element itself.
       const before = document.createRange();
       before.selectNodeContents(visual);
       before.setEnd(range.startContainer, range.startOffset);
@@ -110,9 +109,8 @@ function wireOneEditor(editor) {
     };
     const render = () => { visual.innerHTML = editorCodeHtml(value()); renderSmilies(visual); };
     const refreshPreview = () => { if (!preview.hidden) { preview.innerHTML = editorCodeHtml(value(), true); renderSmilies(preview); } };
-    // Selecting or typing an emoji shows the image immediately, like the voz.vn editor.
-    // The caret is only re-placed when a text node was actually replaced, otherwise
-    // restoring it on every keystroke would fight the browser's own caret.
+    // An emoji shows its image immediately. The caret is only re-placed when a text node was replaced, or it
+    // would fight the browser's own caret.
     const liveSmilies = () => {
       if (sourceMode || !smiliesReady() || !visual.isConnected) return;
       const offset = caretOffset();
@@ -166,9 +164,8 @@ function wireOneEditor(editor) {
         target.insertNode(fragment);
         if (last) { target.setStartAfter(last); target.collapse(true); const selection = document.getSelection(); selection.removeAllRanges(); selection.addRange(target); savedRange = target.cloneRange(); }
         native.set.call(textarea, editorDomCode(visual)); record();
-        // The inserted BBCode may be a smilie code: show its image right away.
-        // liveSmilies() re-places the caret on the new image when it does replace, so
-        // repeated picks keep their order.
+        // The inserted BBCode may be a smilie code: show its image right away. liveSmilies() re-places the
+        // caret, so repeated picks keep their order.
         if (!plain) liveSmilies();
       }
     };
@@ -208,7 +205,7 @@ function wireOneEditor(editor) {
         if (composing) return;
         if (surface === visual) native.set.call(textarea, editorDomCode(visual)); else render();
         rememberSelection(); record();
-        // Typing a smilie code should show the image immediately, like the voz.vn editor.
+        // Typing a smilie code shows the image immediately.
         if (surface === visual) liveSmilies();
       });
       surface.addEventListener('compositionstart', () => { composing = true; });
@@ -221,8 +218,8 @@ function wireOneEditor(editor) {
         }
       });
     }
-    // Images on the clipboard or in a dropped file list are uploaded to pik.vn and inserted
-    // as [IMG]; the panel and status line report progress because it is a network round trip.
+    // Clipboard and dropped images upload to pik.vn and insert as [IMG]; the panel reports progress because it
+    // is a network round trip.
     const pendingUploads = new Set();
     const uploadAndInsert = async (files) => {
       if (!files?.length) return;
@@ -268,7 +265,7 @@ function wireOneEditor(editor) {
       rememberSelection();
       insert(event.clipboardData.getData('text/plain'), true);
     });
-    // Also catch image pastes while the visual editor is not the focus target.
+    // Also catch image pastes while the visual editor is not focused.
     editor.addEventListener('paste', (event) => {
       if (event.defaultPrevented) return;
       const images = clipboardImages(event.clipboardData);
@@ -344,8 +341,8 @@ function wireOneEditor(editor) {
       }
     });
     textarea.addEventListener('editor:clear-draft', () => { try { localStorage.removeItem(draftKey); stored = null; restoreButton.disabled = true; status.textContent = 'Đã gửi · Đã xoá nháp.'; } catch { /* No storage available. */ } });
-    // Quote/reply actions insert at the top of the box; the caret belongs at the end so the
-    // reader can type immediately. The visual editor owns the caret, so it is placed there.
+    // Quote/reply inserts at the top; the caret belongs at the end so the reader can type. The visual editor
+    // owns the caret, so it is placed there.
     textarea.addEventListener('editor:focus-end', () => {
       if (sourceMode) {
         nativeFocus();

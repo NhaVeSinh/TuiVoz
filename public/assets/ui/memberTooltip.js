@@ -41,8 +41,7 @@ export function wireMemberTooltips(container, users) {
     card.addEventListener('focusout', scheduleHide);
     const render = (user) => {
       if (active !== link || !card) return;
-      // The member card has always printed full figures (unlike the post sidebar), so it needs no
-      // scope: it is already the "không rút gọn" form in every mode.
+      // The member card always prints full figures, so it needs no scope.
       const count = (value) => Number(value || 0).toLocaleString('vi-VN');
       card.innerHTML = `<div class="member-card-header"><a class="avatar" href="${userPath(user)}">${avatarMarkup(user, 'l')}</a><div><a class="member-card-name" href="${userPath(user)}">${esc(user.username)}</a><div>${esc(user.user_title || '')}</div><div class="member-card-badges">${userBadges(user)}</div><div class="u-dimmed u-smaller">Tham gia: ${user.register_date ? new Date(user.register_date * 1000).toLocaleDateString('vi-VN') : '—'}</div>${user.last_activity ? `<div class="u-dimmed u-smaller">Hoạt động: ${timeAgo(user.last_activity, 'thread')}</div>` : ''}</div></div><div class="member-card-stats"><div>Bài viết<strong>${count(user.message_count)}</strong></div><div>Điểm cảm xúc<strong>${count(user.reaction_score)}</strong></div><div>Điểm<strong>${count(user.trophy_points)}</strong></div></div><div class="member-card-actions"><a href="${userPath(user)}">Hồ sơ</a>${user.can_converse ? `<a class="button button--small" href="/direct-messages/new?to=${encodeURIComponent(user.username)}">Gửi tin nhắn</a>` : ''}</div>`;
       const rect = link.getBoundingClientRect();

@@ -1,39 +1,16 @@
-// "Tắt ảnh động ảnh đại diện" — freezes an animated avatar on its first frame.
-//
-// voz.vn lets members upload an animated GIF as their avatar and serves it from data.voz.vn.
-// The extension lies: /avatars/l/15/15207.jpg is really a 53-frame looping GIF, so the URL
-// cannot be used to recognise an animated avatar — the bytes have to be inspected.
-//
-// Two things this must get right:
-//   - Only an *animated* avatar is replaced. A still avatar is left exactly as voz.vn served
-//     it, so enabling the setting costs nothing visually for members with ordinary pictures.
-//   - The still is decoded from the *blob*, not from the live <img>. Drawing the element
-//     captures whichever frame happens to be on screen at that instant, which is not
-//     necessarily the first one.
-//
-// The freeze happens in the page rather than in CSS: the `image-set()`/`cross-fade()` tricks
-// that can stop a GIF are Chromium-only and would silently do nothing in Firefox, the browser
-// this project is verified against.
+// "Tắt ảnh động ảnh đại diện" — freezes an animated avatar on its first frame. The extension lies
+// (/avatars/l/15/15207.jpg is a 53-frame GIF), so the bytes decide, not the URL.
 import { getStaticAvatars } from './settings.js';
 
-// data.voz.vn sends no CORS headers, so the bytes must come through the same-origin proxy;
-// fetching an avatar directly would always fail and leave the animation running.
-// One entry per avatar URL, holding the in-flight promise or its result. The same member
-// appears several times on one page (post sidebar, thread rows, member cards) and those
-// elements are processed in the same tick, so caching only the *result* would still download
-// the file once per occurrence.
-//   Promise  -> still being resolved; every caller awaits the same fetch
-//   string   -> a frozen still (data URL)
-//   null     -> leave this avatar alone (it is static, or it cannot be read)
+// data.voz.vn sends no CORS headers, so bytes come through the proxy. One entry per URL holding the in-flight
+// promise or its result: Promise -> resolving, string -> data URL, null -> leave it alone.
 const stills = new Map();
 
-// Avatars already handed to `freeze()`. A WeakSet so a re-rendered view does not leak.
+// Avatars already handed to freeze(). A WeakSet so a re-render does not leak.
 const seen = new WeakSet();
 
-// Bytes needed to decide a format before downloading the whole file: a GIF's block structure
-// and a WebP/PNG header all sit at the front, and the last frame's image data does not need to
-// be read to know how many frames there are. 64 KiB comfortably covers the header of a large
-// animated avatar while being small enough to fetch for every avatar on a list page.
+// Enough bytes to decide a format before downloading the whole file: GIF block structure and WebP/PNG headers
+// all sit at the front.
 const SNIFF_BYTES = 65_536;
 
 function proxyUrl(url, limit = 0) {
@@ -42,10 +19,7 @@ function proxyUrl(url, limit = 0) {
 }
 
 // --- format sniffing -------------------------------------------------------
-//
-// These read the raw bytes, before any decoding, so a still avatar is recognised without
-// paying for a canvas round trip. All three animated containers voz.vn could plausibly serve
-// are covered; anything else is static by construction.
+// Raw bytes, before any decoding, so a still avatar costs no canvas round trip.
 
 function readAscii(bytes, start, length) {
   let text = '';
@@ -53,8 +27,7 @@ function readAscii(bytes, start, length) {
   return text;
 }
 
-// Walks the GIF block structure rather than counting byte patterns: 0x2C appears inside LZW
-// image data too, so a naive scan reports "animated" for a single-frame GIF.
+// Walks the GIF block structure: 0x2C also appears inside LZW data, so a byte scan lies.
 export function gifFrameCount(bytes) {
   if (readAscii(bytes, 0, 3) !== 'GIF') return 0;
   let i = 6;
@@ -99,7 +72,7 @@ export function isAnimatedWebp(bytes) {
 
 export function isApng(bytes) {
   if (bytes[0] !== 0x89 || readAscii(bytes, 1, 3) !== 'PNG') return false;
-  // `acTL` must precede the first `IDAT`; after that the file is only extra chunks.
+  // `acTL` must precede the first `IDAT`.
   const text = readAscii(bytes, 8, Math.min(65_536, bytes.length - 8));
   const control = text.indexOf('acTL');
   const data = text.indexOf('IDAT');
@@ -125,13 +98,12 @@ function toDataUrl(frame) {
   const context = canvas.getContext('2d');
   if (!context) return '';
   context.drawImage(frame, 0, 0, width, height);
-  // PNG, not JPEG: an avatar may carry transparency and JPEG would fill it with black.
+  // PNG, not JPEG: an avatar may carry transparency.
   return canvas.toDataURL('image/png');
 }
 
-// Decoding the blob yields the default image of an animated file — frame 1 — regardless of
-// which frame the element was showing. Without `createImageBitmap` the live element is drawn
-// instead: the frame may not be the first, but it is still a still.
+// Decoding the blob yields frame 1. Without createImageBitmap the live element is drawn instead: not
+// necessarily the first frame, but still a still.
 async function firstFrame(blob, img) {
   if (typeof createImageBitmap === 'function') {
     try {
@@ -149,18 +121,14 @@ async function readBytes(source, limit) {
   return { bytes: new Uint8Array(await response.arrayBuffer()), headers: response.headers };
 }
 
-// Resolves one avatar URL to a still data URL, or null when it must be left alone.
-//
-// Two phases: most avatars on a page are ordinary stills, and answering "not animated" only
-// needs the front of the file. The full download is paid for the few that really animate.
+// Resolves one avatar URL to a still data URL, or null when it must be left alone. Two phases: the prefix
+// answers "not animated" for most avatars, the full file only for the rest.
 async function resolveStill(source, img) {
   const head = await readBytes(source, SNIFF_BYTES);
   const total = Number(head.headers.get('X-Image-Total')) || 0;
   const truncated = total > head.bytes.length;
-  // A prefix holds no GIF trailer, so a frame count of 1 from it only means "no second frame
-  // *yet*". Treating that as a verdict would miss an animation whose first frame is simply
-  // large; the full read settles it. WebP and PNG declare themselves in the header, so a
-  // prefix is always conclusive for those.
+  // A prefix holds no GIF trailer, so a count of 1 only means "no second frame yet". WebP and PNG declare
+  // themselves in the header, so a prefix is conclusive for those.
   const undecided = truncated && readAscii(head.bytes, 0, 3) === 'GIF';
   if (!isAnimated(head.bytes) && !undecided) return null;
 
@@ -173,43 +141,37 @@ async function resolveStill(source, img) {
 
 async function freeze(img) {
   const current = img.getAttribute('src') || '';
-  // Already frozen: re-checking would refetch on every observer tick and every load event.
+  // Already frozen: re-checking would refetch on every observer tick.
   if (!current || current.startsWith('data:')) return;
-  // A decided avatar is not revisited: 'static' means it is already single-frame.
+  // 'static' means it is already single-frame.
   if (img.dataset.avatarFreeze === 'static') return;
   img.dataset.avatarSource = current;
   if (!stills.has(current)) stills.set(current, resolveStill(current, img).catch(() => null));
   img.dataset.avatarFreeze = 'pending';
   const still = await stills.get(current);
-  // The view may have re-rendered while the proxy was in flight; that element is gone.
+  // The view may have re-rendered while the proxy was in flight.
   if (!img.isConnected) return;
   if (still) {
     img.src = still;
     delete img.dataset.avatarFreeze;
     return;
   }
-  // Static, already single-frame, or undecodable: keep voz.vn's own image.
+  // Static or undecodable: keep voz.vn's own image.
   img.dataset.avatarFreeze = 'static';
 }
 
-// Turning the setting back off restores the original URL, which is still on the element.
+// Turning the setting off restores the original URL, still on the element.
 function restore(img) {
   const source = img.dataset.avatarSource;
   if (!source || !(img.getAttribute('src') || '').startsWith('data:')) return;
   img.src = source;
   delete img.dataset.avatarFreeze;
-  // Re-enabling the setting must be able to freeze this avatar again.
+  // Re-enabling must be able to freeze this avatar again.
   seen.delete(img);
 }
 
-// lib/avatar.js renders every avatar through `img.avatar-img` — post sidebars, thread rows,
-// member cards, lists, conversation lists and the header account menu alike.
-//
-// Only avatars that have been on screen are resolved. A forum list page carries 40+ avatars
-// and almost all of them are ordinary stills, so sniffing every one would cost a request per
-// row for no visible benefit; an avatar that never scrolls into view is never animated on
-// screen either. `seen` remembers the ones already handed to `freeze()` so the observer does
-// not re-queue them on every tick.
+// Every avatar renders through `img.avatar-img`. Only avatars that have been on screen are resolved: a list
+// page carries 40+ avatars and almost all are stills.
 function refresh() {
   const enabled = getStaticAvatars();
   for (const img of document.querySelectorAll('img.avatar-img')) {
@@ -242,14 +204,13 @@ function schedule() {
 
 export function wireStaticAvatars() {
   refresh();
-  // Views re-render by replacing #app and infinite scroll appends whole pages, so one observer
-  // on the body covers both. A processed avatar is skipped, so this cannot loop.
+  // One observer on the body covers both re-renders and appended pages.
   new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
-  // Avatars are lazy-loaded, so a fresh one only has a usable src after its load event.
+  // Avatars are lazy-loaded, so a fresh one only has a src after its load event.
   document.addEventListener('load', (event) => {
     if (event.target instanceof HTMLImageElement && event.target.classList.contains('avatar-img')) schedule();
   }, true);
-  // Scrolling brings avatars that were skipped off screen into range.
+  // Scrolling brings skipped avatars into range.
   window.addEventListener('scroll', schedule, { passive: true });
   window.addEventListener('resize', schedule, { passive: true });
   window.addEventListener('voz:settings', schedule);

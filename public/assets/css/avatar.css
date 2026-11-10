@@ -1,6 +1,6 @@
 /* Avatars and thread prefix labels. */
 
-/* Avatars: image on top of a coloured initial so a 404 still looks right. */
+/* Avatars: image over a coloured initial, so a 404 still looks right. */
 .avatar {
   display: inline-block;
   border-radius: 50%;

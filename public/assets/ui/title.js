@@ -1,13 +1,9 @@
-// Page titles, mirroring voz.vn's own <title> composition.
-//
-// voz.vn builds every title as "<name> | VOZ", inserting "| Page N" *between* the name and
-// the brand on any page after the first. Page 1 never gets the suffix — /f/phan-mem.13/
-// and /f/phan-mem.13/page-1 both resolve to "Phần mềm | VOZ". Verified against the live
-// site for the forum, aggregated node, thread, member, search and list pages.
+// Page titles, mirroring voz.vn's own composition: "<name> | VOZ", with "| Page N" between the name and the
+// brand on any page after the first. Page 1 never gets the suffix.
 
 const BRAND = 'VOZ';
 
-// Single writer for document.title so a route change can never leave a stale title behind.
+// Single writer for document.title, so a route change never leaves a stale title.
 export function setTitle(name, page) {
   const label = String(name == null ? '' : name).trim();
   const n = Number(page) || 1;
@@ -18,14 +14,13 @@ export function setTitle(name, page) {
   document.title = parts.join(' | ');
 }
 
-// The home page and the login page carry the bare brand on voz.vn, with no page segment.
+// The home and login pages carry the bare brand, with no page segment.
 export function setBrandTitle() {
   document.title = BRAND;
 }
 
-// Thread titles put the prefix *after* the title, joined with a hyphen:
-// "Tất tần tật về dịch vụ nextDNS - thảo luận | Page 684 | VOZ". Note this is the opposite
-// order from the on-page heading, which shows the label first. Verified on two threads.
+// Thread titles put the prefix after the title, joined with a hyphen — the opposite order from the on-page
+// heading, which shows the label first.
 export function setThreadTitle(thread, page) {
   const title = String(thread?.title || '').trim();
   const prefix = String(thread?.prefix || '').trim();

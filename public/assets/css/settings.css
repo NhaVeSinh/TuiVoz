@@ -2,9 +2,8 @@
 
 .settings-note { margin: 0; padding: 10px 12px; font-size: calc(13px * var(--ui-scale)); color: var(--dimmed); background: var(--content-bg); }
 
-/* Tabbed layout: one panel at a time instead of one long scroll. The tab strip sits inside
-   the block so it shares the card edges. Panels carry no heading of their own — the tab
-   label above is the heading, and repeating it inside the panel only wastes a bar. */
+/* Tabbed layout: one panel at a time. The tab strip sits inside the block, and panels carry
+   no heading of their own — the tab label above is the heading. */
 .settings-tabbed { padding: 0; }
 .settings-tabs {
   display: flex;
@@ -26,16 +25,15 @@
   cursor: pointer;
   white-space: nowrap;
 }
-/* Blue, not the brand orange: these are in-page tabs, and the strip has to read as part of
-   the reading surface (--link), not as chrome navigation (--nav-active). */
+/* Blue (--link), not the brand orange: these are in-page tabs, not chrome navigation. */
 .settings-tabs button:hover { color: var(--link); background: var(--surface-hover); }
 .settings-tabs button.is-active { color: var(--link); border-bottom-color: var(--link); }
 .settings-tabs button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 .settings-panel { display: block; }
-/* [hidden] must win over the display above, or the inactive panels stay visible. */
+/* [hidden] must win over the display above, or inactive panels stay visible. */
 .settings-panel[hidden] { display: none; }
 .settings-panel > .block-body--pad { padding: 12px; }
-/* Panel-level count that used to ride in the removed block-header. */
+/* Panel-level count (the block-header that used to hold it is gone). */
 .settings-count { margin: 0 0 8px; font-size: calc(13px * var(--ui-scale)); color: var(--dimmed); }
 
 .shortcut-list { list-style: none; margin: 0 0 16px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
@@ -71,12 +69,10 @@
 .option-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .option-card {
   display: grid;
-  /* Two columns, two rows. The radio and the name share row 1 so the circle can be centred on
-     the name's line box; the description spans row 2 in the text column only. Row heights are
-     `auto` so both follow the current font size and --ui-scale. */
+  /* Two columns, two rows: the radio and the name share row 1 so the circle centres on the
+     name's line box; the description spans row 2 in the text column only. */
   grid-template-columns: auto 1fr;
-  /* `.` keeps column 1 empty on the description row so the description stays indented under
-     the name, while the radio occupies only the name row. */
+  /* `.` keeps column 1 empty so the description stays indented under the name. */
   grid-template-areas: "radio name" ". desc";
   grid-template-rows: auto auto;
   gap: 0 10px;
@@ -90,15 +86,12 @@
 }
 .option-card:hover { border-color: var(--link); }
 .option-card.is-active { border-color: var(--link); box-shadow: inset 0 0 0 1px var(--link); }
-/* Centre the radio on the first text line: `1 / 2` keeps it in the name row only, so
-   `align-self: center` centres it against that line box rather than the whole card. This
-   stays correct at any --ui-scale, since the row height follows the line box. */
+/* Centre the radio on the first text line: `1 / 2` keeps it in the name row only. */
 .option-card input { grid-area: radio; grid-row: 1 / 2; align-self: center; margin: 0; flex: 0 0 auto; }
 .option-card-name { grid-area: name; font-weight: var(--fw-bold); color: var(--text); }
 .option-card-desc { grid-area: desc; font-size: calc(12px * var(--ui-scale)); color: var(--dimmed); line-height: 1.5; }
 
-/* Cỡ chữ sliders. One row per axis; the value sits in an <output> on the label line so it
-   stays readable while dragging. */
+/* Cỡ chữ sliders. The value sits in an <output> on the label line. */
 .size-row { margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
 .size-row:last-child { margin-bottom: 0; }
 .size-row-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }

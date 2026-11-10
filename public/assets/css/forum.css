@@ -81,7 +81,7 @@
 .structItem-title a { color: var(--link); }
 :root[data-theme="dark"] .structItem-title a { color: var(--text); }
 .structItem-title a:hover { color: var(--link-hover); }
-/* Unread threads are bold on voz.vn; reading the thread clears it (API is_unread). */
+/* Unread threads are bold; reading the thread clears it (API is_unread). */
 .structItem--thread.is-unread .structItem-title,
 .structItem--thread.is-unread .structItem-title a { font-weight: var(--fw-bold); }
 .structItem--thread.is-unread .structItem-title .label { font-weight: 400; }
@@ -142,7 +142,7 @@
   -webkit-box-orient: vertical;
 }
 
-/* XenForo "pairs" — label left, value right, aligned across rows. */
+/* XenForo "pairs" — label left, value right. */
 .pairs { padding: 0; margin: 0; overflow: hidden; }
 .pairs--spaced + .pairs { margin-top: 6px; }
 .pairs > dt { padding: 0; margin: 0; color: var(--dimmed); }
@@ -215,8 +215,7 @@
 }
 .pageNav-extra { margin-left: auto; display: inline-flex; align-items: center; }
 
-/* "Cuộn liên tục" opt-in button, only rendered in the manual mode.
-   Icon-only, and wears the same colours as the pager links beside it. */
+/* "Cuộn liên tục" opt-in button, manual mode only. Icon-only, pager colours. */
 .pageNav-scrollBtn {
   flex: 0 0 auto;
   display: inline-flex;
@@ -246,8 +245,7 @@
   .pageNav-scrollBtn.is-active .pageNav-scrollIcon { animation: none; }
 }
 
-/* Sentinel for continuous scrolling: renders the next-page status and is the
-   element the IntersectionObserver watches. Zero extra chrome when idle. */
+/* Sentinel for continuous scrolling: shows the next-page status and is what the observer watches. */
 .infinite-sentinel { display: flex; justify-content: center; padding: 10px 12px; font-size: calc(12px * var(--ui-scale)); color: var(--chrome-dimmed); }
 .infinite-sentinel[data-state="busy"] .infinite-status::before {
   content: "";
@@ -267,9 +265,7 @@
   .infinite-sentinel[data-state="busy"] .infinite-status::before { animation: none; }
 }
 
-/* Floating "stop continuous scroll" control: a round icon-only button pinned to the right
-   edge, lifted off the bottom so it clears mobile browser chrome and the pager. Only
-   rendered while scrolling is armed. */
+/* Floating "stop continuous scroll" button, pinned right and lifted off the bottom. Only while armed. */
 .infinite-stop {
   position: fixed;
   right: 16px;
@@ -292,8 +288,7 @@
   box-shadow: var(--shadow-fab);
   transition: background-color .15s ease, transform .15s ease, opacity .2s ease;
 }
-/* Hidden while scrolling down: still focusable/clickable for keyboard and assistive tech,
-   just not painted, so a scroll never yanks the control out from under a screen reader. */
+/* Hidden while scrolling down but still focusable, so a scroll never removes it from assistive tech. */
 .infinite-stop.is-hidden {
   opacity: 0;
   transform: translateY(8px) scale(.9);
@@ -312,9 +307,7 @@
 @media (max-width: 620px) {
   .infinite-stop { right: 12px; bottom: calc(72px + env(safe-area-inset-bottom, 0px)); width: 38px; height: 38px; }
 }
-/* Narrow screens: the pager already wraps, but with the optional scroll button it can
-   get crowded. Tighten the cells and drop the numbers farthest from the current page so
-   ‹ Trước / numbers / Sau › / button still fit on one line. */
+/* Narrow screens: tighten the pager cells so ‹ Trước / numbers / Sau › / button still fit. */
 @media (max-width: 620px) {
   .pageNav { padding: 8px 6px; gap: 3px; }
   .pageNav a,
@@ -324,10 +317,7 @@
   .pageNav-scrollBtn { min-width: 26px; min-height: 26px; padding: 4px 6px; font-size: calc(13px * var(--ui-scale)); }
   .pageNav-main { gap: 1px; }
 }
-/* Very narrow: drop the pages two steps out, but always keep the first page, the last page,
-   the current page's immediate neighbours and the "…" jump cell. Hiding by position
-   (nth-child) used to leave only the current number, because the "…" cell shifted every
-   index and the last page was never one of the two kept cells. */
+/* Very narrow: drop the pages two steps out; the first, last, neighbours and "…" stay. */
 @media (max-width: 400px) {
   .pageNav-page--far { display: none; }
 }

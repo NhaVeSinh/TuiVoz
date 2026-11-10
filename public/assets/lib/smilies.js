@@ -17,8 +17,7 @@ export async function loadSmilies() {
 
 export const smiliesReady = () => Boolean(pattern);
 
-// Shared tokenizer: the editor renders live and the post body renders server HTML,
-// so both must agree on which codes are standalone smilies.
+// Shared tokenizer: the editor and the post body must agree on which codes are smilies.
 export function splitSmilieText(text) {
   if (!pattern || !text) return [text];
   pattern.lastIndex = 0;
@@ -30,7 +29,7 @@ export function splitSmilieText(text) {
     const code = match[0];
     const smilie = codes.get(code);
     if (!smilie || !/^https:\/\/data\.voz\.vn\//.test(smilie.image_url)) continue;
-    // Avoid turning emoticon-like fragments inside words or URLs into images.
+    // Avoid turning fragments inside words or URLs into images.
     if (!code.startsWith(':') || !code.endsWith(':')) {
       if ((match.index && !/\s/.test(text[match.index - 1])) || (text[match.index + code.length] && !/\s|[.,!?]/.test(text[match.index + code.length]))) continue;
     }
@@ -65,7 +64,7 @@ export function renderSmilies(root) {
       if (/^https:\/\/data\.voz\.vn\//.test(smilie.image_url_2x || '')) image.srcset = `${smilie.image_url} 1x, ${smilie.image_url_2x} 2x`;
       image.alt = code;
       image.title = `${smilie.title} ${code}`;
-      // Editors need the source code back, since an <img> cannot be serialized on its own.
+      // Editors need the source code back; an <img> cannot be serialized on its own.
       image.dataset.smilie = code;
       image.width = Number(smilie.width) || 24;
       image.height = Number(smilie.height) || 24;

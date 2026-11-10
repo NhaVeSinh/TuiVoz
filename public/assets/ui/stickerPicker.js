@@ -1,8 +1,5 @@
-// Sticker picker, ported from the userscript's showEmojiPicker.
-//
-// Instead of a full-screen modal (a userscript can afford that), this opens the same
-// popup panel the emoji picker uses, so it behaves like every other toolbar tool.
-// Insertion format matches voz.vn: [IMG size="80x80"]<url>[/IMG].
+// Sticker picker, ported from the userscript. It opens the same popup panel the emoji picker uses. Insertion
+// format matches voz.vn: [IMG size="80x80"]<url>[/IMG].
 
 import {
   getAlbums, getRecentStickers, addRecentSticker, removeRecentSticker, clearRecentStickers,
@@ -46,9 +43,8 @@ function stickerButton(img, { onPick, onRemove, title }) {
   return wrapper;
 }
 
-// Renders the picker into `panel` (the shared editor popup panel).
-// `insert(code)` injects BBCode at the caret; the panel stays open so several
-// stickers can be inserted in a row, matching the emoji picker.
+// Renders the picker into `panel`. `insert(code)` injects BBCode at the caret; the panel stays open so several
+// stickers can be inserted in a row.
 export function renderStickerPicker(panel, insert) {
   panel.innerHTML = `
     <div class="sticker-picker">

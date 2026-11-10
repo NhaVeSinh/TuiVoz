@@ -1,31 +1,22 @@
-// Signature BBCode → HTML.
-//
-// `post.message_parsed` is server-rendered HTML, but `User.signature` comes back as **raw
-// BBCode** — so a signature like
-//     Nhắn cho mình ở [URL='https://t.me/zerotrustai']telegram[/URL]
-// reached the page untouched and displayed its own tags, while voz.vn showed a link.
-//
-// This renders the small, safe subset signatures actually use. Anything the parser does not
-// recognise is emitted as escaped literal text (never dropped, never interpreted), and the
-// result still goes through sanitizeHtml() so the usual escaping, target/rel pass and
-// voz.vn link rewriting apply on top.
+// Signature BBCode → HTML. `post.message_parsed` is server HTML, but `User.signature` comes back as raw
+// BBCode. Renders the small, safe subset signatures use; unknown tags stay escaped literal text.
 
 import { parseEditorCode, safeEditorUrl } from './editorCodec.js';
 
 const escape = (value) => String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
-// voz.vn signature colour names → hex. Unknown names are ignored rather than guessed at.
+// voz.vn signature colour names → hex. Unknown names are ignored.
 const NAMED_COLORS = {
   red: '#ff0000', green: '#008000', blue: '#0000ff', orange: '#ff8c00', yellow: '#ffff00',
   purple: '#800080', pink: '#ffc0cb', brown: '#a52a2a', gray: '#808080', grey: '#808080',
   black: '#000000', white: '#ffffff', teal: '#008080', navy: '#000080', cyan: '#00ffff',
 };
 
-// Font sizes are XenForo's 1..7 scale; only the ones a signature realistically uses.
+// XenForo's 1..7 font sizes; only the ones a signature realistically uses.
 const SIZE_PX = { 1: '9px', 2: '10px', 3: '12px', 4: '15px', 5: '18px', 6: '22px', 7: '26px' };
 
-// Inline tags whose content is emitted as-is (no nested BBCode rendering).
+// Inline tags whose content is emitted as-is.
 const ATOMIC = new Set(['code', 'icode', 'php', 'html', 'plain']);
 
 function safeColor(value) {
@@ -42,16 +33,14 @@ function safeSize(value) {
 }
 
 function safeFont(value) {
-  // Only the fonts the app itself ships, so a signature cannot pull in an arbitrary family.
+  // Only the fonts the app ships, so a signature cannot pull in an arbitrary family.
   const raw = String(value || '').trim().toLowerCase().replace(/['"]/g, '');
   if (raw.includes('be vietnam pro')) return "'Be Vietnam Pro', sans-serif";
   if (raw.includes('be vietnam')) return "'Be Vietnam', sans-serif";
-  // Order matters: "sf pro display" must be tested before the generic `sf`/`pro` substrings,
-  // so these stay explicit membership tests rather than loose includes().
+  // Order matters: "sf pro display" must be tested before the generic `sf`/`pro` substrings.
   if (raw.includes('sf pro display') || raw.includes('sf-pro-display')) return "'SF Pro Display', sans-serif";
-  // "Segoe UI" is not vendored under its own CSS name (the embedded face is "Segoe UI Local")
-  // to avoid competing with the OS font, but a signature naming it should still render. The
-  // OS family is what a reader most likely has, so point at that.
+  // "Segoe UI" is vendored as "Segoe UI Local", but a signature naming it should still render, so point at the
+  // OS family.
   if (raw.includes('segoe ui')) return "'Segoe UI', sans-serif";
   if (raw.includes('roboto')) return 'Roboto, sans-serif';
   return null;
@@ -117,7 +106,7 @@ function render(nodes, out) {
         out.push(body);
         break;
       default:
-        // Unknown tag: show it literally rather than pretending to understand it.
+        // Unknown tag: show it literally.
         out.push(escape(node.raw || '') + body);
     }
   }
@@ -128,7 +117,7 @@ function children(node) {
   return render(node.children || [], []);
 }
 
-// Returns HTML safe to hand to sanitizeHtml(). Empty/whitespace input yields ''.
+// HTML safe to hand to sanitizeHtml(). Empty input yields ''.
 export function signatureHtml(bbcode) {
   const source = String(bbcode || '').trim();
   if (!source) return '';

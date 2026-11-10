@@ -1,5 +1,4 @@
-// BBCode helpers: sanitising server HTML, restoring image sizes the API drops,
-// and building quote blocks.
+// BBCode helpers: sanitising server HTML, restoring image sizes, building quote blocks.
 
 import { renderSmilies } from './smilies.js';
 import { restoreMedia } from './media.js';
@@ -7,8 +6,8 @@ import { restoreQuoteLinks } from './quotes.js';
 import { restoreSpoilers } from './spoilers.js';
 import { rewriteVozLinks } from './postLinks.js';
 
-// message_parsed is server-rendered HTML; strip anything executable before injecting.
-// The API drops every image size attribute, so sizes are re-applied from the raw BBCode.
+// message_parsed is server HTML; strip anything executable. The API drops image sizes, so they are re-applied
+// from the raw BBCode.
 export function sanitizeHtml(html, bbcode) {
   const doc = new DOMParser().parseFromString(`<div id="root">${html || ''}</div>`, 'text/html');
   const root = doc.getElementById('root');
@@ -27,8 +26,8 @@ export function sanitizeHtml(html, bbcode) {
       el.setAttribute('rel', 'noopener nofollow ugc');
     }
   }
-  // Must run after the target/_blank pass: a link that points back at this app should
-  // navigate in place, not open a second tab. Voice-only (…/ignore) links stay absolute.
+  // Runs after the target/_blank pass: a link back into this app navigates in place. Voice-only (…/ignore)
+  // links stay absolute.
   rewriteVozLinks(root);
   restoreQuoteLinks(root, bbcode);
   restoreMedia(root);
@@ -39,8 +38,7 @@ export function sanitizeHtml(html, bbcode) {
 
 function normalizeImgSrc(src) {
   const raw = String(src || '').trim();
-  // Attachment URLs come in two shapes: /attachments/3823398/ and
-  // /attachments/1791259834896-webp.3823398/ — key both on the numeric id.
+  // Two URL shapes (/attachments/3823398/ and /attachments/<name>.3823398/) key on the id.
   const attach = raw.match(/\/attachments\/(?:[^/?#]*\.)?(\d+)\/?/i);
   if (attach) return `attach:${attach[1]}`;
   return raw
@@ -49,9 +47,7 @@ function normalizeImgSrc(src) {
     .replace(/\/+$/, '');
 }
 
-// [IMG size="80x80"]url[/IMG]      → width 80, height 80
-// [IMG width="150px"]url[/IMG]     → width 150
-// [ATTACH type="full" width="150px"]3823398[/ATTACH] → width 150 on /attachments/3823398/
+// [IMG size="80x80"] → 80x80; [IMG width="150px"] → 150; [ATTACH width="150px"] → 150.
 function parseBbcodeImageSizes(bbcode) {
   const sizes = new Map();
   const re = /\[(IMG|ATTACH)([^\]]*)\]([\s\S]*?)\[\/\1\]/gi;
@@ -125,7 +121,6 @@ export function quoteBlock(post) {
   const author = String(post.username || '').replace(/"/g, '');
   const member = post.user_id ? `, member: ${post.user_id}` : '';
   const body = stripQuotes(post.message || '');
-  // A trailing blank line is added by the caller: two of them rendered as `<br><br>` and
-  // pushed three blank lines into the reply box, where voz.vn shows one.
+  // The caller adds one trailing blank line; two rendered as three in the reply box.
   return `[QUOTE="${author}, post: ${post.post_id}${member}"]\n${body}\n[/QUOTE]`;
 }

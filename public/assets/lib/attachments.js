@@ -1,9 +1,5 @@
-// Attachment URL resolution for the visual editor.
-//
-// The API returns attachments separately from the BBCode: a post body carries
-// [ATTACH type="full" size="785x768"]3860636[/ATTACH] while the real file URL lives in
-// post.Attachments[].attachment_id → direct_url. The codec cannot call the API, so the
-// view registers the attachments it already fetched and the editor renders a picture.
+// Attachment URL resolution for the visual editor. A post body carries [ATTACH]3860636[/ATTACH] while the real
+// URL lives in post.Attachments[], so the view registers what it fetched.
 
 const registry = new Map();
 
@@ -25,7 +21,7 @@ function normalise(attachment) {
   };
 }
 
-// Registers attachments from one or more posts (`Attachments` arrays or flat lists).
+// Registers attachments from one or more posts.
 export function registerAttachments(source) {
   const lists = Array.isArray(source) ? source : [source];
   for (const list of lists) {
@@ -43,7 +39,7 @@ export function getAttachment(id) {
   return registry.get(String(id)) || null;
 }
 
-// Reverse lookup: the rendered <img> only knows its src, so map it back to the id.
+// Reverse lookup: the rendered <img> only knows its src.
 export function attachmentIdForUrl(url) {
   const target = String(url || '');
   if (!target) return null;
@@ -57,8 +53,7 @@ export function clearAttachments() {
   registry.clear();
 }
 
-// Builds the markup for an attachment id; returns null when the id is unknown so the
-// caller can fall back to the raw atomic BBCode instead of dropping the content.
+// Markup for an attachment id, or null when unknown so the caller keeps the raw BBCode.
 export function attachmentImage(attachment, sizeHint) {
   if (!attachment || attachment.isVideo || attachment.isAudio) return null;
   const src = attachment.url;

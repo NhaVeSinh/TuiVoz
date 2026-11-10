@@ -1,5 +1,4 @@
-// History-API router. voz.vn puts the page number in the path
-// (/t/slug.123/page-2), not in a query string.
+// History-API router. The page number lives in the path (/t/slug.123/page-2).
 
 import { app } from './dom.js';
 import { idFromSegment, threadPath, withPage } from './paths.js';
@@ -35,13 +34,8 @@ export function parsePath() {
   return { segments, params, page };
 }
 
-// Resolve a thread's first unread post. `GET /threads/{id}/` reports visitor_read_date,
-// is_unread and pagination without marking the thread read, so one call plus a short walk
-// back over /threads/{id}/posts is enough. Mirrors voz.vn's /t/<id>/unread resolution.
-//
-// Never throws for the "nothing unread" case: a read thread resolves to page 1 with no
-// post, which is exactly what voz.vn does when /unread has nothing newer to show. The
-// thread object is returned so the caller can keep the canonical slug in the URL.
+// Resolves a thread's first unread post. A read thread falls back to page 1 with no post, like voz.vn. The
+// thread object comes back so the caller keeps the canonical slug.
 async function unreadTarget(threadId) {
   const head = await api.thread(threadId, 1);
   const thread = head.thread || { thread_id: threadId, title: '' };
@@ -77,9 +71,7 @@ export async function route() {
     if (head === 's') return await viewSearchForum(idFromSegment(segments[1]), page);
     if (head === 't') {
       const threadId = idFromSegment(segments[1]);
-      // /t/<slug>.<id>/unread — voz.vn's jump-to-first-unread. The thread detail response
-      // carries visitor_read_date, so the page is derived here and the URL is replaced by
-      // the real one, exactly like voz.vn's server-side redirect.
+      // /t/<slug>.<id>/unread — resolve the page, then replace the URL like voz.vn's redirect.
       if (segments[2] === 'unread') {
         const target = await unreadTarget(threadId);
         const href = `${withPage(threadPath(target.thread), target.page)}${target.postId ? `#post-${target.postId}` : ''}`;
@@ -103,7 +95,7 @@ export async function route() {
     setTitle('Oops! We ran into some problems.');
     app.innerHTML = '<div class="empty">Không tìm thấy trang.</div>';
   } catch (err) {
-    // voz.vn's own error page title, so a failed route is still identifiable in a tab list.
+    // voz.vn's own error title.
     setTitle('Oops! We ran into some problems.');
     app.innerHTML = errorBox(err);
   } finally {

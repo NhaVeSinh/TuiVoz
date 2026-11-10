@@ -12,8 +12,7 @@ export function threadRow(thread, { sticky = false, showForum = false } = {}) {
   const lastUser = { user_id: thread.last_post_user_id, username: thread.last_post_username };
   const lastPage = threadLastPage(thread);
   const unread = !!thread.is_unread;
-  // An unread thread links to /unread, which resolves to the first unread post — the same
-  // jump voz.vn's thread list performs instead of always landing on page 1.
+  // An unread thread links to /unread, which resolves to the first unread post.
   const titleHref = unread ? threadUnreadPath(thread) : threadPath(thread);
   const statuses = [
     thread.discussion_open === false

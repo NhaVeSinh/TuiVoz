@@ -10,7 +10,7 @@
 .message:target { outline: 2px solid var(--nav-active); }
 .message-inner { display: flex; gap: 0; }
 
-/* The thread block is transparent so the dark page background separates posts. */
+/* Transparent block so the page background separates posts. */
 .block--messages { background: transparent; }
 .block--messages .block-body { background: transparent; }
 .block--messages > .block-header { background: transparent; padding: 7px 0; }
@@ -72,7 +72,7 @@
 }
 .message-main { display: flex; flex-direction: column; min-height: 100%; }
 
-/* Inline edit: the message body is swapped for the editor inside the same cell. */
+/* Inline edit: the body is swapped for the editor inside the same cell. */
 .message-cell--main.is-editing { padding: 10px; }
 .message-main[hidden] { display: none !important; }
 .inline-edit { display: block; }
@@ -159,8 +159,7 @@
 }
 .message-postNumber:hover { color: var(--link-hover) !important; }
 
-/* The share menu behind a post number. Fixed rather than absolute so it escapes the post's
-   stacking context, and `z-index` above the sticky chrome but below the toast. */
+/* Share menu behind a post number. Fixed so it escapes the post's stacking context. */
 .post-share-popup {
   position: fixed;
   z-index: 300;
@@ -193,14 +192,12 @@
   font-size: calc(16px * var(--post-scale));
   line-height: 1.5;
   overflow-wrap: anywhere;
-  /* Anything nested inside a post — a quote card, a code block, a spoiler summary — is part
-     of the post's prose, so it must scale with --post-scale rather than with the page. */
+  /* Nested blocks are prose, so they scale with --post-scale, not the page. */
   --ui-scale: var(--post-scale);
 }
 .message-body img { border-radius: 3px; }
-/* Mirrors voz.vn's `.bbImageWrapper`: an inline-block on the text baseline with an inline
-   image inside. `vertical-align: top` (the previous value) lifted a tall image above its own
-   line and made it overlap the line above, which is what broke the layout. */
+/* Mirrors voz.vn's .bbImageWrapper: an inline-block on the text baseline. `vertical-align:
+   top` lifted a tall image above its line and overlapped the line above. */
 .downloadable-image {
   position: relative;
   display: inline-block;
@@ -237,8 +234,7 @@
 .image-download-button.is-loading { cursor: wait; opacity: .35; }
 .image-download-button.is-saved { opacity: 1; background: rgba(22, 128, 67, .9); border-color: rgba(255, 255, 255, .6); }
 
-/* Per-post screenshot control. It sits in the attribution row next to the bookmark rather
-   than floating over the post, so it can never cover the #number. */
+/* Per-post screenshot control, in the attribution row next to the bookmark. */
 .post-screenshot-button {
   display: inline-flex;
   align-items: center;
@@ -267,7 +263,7 @@
   .post-screenshot-button { opacity: .75; }
 }
 
-/* Off-screen capture sheet: the wrapper drawn into the PNG, plus the thread title band. */
+/* Off-screen capture sheet: the wrapper drawn into the PNG, plus the title band. */
 .screenshot-sheet { color: var(--text); }
 .screenshot-title {
   margin: 0 0 12px;
@@ -280,7 +276,7 @@
 }
 .screenshot-sheet .message { margin: 0; overflow: visible; }
 .screenshot-sheet .message-inner { align-items: flex-start; }
-/* Touch devices have no hover, so the control must stay visible enough to find. */
+/* Touch devices have no hover, so the control stays visible. */
 @media (hover: none) {
   .image-download-button { opacity: .75; }
 }
@@ -395,8 +391,7 @@
 .bbWrapper blockquote.has-quote-source::before { content: none; }
 .bbWrapper .quote-source { display: block; margin-bottom: 4px; font-size: calc(12px * var(--ui-scale)); font-weight: var(--fw-bold); }
 
-/* Long quotes are clipped to 800px with a fade, matching voz.vn's `.bbCodeBlock--expandable`.
-   Only quotes that actually overflow get the wrapper, so short ones are untouched. */
+/* Long quotes are clipped to 800px with a fade, like voz.vn's .bbCodeBlock--expandable. */
 .bbWrapper blockquote.is-expandable { position: relative; }
 .bbWrapper blockquote .quote-expand-content { max-height: 800px; overflow: hidden; }
 .bbWrapper blockquote.is-expanded .quote-expand-content { max-height: none; }

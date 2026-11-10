@@ -1,4 +1,4 @@
-// Independent BBCode codec. Unrecognised constructs remain lossless, atomic blocks.
+// Independent BBCode codec. Unrecognised constructs stay lossless, atomic blocks.
 import { getAttachment, attachmentImage } from './attachments.js';
 
 const escape = (value) => String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -68,8 +68,7 @@ export function editorCodeHtml(value, preview = false) {
       if (url) return `<a href="${escape(url)}" target="_blank" rel="noopener noreferrer">${escape(url)}</a>`;
     }
     if (tag === 'img' && safeEditorUrl(text)) {
-          // Images keep their size/width attributes so the visual editor shows the picture
-          // instead of the raw [IMG size=...] BBCode. The attributes round-trip via data-bb-*.
+          // Images keep size/width so the editor shows the picture; they round-trip via data-bb-*.
           const size = /size\s*=\s*"?(\d+)(?:x(\d+))?"?/i.exec(node.attrs);
           const width = /width\s*=\s*"?(\d+)(?:px)?"?/i.exec(node.attrs);
           const height = /height\s*=\s*"?(\d+)(?:px)?"?/i.exec(node.attrs);
@@ -78,8 +77,7 @@ export function editorCodeHtml(value, preview = false) {
           else if (width || height) style = `${width ? `width:${width[1]}px;` : ''}${height ? `height:${height[1]}px;` : ''}`;
           return `<img${data} src="${escape(safeEditorUrl(text))}" alt="Ảnh" loading="lazy"${style ? ` style="${escape(style)}"` : ''}>`;
         }
-        // [ATTACH type="full"]123[/ATTACH] carries an attachment id, not a URL. Once the view
-        // has registered the post's attachments the picture is shown; else it stays atomic.
+        // [ATTACH] carries an id, not a URL: shown once the view registers the attachments.
         if (tag === 'attach') {
           const attachment = getAttachment(text.trim());
           const size = /size\s*=\s*"?(\d+)(?:x(\d+))?"?/i.exec(node.attrs);
@@ -117,19 +115,17 @@ export function editorDomCode(root) {
     if (node.hasAttribute('data-bb-raw')) return node.getAttribute('data-bb-raw');
     const name = node.tagName.toLowerCase();
     if (name === 'br') return '\n';
-    // Live smilies are images in the visual editor; the BBCode is the original code.
+    // Live smilies are images; the BBCode is the original code.
     if (name === 'img' && node.dataset.smilie) return node.dataset.smilie;
     let body = [...node.childNodes].map(serialize).join('');
     let tag = node.dataset.bbTag, attrs = node.dataset.bbAttrs || '';
     if (tag === 'img') return `[IMG${attrs}]${safeEditorUrl(node.getAttribute('src')) || ''}[/IMG]`;
-    // An attachment rendered as a picture must serialize back to its numeric id, which is
-    // what the API expects; the element itself only knows the resolved URL.
+    // An attachment picture serializes back to its numeric id; the element only knows the URL.
     if (tag === 'attach') {
       const id = node.dataset.bbAttachId || attachmentIdForUrl(node.getAttribute('src'));
       if (id) return `[ATTACH${attrs}]${id}[/ATTACH]`;
     }
-        // An <img> without data-bb-tag (pasted HTML, or a rule that dropped the attribute)
-        // must still survive as BBCode instead of serializing to nothing.
+        // An <img> without data-bb-tag must still survive as BBCode.
         if (name === 'img') {
           const src = safeEditorUrl(node.getAttribute('src'));
           if (src) return `[IMG]${src}[/IMG]`;

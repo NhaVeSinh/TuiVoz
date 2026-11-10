@@ -1,9 +1,5 @@
-// The popup behind a post's `#13,661` number: it offers the two share links a reader
-// actually wants — the canonical voz.vn permalink, and the permalink of whatever site is
-// being browsed (the local clone, a mirror, a fork).
-//
-// It is deliberately *not* a modal: the number keeps its normal jump behaviour, and the
-// popup is a non-blocking menu anchored to the number, like every other menu in the app.
+// The popup behind a post's `#13,661` number: the canonical voz.vn permalink and the permalink of the site
+// being browsed. Not a modal — the number keeps its jump behaviour.
 
 import { esc } from '../core/utils.js';
 import { threadPath, withPage } from '../core/paths.js';
@@ -12,16 +8,15 @@ import { toast } from './feedback.js';
 // `voz.vn` is the upstream forum, independent of where this client is deployed.
 const VOZ_ORIGIN = 'https://voz.vn';
 
-// voz.vn's canonical permalink for one post. XenForo resolves `/t/<slug>.<id>/post-<postId>`
-// to the right page server-side, so the page number does not have to be guessed here.
+// voz.vn's canonical permalink. XenForo resolves /t/<slug>.<id>/post-<postId> server-side, so the page number
+// is not guessed here.
 export function vozPostUrl(thread, postId) {
   if (!thread?.thread_id || !postId) return '';
-  // `threadPath` already produces the slugged `/t/<slug>.<id>/` form.
+  // `threadPath` already produces the slugged form.
   return `${VOZ_ORIGIN}${threadPath(thread).replace(/\/$/, '')}/post-${postId}`;
 }
 
-// The permalink as seen by the reader: current origin (localhost, a preview deploy, a fork),
-// current page, and the `#post-…` fragment.
+// The permalink as the reader sees it: current origin, current page, `#post-…` fragment.
 export function webPostUrl(thread, page, postId) {
   if (!thread?.thread_id || !postId) return '';
   return `${location.origin}${withPage(threadPath(thread), page)}#post-${postId}`;
@@ -35,8 +30,7 @@ async function copy(text) {
       return true;
     }
   } catch {
-    // Falls through to the legacy path — clipboard access needs a secure context and a
-    // user gesture, and is unavailable on plain http:// in some browsers.
+    // Falls through to the legacy path: clipboard access needs a secure context.
   }
   try {
     const field = document.createElement('textarea');
@@ -72,10 +66,8 @@ export function closePostNumberPopup() {
   window.removeEventListener('resize', closePostNumberPopup, true);
 }
 
-// The post list is replaced wholesale by `innerHTML` on some navigations, which detaches the
-// trigger without any event we could listen for. Watching for that is more reliable than
-// closing on every render — closing on render killed the popup that the same click had just
-// opened, because a `#post-…` link can trigger a thread re-render.
+// The post list is replaced by innerHTML on some navigations, detaching the trigger with no event to listen
+// for. Closing on every render would kill the popup the same click opened.
 function watchTrigger() {
   cancelAnimationFrame(watchRaf);
   const tick = () => {
@@ -86,8 +78,7 @@ function watchTrigger() {
   watchRaf = requestAnimationFrame(tick);
 }
 
-// A click on the trigger is a no-op here: the `thread` handler owns toggling, so a second
-// click on the same number must be able to close it rather than be swallowed as a dismissal.
+// A click on the trigger is a no-op here: the `thread` handler owns toggling, so a second click can close it.
 function onDocumentClick(event) {
   if (!open) return;
   if (open.root.contains(event.target) || open.trigger.contains(event.target)) return;
@@ -103,7 +94,7 @@ function onKeydown(event) {
 }
 
 export function openPostNumberPopup(trigger, thread, page, postId) {
-  // Toggling: a click on the same number while its menu is open closes it.
+  // A click on the same number while its menu is open closes it.
   const wasOpen = open?.trigger === trigger;
   closePostNumberPopup();
   if (wasOpen) return;
@@ -124,8 +115,7 @@ export function openPostNumberPopup(trigger, thread, page, postId) {
     .join('');
   document.body.append(root);
 
-  // Anchor below the number, kept inside the viewport on narrow screens. Uses fixed
-  // positioning so it escapes the post's stacking/overflow context.
+  // Anchored below the number and kept inside the viewport. Fixed so it escapes the post's stacking context.
   const rect = trigger.getBoundingClientRect();
   const width = root.offsetWidth;
   const left = Math.min(Math.max(8, rect.right - width), window.innerWidth - width - 8);
@@ -146,9 +136,8 @@ export function openPostNumberPopup(trigger, thread, page, postId) {
     if (ok) closePostNumberPopup();
   });
 
-  // Registered on the next task: the opening click is still being dispatched, and a capture
-  // listener added part-way through would otherwise run for that same gesture and close the
-  // menu immediately.
+  // Registered on the next task: a capture listener added mid-gesture would run for the opening click and close
+  // the menu immediately.
   setTimeout(() => {
     if (!open || open.trigger !== trigger) return;
     document.addEventListener('click', onDocumentClick, true);

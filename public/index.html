@@ -15,12 +15,9 @@
 <link rel="stylesheet" href="/assets/css/font-default.css">
 <link rel="stylesheet" href="/assets/css/theme.css">
 <script>
-  // Runs while the head is still parsing, before the layout stylesheets below and before
-  // anything paints, so a dark-mode reader never sees a white flash. Kept inline and tiny:
-  // only the attributes the CSS keys off, read straight from localStorage. base.css has
-  // already declared the light values at this point, so setting data-theme here re-points
-  // them in the same style recalculation as the first paint. Everything else lives in
-  // ui/theme.js.
+  // Runs while the head is still parsing, before anything paints, so a dark-mode reader never
+  // sees a white flash. Only the attributes the CSS keys off, read from localStorage;
+  // everything else lives in ui/theme.js.
   (function () {
     try {
       var s = JSON.parse(localStorage.getItem('voz-settings:v1') || '{}');
@@ -30,12 +27,9 @@
       var r = document.documentElement;
       r.dataset.themeMode = mode;
       r.dataset.theme = dark ? 'dark' : 'light';
-      // Family stacks mirror FONT_STACKS in lib/settings.js. The default is `be-vietnam`, whose
-      // face font-default.css already declared above, so base.css's --font is correct without
-      // touching it here. Only a *different* vendored family needs --font set; fonts.css itself
-      // is linked by ui/theme.js once it knows the choice, so nothing extra is fetched for the
-      // default. Values that are not a known key fall back to the default, matching
-      // normalizeSettings().
+      // Family stacks mirror FONT_STACKS in lib/settings.js. The default `be-vietnam` is already
+      // declared by font-default.css, so only a different family needs --font set. Unknown
+      // values fall back to the default, matching normalizeSettings().
       var FONT_STACKS = {
         system: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
         roboto: 'Roboto, "Segoe UI", "Helvetica Neue", Arial, sans-serif',
@@ -46,13 +40,12 @@
       };
       var font = Object.prototype.hasOwnProperty.call(FONT_STACKS, s.font) ? s.font : 'be-vietnam';
       r.dataset.font = font;
-      // The default is already applied by base.css, so its inline value is cleared rather than
-      // duplicated; every other choice — including `system`, which must not inherit the
-      // vendored default from base.css — needs its own stack set here.
+      // The default is already applied by base.css, so its inline value is cleared; every other
+      // choice needs its own stack here.
       if (font === 'be-vietnam') r.style.removeProperty('--font');
       else r.style.setProperty('--font', FONT_STACKS[font]);
-              // Font size percentages. Applied pre-paint so a non-default size never flashes the
-              // stock one; mirrored by applyFontScale() in ui/theme.js.
+              // Font size percentages, applied pre-paint; mirrored by applyFontScale() in
+              // ui/theme.js.
               var scale = function (v) {
                 var isText = typeof v === 'string';
                 if (isText && v.trim() === '') return 100;

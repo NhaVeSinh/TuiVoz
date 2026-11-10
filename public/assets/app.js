@@ -1,6 +1,5 @@
-// Entry point: wires global listeners and boots the router.
-// All data comes from /api/xf/* (edge proxy) so the guest key and the OAuth
-// bearer token never reach the browser.
+// Entry point: wires global listeners and boots the router. All data comes from /api/xf/* (edge proxy), so the
+// guest key and the OAuth bearer token never reach the browser.
 
 import { navigate } from './core/nav.js';
 import { route } from './core/router.js';
@@ -15,8 +14,8 @@ import { wireStaticAvatars } from './lib/avatarStatic.js';
 import { wirePostScreenshots } from './lib/postScreenshot.js';
 import { wireAllQuoteExpansion } from './lib/quotes.js';
 
-// Applied before the first paint of app content so the page never flashes the wrong scheme:
-// the reader's saved preference is in localStorage, so it is available synchronously.
+// Applied before the first paint so the page never flashes the wrong scheme; the saved preference is in
+// localStorage, so it is available synchronously.
 wireTheme();
 
 // Intercept same-origin link clicks so navigation never reloads the page.
@@ -47,8 +46,8 @@ document.addEventListener('click', (event) => {
 wireHeaderMenus();
 wireNavShortcuts();
 wireChromeAutoHide();
-// voz.vn's markup carries data-onerror="hide-parent" on unfurl favicons; the attribute does
-// nothing without a listener, so dead favicons would otherwise keep their box and alt text.
+// voz.vn's markup carries data-onerror="hide-parent" on unfurl favicons; without a listener a dead favicon
+// keeps its box and alt text.
 wireImageFallbacks();
 wireImageDownloads();
 wireStaticAvatars();
@@ -60,12 +59,8 @@ window.addEventListener('popstate', () => {
   route();
 });
 
-// Cài đặt → Hệ thống → "Hiện thị số liệu không rút gọn" changes how every number and date is
-// formatted, and those strings are baked into the markup at render time. Re-running the current
-// route rebuilds the view in place so the switch is visible immediately. The settings page is
-// skipped: it shows no statistics, and re-rendering it would drop the reader's tab and focus.
-// The scroll offset is restored afterwards so a change made in another tab does not throw the
-// reader back to the top of a long thread.
+// "Hiện thị số liệu không rút gọn" changes how numbers and dates are formatted, and those strings are baked
+// into the markup, so the current route is re-run in place.
 window.addEventListener('voz:format-change', async () => {
   if (location.pathname.startsWith('/cai-dat-tuivoz')) return;
   const top = window.scrollY;

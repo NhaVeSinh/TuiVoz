@@ -1,8 +1,5 @@
-// imgur album import, ported from the userscript's extractAlbumId /
-// fetchImgurAlbumImages / showAddAlbumDialog.
-//
-// The userscript talked to api.imgur.com through GM_xmlhttpRequest, which bypasses
-// CORS. From a page we must go through the same-origin edge proxy instead.
+// imgur album import, ported from the userscript. The userscript used GM_xmlhttpRequest to bypass CORS; from a
+// page the same-origin edge proxy is used instead.
 
 import { xf } from '../api.js';
 import { downloadImagesInParallel } from './stickers.js';

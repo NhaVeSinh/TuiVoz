@@ -19,9 +19,8 @@ export function pagination(p, makeHref, extraHtml = '', { scrollArm = true } = {
     if (prev && n - prev > 1) {
       items += `<li class="pageNav-skip"><button type="button" class="pageNav-jumpBtn" data-last="${last}" title="Đi tới trang">…</button></li>`;
     }
-    // `--edge` marks the first and last page, `--far` the pages two steps out. Narrow
-    // screens drop `--far` so the first page, the last page and the current page's
-    // neighbours all stay reachable instead of collapsing to the current number alone.
+    // `--edge` marks the first and last page, `--far` the pages two steps out. Narrow screens drop `--far` so
+    // the first, last and neighbouring pages stay reachable.
     const classes = ['pageNav-page'];
     if (n === current) classes.push('is-current');
     if (n === 1 || n === last) classes.push('pageNav-page--edge');
@@ -34,8 +33,8 @@ export function pagination(p, makeHref, extraHtml = '', { scrollArm = true } = {
     prev = n;
   }
 
-  // "Kích hoạt theo người dùng yêu cầu": the pager offers a one-click opt-in for this page.
-  // A thread renders two pagers, so only the bottom one carries the control.
+  // "Kích hoạt theo người dùng yêu cầu": a one-click opt-in for this page. A thread renders two pagers, so only
+  // the bottom one carries the control.
   const scrollBtn =
     scrollArm && current < last && getInfiniteScroll() === 'manual'
       ? `<button type="button" class="pageNav-scrollBtn" data-scroll-arm title="Bật cuộn liên tục cho trang này" aria-label="Bật cuộn liên tục cho trang này"><span class="pageNav-scrollIcon" aria-hidden="true">⇣</span></button>`

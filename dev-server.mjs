@@ -1,5 +1,4 @@
-// Local dev server: serves public/ and routes /api/* to the edge handler.
-// Usage: node dev-server.mjs [port]
+// Local dev server: serves public/ and routes /api/* to the edge handler. Usage: node dev-server.mjs [port].
 // Not deployed — Vercel only serves public/ and api/.
 
 import http from 'node:http';
@@ -25,8 +24,7 @@ const MIME = {
 
 const { default: handler } = await import('./api/handler.js');
 
-// Everything under /assets/ plus the app shell's own filenames must be a real file; only
-// other paths are SPA routes (see serveStatic).
+// Everything under /assets/ plus the shell's own filenames must be a real file; other paths are SPA routes.
 const ASSET_RE = /^\/(assets|userscript)\//;
 // Files the browser requests by fixed name; a missing one must 404, not return the shell.
 const ROOT_FILES = new Set(['/favicon.ico', '/site.webmanifest', '/robots.txt']);
@@ -72,9 +70,8 @@ async function serveStatic(req, res, pathname) {
     missing = true;
   }
   if (missing) {
-    // The SPA fallback is for route paths only. A missing *asset* must 404: falling back to
-    // index.html answered 200 with HTML for every absent file, which hid 404s (a deleted
-    // font looked served) and turned a typo'd script into a bogus "unexpected token <" error.
+    // The SPA fallback is for route paths only. A missing asset must 404: answering 200 with HTML hid 404s and
+    // turned a typo'd script into "unexpected token <".
     if (ASSET_RE.test(pathname) || ROOT_FILES.has(pathname)) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('not found');
       return;

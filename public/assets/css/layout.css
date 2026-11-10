@@ -1,14 +1,8 @@
 /* Page chrome: header, nav, body wrapper, blocks, footer. */
 
 /* ---------- header ---------- */
-/* The header and nav form one sticky block that auto-hides while scrolling down
-   (ui/chromeAutoHide.js toggles .chrome-hidden on <html>). Both are sticky so the pair
-   stays on screen while reading; the hide is a transform, not display:none, so the page
-   content never reflows. z-index 100 keeps them under the modal (1000) and toast (900)
-   but above page content and the floating stop button (40).
-   The header sits one layer higher than the nav: both create stacking contexts, and on a
-   tie the later sibling (the nav) would paint over the header's dropdown menus, which open
-   downwards across the nav's band. */
+/* Header + nav form one sticky block that auto-hides on scroll down (ui/chromeAutoHide.js
+   toggles .chrome-hidden). The header sits one layer above the nav for its dropdowns. */
 .p-header {
   position: sticky;
   top: 0;
@@ -17,8 +11,7 @@
   color: var(--header-fg);
   transition: transform .2s ease;
 }
-/* Lifted by its own height so it leaves the viewport entirely; the nav below shifts by the
-   combined height (it starts at --header-h and must clear the top edge). */
+/* Lifted by its own height; the nav shifts by the combined height. */
 :root.chrome-hidden .p-header {
   transform: translateY(calc(-1 * var(--header-h, 100%)));
 }
@@ -30,9 +23,7 @@
   gap: 14px;
   padding: 6px 12px;
 }
-/* voz.vn sizes the same file by width (98px, height auto). Ours is scaled by height so the
-   aspect ratio sets the width; the bar is only 6px-padded, so 26px keeps the wordmark
-   legible without eating the whole strip. */
+/* Scaled by height so the aspect ratio sets the width; 26px keeps the wordmark legible. */
 .p-header-logo {
   display: inline-flex;
   align-items: center;
@@ -42,8 +33,7 @@
   display: block;
   height: 26px;
   width: auto;
-  /* The source artwork is white (#f2f4f7), which is what the dark header needs, so no filter
-     or colour override is applied. */
+  /* The artwork is already white, so no filter is needed. */
 }
 .p-header-logo:hover { opacity: .85; }
 .p-header-account {
@@ -72,12 +62,11 @@
 /* ---------- nav ---------- */
 .p-nav {
   position: sticky;
-  /* Parks the nav directly under the header; --header-h is set by ui/chromeAutoHide.js. */
+  /* Parks the nav under the header; --header-h comes from ui/chromeAutoHide.js. */
   top: var(--header-h, 0px);
   z-index: 100;
   background: var(--nav-bg);
-  /* No border-top: the header and nav share the same --nav-bg, and any hairline here reads as
-     a white line cutting the two bars apart. Separation comes from the active tab underline. */
+  /* No border-top: both bars share --nav-bg, so a hairline would cut them apart. */
   transition: transform .2s ease;
 }
 :root.chrome-hidden .p-nav {
@@ -99,7 +88,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  /* Shortcuts can be added without limit; the cap is a safety valve, not a layout limit. */
+  /* Shortcuts are unlimited; the cap is a safety valve. */
   max-height: 40vh;
   overflow-y: auto;
   scrollbar-width: thin;
@@ -186,6 +175,6 @@
 }
 .p-footer a { color: var(--on-chrome-link); }
 .p-footer .u-dimmed, .p-footer .u-muted { color: var(--chrome-dimmed); }
-/* Single line by default; the bottom margin only matters once a second paragraph is added. */
+/* Single line by default; the margin only matters with a second paragraph. */
 .p-footer p { margin: 0; }
 .p-footer p + p { margin-top: 6px; }

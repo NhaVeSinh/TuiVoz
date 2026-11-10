@@ -1,5 +1,4 @@
-// Thread prefixes. The id → colour mapping is what voz.vn renders; it was read
-// from the <option data-prefix-class> list in each forum's post-thread form.
+// Thread prefixes. The id → colour mapping is what voz.vn renders.
 
 import { esc } from '../core/utils.js';
 

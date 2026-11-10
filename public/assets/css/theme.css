@@ -1,25 +1,17 @@
-/* Appearance rules that are not simple token substitutions.
-   The palettes themselves live in base.css (--* custom properties, re-pointed by
-   :root[data-theme="dark"]); everything here reacts to the resolved theme or to the
-   data-font attribute set by ui/theme.js and the pre-paint inline script in index.html. */
+/* Appearance rules that are not plain token swaps. The palettes live in base.css; this file
+   reacts to the resolved theme and to the data-font attribute. */
 
-/* Native widgets: form controls, scrollbars, and the canvas the browser paints before the
-   page background is composited. `color-scheme` is also set from JS so it survives a
-   settings change without a reload; this is the no-JS fallback. */
+/* Native widgets (controls, scrollbars, canvas). JS also sets color-scheme; this is the no-JS fallback. */
 :root { color-scheme: light; }
 :root[data-theme="dark"] { color-scheme: dark; }
 
-/* Images, iframes and video keep their own colours, so a bright photo on a dark page is
-   glare. Easing brightness slightly — never inverting, which would ruin photos — matches
-   what most dark themes do. Kept very mild so details and colour accuracy survive. */
+/* Slightly dim media on the dark surface — never invert. Kept mild to keep colour accuracy. */
 :root[data-theme="dark"] img,
 :root[data-theme="dark"] video,
 :root[data-theme="dark"] iframe {
   filter: brightness(.92);
 }
-/* Do not dim anything that is already a UI affordance rather than content, and nothing on the
-   chrome — the header/nav keep the same dark styling in both themes, so dimming the header
-   logo there would make it darker than in light mode for no reason. */
+/* Do not dim UI affordances or anything on the chrome. */
 :root[data-theme="dark"] .p-header img,
 :root[data-theme="dark"] .p-nav img,
 :root[data-theme="dark"] .p-footer img,
@@ -33,20 +25,13 @@
   filter: none;
 }
 
-/* The vendored fonts are downloaded lazily (assets/css/fonts.css is only linked once a
-   family is chosen), so switching family must not reflow the page after text has painted.
-   The fallback stack mirrors each family's metrics closely enough that the swap is quiet. */
+/* Vendored fonts load lazily; the fallback stack keeps the swap quiet. */
 :root[data-font="roboto"] { font-family: var(--font); }
 :root[data-font="be-vietnam-pro"] { font-family: var(--font); }
 :root[data-font="be-vietnam"] { font-family: var(--font); }
 
-/* Bold grade per family. The stylesheets ask for `font-weight: 600` in ~39 places and 700 in
-   ~11, and fonts.css declares each vendored family's heaviest real cut in the 600 slot — so
-   those requests land on a full Bold and read heavier than voz.vn. The four families that
-   ship a real Medium (Roboto, Be Vietnam Pro, SF Pro Display) or a Bold that is too heavy at
-   this size (Cantarell) are pulled down to 500 here; `system`, `segoe-ui` and the default
-   `be-vietnam` keep the stock 600. `--fw-bold` is the single knob: every 600/700 in the
-   stylesheets resolves to it, so a family only has to re-point this one property. */
+/* Bold grade per family. fonts.css puts each family's heaviest cut in the 600 slot, which
+   reads heavier than voz.vn, so these four drop to 500. --fw-bold is the single knob. */
 :root[data-font="roboto"],
 :root[data-font="be-vietnam-pro"],
 :root[data-font="sf-pro-display"],

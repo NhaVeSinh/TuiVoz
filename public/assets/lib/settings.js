@@ -1,5 +1,5 @@
-// Browser-local preferences. Nothing here is sent to voz.vn — it lives in
-// localStorage so it survives reloads and is included in JSON backup/restore.
+// Browser-local preferences. Nothing is sent to voz.vn; it lives in localStorage and is included in JSON
+// backup/restore.
 
 const KEY = 'voz-settings:v1';
 const MAX_SHORTCUTS = 200;
@@ -47,11 +47,8 @@ export const emptySettings = () => ({
   fullNumbers: FULL_NUMBERS_DEFAULT,
 });
 
-// Colour scheme for the content area. The page chrome (header, nav) keeps its dark
-// VOZ styling in both modes — only the reading surface flips.
-//   auto  — follow the OS via prefers-color-scheme, and re-follow it if the OS changes
-//   light — always the original palette
-//   dark  — always the dark palette
+// Colour scheme for the content area; the chrome keeps its dark styling in both modes.
+//   auto — follow the OS and keep following it; light / dark — fixed.
 export const THEME_MODES = ['auto', 'light', 'dark'];
 export const THEME_DEFAULT = 'auto';
 export const THEME_LABELS = {
@@ -60,14 +57,8 @@ export const THEME_LABELS = {
   dark: 'Tối',
 };
 
-// Typography. The list order is the order the radio group renders in Cài đặt → Giao diện, so
-// this array is the single source for both. `be-vietnam` is the default: it is the face voz.vn
-// itself renders in, so a new visitor gets the site's own typography with no action. `system`
-// injects nothing and leaves --font at base.css's value.
-//
-// Because the default is a vendored family, the first paint needs it: index.html links that one
-// 400 face directly (see the <link id="font-default"> there) instead of waiting for ui/theme.js.
-// The other families stay lazy — they are only fetched once selected.
+// Typography. The list order is the radio group order in Cài đặt → Giao diện. `be-vietnam` is the default and
+// index.html links its 400 face directly; the other families stay lazy.
 export const FONTS = ['be-vietnam', 'be-vietnam-pro', 'system', 'segoe-ui', 'cantarell', 'roboto', 'sf-pro-display'];
 export const FONT_DEFAULT = 'be-vietnam';
 export const FONT_LABELS = {
@@ -79,35 +70,25 @@ export const FONT_LABELS = {
   roboto: 'Roboto',
   'sf-pro-display': 'SF Pro Display',
 };
-// Family name + the stylesheet to load for each downloadable option. `null` means "use the
-// --font stack as-is" and inject nothing.
+// Family name + stylesheet per downloadable option. `null` injects nothing.
 export const FONT_STACKS = {
-  // The default carries NO stack: base.css names "Be Vietnam" first and font-default.css
-  // declares the face, so `be-vietnam` is applied by clearing the inline --font. Giving it a
-  // stack here too would be redundant and would drift from base.css.
+  // The default carries no stack: base.css names "Be Vietnam" first, so clearing the inline --font applies it.
   'be-vietnam': null,
-  // `system` must name the OS fonts explicitly. It used to work by *removing* the inline
-  // --font so base.css applied — but base.css now names "Be Vietnam" first (it is the default),
-  // so that would silently render the vendored face and make this option a lie.
+  // `system` must name the OS fonts explicitly: clearing --font would fall back to the vendored default in
+  // base.css.
   system: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   roboto: 'Roboto, "Segoe UI", "Helvetica Neue", Arial, sans-serif',
-  // Cantarell has no Medium/Semibold master, so only 400 and 600 are declared and a 600/700
-  // request is served by the Bold face — do not add a 500 to this stack expecting a real cut.
+  // Cantarell has no Medium/Semibold master, so 600/700 are served by the Bold face.
   cantarell: '"Cantarell", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   'be-vietnam-pro': '"Be Vietnam Pro", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  // San Francisco first, then the Apple-first fallbacks so a non-Apple visitor still gets a
-  // comparable UI face. "-apple-system" resolves to the real San Francisco on macOS/iOS.
+  // San Francisco first, then Apple-first fallbacks for other platforms.
   'sf-pro-display': '"SF Pro Display", -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  // The vendored face is named "Segoe UI Local" so it cannot compete with the OS "Segoe UI":
-  // on Windows the plain name already resolves to the installed font, and declaring the
-  // download under the same name would let it shadow the local one. Local first, OS second.
+  // The vendored face is "Segoe UI Local" so it cannot shadow the OS "Segoe UI". Local first.
   'segoe-ui': '"Segoe UI Local", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
 };
 
-// Cỡ chữ. The two axes are independent: `postSize` scales prose inside a post, `uiSize`
-// scales the rest (lists, chrome, controls, settings). Both are percentages of the stock
-// size and are applied as --post-scale / --ui-scale, which the layout CSS multiplies its
-// px sizes by — so the two can never fight over the same element's font-size.
+// Cỡ chữ. Two independent axes: `postSize` scales prose inside a post, `uiSize` everything else. Both are
+// percentages applied as --post-scale / --ui-scale.
 export const FONT_SCALE_MIN = 80;
 export const FONT_SCALE_MAX = 200;
 export const FONT_SCALE_STEP = 5;
@@ -117,11 +98,8 @@ export const IMAGE_DOWNLOAD_DEFAULT = false;
 export const POST_SCREENSHOT_DEFAULT = false;
 export const STATIC_AVATARS_DEFAULT = false;
 
-// Full (unrounded) statistics and absolute dates. voz.vn prints `13K` / `3 giờ trước`; a reader
-// who wants the real figures can switch that off either inside threads only or site-wide.
-//   off    — keep voz.vn's rounded numbers and relative times
-//   thread — full numbers/dates inside a thread (posts, thread header, member cards)
-//   all    — full numbers/dates everywhere, including lists, profiles and the forum index
+// Full (unrounded) statistics and absolute dates. off — voz.vn's rounded numbers; thread — inside a thread
+// only; all — everywhere.
 export const FULL_NUMBERS_MODES = ['off', 'thread', 'all'];
 export const FULL_NUMBERS_DEFAULT = 'off';
 export const FULL_NUMBERS_LABELS = {
@@ -131,8 +109,8 @@ export const FULL_NUMBERS_LABELS = {
 };
 
 export function normalizeFontScale(value) {
-  // `Number(null)`, `Number('')` and `Number([])` are all 0, which would clamp to the 80%
-  // floor instead of falling back — so only accept a number or a numeric string.
+  // Number(null) and Number('') are 0, which would clamp to the floor, so only accept a number or a numeric
+  // string.
   if (typeof value === 'string') {
     if (value.trim() === '') return FONT_SCALE_DEFAULT;
   } else if (typeof value !== 'number') {
@@ -145,9 +123,7 @@ export function normalizeFontScale(value) {
 }
 
 // Infinite scroll for thread lists and threads:
-//   on     — load the next page automatically when the bottom is reached
-//   manual — show a button in the pager; auto-load only after the user clicks it
-//   off    — pager only
+//   on — load automatically; manual — only after the pager button; off — pager only.
 export const SCROLL_MODES = ['on', 'manual', 'off'];
 export const SCROLL_DEFAULT = 'manual';
 export const SCROLL_LABELS = {
@@ -368,7 +344,7 @@ export function importSettingsJson(text) {
   if (!source || typeof source !== 'object') {
     return { ok: false, error: 'JSON phải là một object.' };
   }
-  // A sticker backup from the userscript has no navShortcuts — accept it as album-only.
+  // A userscript backup has no navShortcuts — accept it as album-only.
   const albumSource = Array.isArray(source.albums) ? source.albums : null;
   if (!Array.isArray(source.navShortcuts) && !albumSource) {
     return { ok: false, error: 'JSON phải có mảng "navShortcuts" hoặc "albums".' };

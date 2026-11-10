@@ -38,25 +38,20 @@ const frameRules = [
   ['embed.reddit.com', /^\/r\/[\w]+\/comments\/[a-z0-9]+(?:\/[\w-]*)?\/?$/i],
 ];
 
-// Providers the forum embeds via XenForo oEmbed but that have no direct iframe URL.
-// voz.vn resolves them server-side with data-xf-init="oembed" and replaces the fallback
-// with the returned markup; a still image is what actually ends up in the page.
+// Providers embedded via XenForo oEmbed with no direct iframe URL. voz.vn resolves them server-side; a still
+// image is what ends up in the page.
 const OEMBED_SITES = {
   flickr: (key) => `https://www.flickr.com/services/oembed/?url=${encodeURIComponent(`https://flic.kr/p/${key}`)}&format=json`,
 };
 
-// Facebook has no iframe URL we can build ourselves: XenForo ships the plugin markup
-// (<div class="fb-video" data-href=… data-show-text=…>) and the Facebook JS SDK replaces it
-// with the real iframe at runtime. voz.vn loads connect.facebook.net/en_US/sdk.js and lets
-// XenForo's media handler call FB.XFBML.parse(); the same two steps are what make an embed
-// appear here, with the locale set to vi_VN to match the rest of the UI.
+// Facebook has no iframe URL we can build: XenForo ships .fb-video markup and the SDK replaces it at runtime.
+// Loading the SDK and calling FB.XFBML.parse() makes the embed appear.
 const FACEBOOK_SDK_SRC = 'https://connect.facebook.net/vi_VN/sdk.js';
 const FACEBOOK_SDK_ID = 'facebook-jssdk';
 let facebookSdkPromise = null;
 
-// Injects the SDK once per document and resolves when FB.XFBML can be called. A failure
-// resolves to null rather than rejecting, so a blocked facebook.com drops the embed back to
-// the fallback link instead of leaving an unhandled rejection.
+// Injects the SDK once and resolves when FB.XFBML can be called. A failure resolves to null, so a blocked
+// facebook.com falls back to the link instead of rejecting.
 function loadFacebookSdk() {
   if (facebookSdkPromise) return facebookSdkPromise;
   facebookSdkPromise = new Promise((resolve) => {
@@ -66,21 +61,20 @@ function loadFacebookSdk() {
     }
     const previousInit = window.fbAsyncInit;
     window.fbAsyncInit = function () {
-      // XFBML is what turns the .fb-video divs into iframes.
+      // XFBML turns the .fb-video divs into iframes.
       window.FB.init({ xfbml: false, version: 'v21.0' });
       if (typeof previousInit === 'function') previousInit.call(this);
       resolve(window.FB);
     };
     if (document.getElementById(FACEBOOK_SDK_ID)) {
-      // Another embed already injected the tag; fbAsyncInit above will still fire.
+      // Another embed already injected the tag; fbAsyncInit still fires.
       return;
     }
     const script = document.createElement('script');
     script.id = FACEBOOK_SDK_ID;
     script.async = true;
     script.defer = true;
-    // `#xfbml=1` makes the SDK scan the document itself on load, which covers the embeds
-    // already in the DOM; later batches are handled by the explicit parse call below.
+    // `#xfbml=1` scans the document on load; later batches use the explicit parse below.
     script.src = `${FACEBOOK_SDK_SRC}#xfbml=1&version=v21.0`;
     script.onerror = () => resolve(null);
     document.head.append(script);
@@ -88,14 +82,8 @@ function loadFacebookSdk() {
   return facebookSdkPromise;
 }
 
-// Renders every .fb-video the SDK has not already replaced, waiting for the placeholders to
-// appear in the live document first.
-//
-// This cannot run on `restoreMedia`'s `root`: sanitizeHtml() builds markup in a detached
-// DOMParser document and returns innerHTML, so `root`'s nodes are discarded and re-parsed on
-// the page. Parsing them there would render an iframe that never reaches the DOM. The SDK's
-// own `#xfbml=1` auto-scan would cover the first load, but that fires once — an embed added
-// later (a reply, an appended page, a quote preview) would stay inert forever.
+// Renders every .fb-video the SDK has not replaced, waiting for the placeholders to reach the live document:
+// sanitizeHtml() builds markup in a detached document.
 const FACEBOOK_ATTEMPTS = 40;
 
 function waitForFacebookEmbeds(attempts = FACEBOOK_ATTEMPTS) {
@@ -114,20 +102,18 @@ async function hydrateFacebook() {
   if (!pending.length) return;
   const fb = await loadFacebookSdk();
   if (!fb || typeof fb.XFBML?.parse !== 'function') return;
-  // One parse per parent covers every embed inside it, and re-parsing an already-rendered
-  // .fb-video is a no-op, so this is safe to call for each render.
+  // One parse per parent covers every embed inside it; re-parsing is a no-op.
   const containers = new Set(pending.map((el) => el.parentElement).filter(Boolean));
   for (const container of containers) fb.XFBML.parse(container);
 }
 
-// `restoreMedia` runs once per post, so most calls have no Facebook markup at all. Polling the
-// document from every one of them would leave a 4-second timer per post on a normal page, so
-// the caller says whether this render actually produced a `.fb-video` before we start looking.
+// restoreMedia runs once per post and most posts have no Facebook markup, so the caller says whether this
+// render produced a .fb-video before we start polling.
 function scheduleFacebookHydration(mayHaveFacebook) {
   if (mayHaveFacebook) hydrateFacebook();
 }
 
-// Flickr serves pictures from these hosts; anything else from an oEmbed payload is dropped.
+// Flickr serves pictures from these hosts; anything else is dropped.
 const OEMBED_IMAGE_HOSTS = ['live.staticflickr.com', 'staticflickr.com', 'farm1.staticflickr.com', 'farm2.staticflickr.com', 'farm3.staticflickr.com', 'farm4.staticflickr.com', 'farm5.staticflickr.com', 'farm6.staticflickr.com', 'farm8.staticflickr.com', 'farm9.staticflickr.com'];
 
 const oembedCache = new Map();
@@ -162,13 +148,8 @@ function configureFrame(frame, src) {
   frame.setAttribute('allowfullscreen', '');
 }
 
-// Fetches the provider's oEmbed payload and swaps the fallback for the picture it
-// describes. Runs through our proxy because neither provider sends CORS headers.
-//
-// sanitizeHtml() builds its markup in a detached document and returns innerHTML, so the
-// parsed node is not the one that ends up on the page. This waits for the placeholder to
-// arrive in the live document, then fills every copy of it (the same media key can appear
-// in more than one post).
+// Fetches the provider's oEmbed payload and swaps the fallback for the picture, through our proxy because
+// neither provider sends CORS headers. Fills every copy of the placeholder.
 const OEMBED_SELECTOR = (site, key) => `[data-media-site-id="${CSS.escape(site)}"][data-id="${CSS.escape(key)}"]`;
 
 function findOembedPlaceholders(site, key, attempts = 40) {
@@ -206,7 +187,7 @@ async function hydrateOembed(site, key, href) {
     return;
   }
   for (const embed of targets) {
-    // A second hydration pass (e.g. re-render) must not stack pictures.
+    // A second hydration pass must not stack pictures.
     if (embed.querySelector('img')) {
       embed.classList.remove('media-embed--oembed');
       continue;
@@ -237,26 +218,19 @@ async function hydrateOembed(site, key, href) {
   }
 }
 
-// Douyin (抖音) share links. voz.vn leaves these as plain external anchors, and the userscript
-// this follows closes that gap by swapping each one for an `open.douyin.com/player/video`
-// iframe. Two differences from the userscript:
-//   * a `v.douyin.com/<code>/` short link only yields the aweme id through a redirect the
-//     browser cannot read (no CORS), so the hop is made by our own API instead of
-//     GM_xmlhttpRequest;
-//   * markup is rewritten in the detached parse document and re-scanned in the live one, so a
-//     quote preview or a second render cannot stack players or leave an unresolvable link.
+// Douyin (抖音) share links. voz.vn leaves them as plain anchors; each is swapped for an open.douyin.com player.
+// A short link's id needs a redirect only our API can follow.
 const DOUYIN_SHORT_HOSTS = ['v.douyin.com'];
 const DOUYIN_MEDIA_HOSTS = ['www.douyin.com', 'douyin.com', 'www.iesdouyin.com', 'iesdouyin.com'];
 const DOUYIN_VIDEO_ID = /\/(?:share\/)?video\/(\d{6,25})(?:[/?#]|$)/;
 const DOUYIN_SHORT_CODE = /^\/[\w-]{4,32}\/?$/;
 const DOUYIN_EMBED = (id) => `https://open.douyin.com/player/video?vid=${id}&autoplay=0`;
 const DOUYIN_PAGE = (id) => `https://www.douyin.com/video/${id}`;
-// XenForo wraps a bare link in `.bbCodeBlock--unfurl`, whose flex card layout would squash a
-// 9:16 player into an 80px figure column. A link inside one replaces the whole card.
+// XenForo wraps a bare link in .bbCodeBlock--unfurl, whose flex layout would squash a 9:16 player into an 80px
+// column, so a link inside one replaces the whole card.
 const DOUYIN_WRAPPER = 'p, .bbCodeBlock--unfurl';
 
-// The aweme id when this href is already a full douyin video URL, else null. Short links
-// return null here — their id is only known after the API resolves the redirect.
+// The aweme id when this href is already a full video URL, else null. Short links resolve asynchronously.
 export function douyinVideoId(value) {
   let url;
   try {
@@ -269,7 +243,7 @@ export function douyinVideoId(value) {
   return DOUYIN_MEDIA_HOSTS.includes(url.hostname) && match ? match[1] : null;
 }
 
-// True for both link shapes, including a `v.douyin.com` short link with no resolvable id.
+// True for both link shapes, including a short link with no resolvable id.
 export function isDouyinLink(value) {
   let url;
   try {
@@ -285,8 +259,7 @@ function markDouyin(embed) {
   embed.classList.add('media-embed', 'media-embed--douyin', 'media-embed--portrait');
 }
 
-// Turns one anchor into the player. Returns false when the id is not known yet, leaving the
-// link in place for the async resolve to finish.
+// Turns one anchor into the player. False when the id is not known yet.
 function embedDouyin(anchor, id) {
   const doc = anchor.ownerDocument;
   const embed = doc.createElement('div');
@@ -308,12 +281,10 @@ function embedDouyin(anchor, id) {
 }
 
 function hydrateDouyinLinks(root) {
-  // Already-embedded posts are skipped on the way in, not only in the async path below:
-  // `restoreMedia()` runs once per post per render, so a re-render (SPA navigation, an edited
-  // post, an appended page) would otherwise stack a second player on every existing one.
+  // Already-embedded posts are skipped here too: restoreMedia runs once per post per render, so a re-render
+  // would otherwise stack a second player on every existing one.
   const anchors = [...root.querySelectorAll('a[href]')].filter((a) => !a.closest('.media-embed') && (isDouyinLink(a.getAttribute('href')) || douyinVideoId(a.getAttribute('href'))));
-  // Grouped by href so a link repeated across posts still costs one request, and so the
-  // module-level cache below is shared between the parse pass and the live pass.
+  // Grouped by href so a repeated link costs one request and shares the module cache.
   const pending = new Map();
   for (const anchor of anchors) {
     const href = anchor.getAttribute('href');
@@ -328,8 +299,7 @@ function hydrateDouyinLinks(root) {
   for (const [href] of pending) resolveDouyinShortLink(href);
 }
 
-// The id a short link resolved to. Cached per href for the lifetime of the page; a failed
-// resolve is not cached, so a dropped request is retried on the next render.
+// The id a short link resolved to, cached per href. A failed resolve is not cached.
 const douyinIds = new Map();
 
 function resolveDouyinShortLink(href) {
@@ -350,8 +320,7 @@ function resolveDouyinShortLink(href) {
     .get(href)
     .then((id) => {
       if (!id) return;
-      // The parse document's anchors never reach the page, so the live copies are found
-      // again by href once the id is known.
+      // The parse document's anchors never reach the page, so live copies are found by href.
       for (const anchor of document.querySelectorAll('a[href]')) {
         if (anchor.getAttribute('href') !== href) continue;
         if (anchor.closest('.media-embed')) continue;
@@ -361,11 +330,9 @@ function resolveDouyinShortLink(href) {
 }
 
 export function restoreMedia(root) {
-  // Tracked so the Facebook hydration below only polls when this render actually produced a
-  // `.fb-video`; restoreMedia runs once per post and most posts have no media at all.
+  // Tracked so Facebook hydration only polls when this render produced a .fb-video.
   let sawFacebook = false;
-  // Douyin share links arrive as ordinary external anchors (voz.vn does not embed them
-  // either), so they are found by href rather than by a [data-media-site-id] placeholder.
+  // Douyin links arrive as ordinary anchors, so they are found by href, not by a placeholder.
   hydrateDouyinLinks(root);
   for (const frame of root.querySelectorAll('iframe')) {
     const src = safeMediaUrl(frame.getAttribute('src'));
@@ -400,10 +367,8 @@ export function restoreMedia(root) {
       href = site === 'flickr' ? `https://flic.kr/p/${key}` : '';
       pendingOembed = true;
     } else if (site === 'facebook' && /^\d+$/.test(key) && embed.querySelector('.fb-video')) {
-      // Keep XenForo's .fb-video markup untouched — the SDK needs `data-href` and the
-      // `data-show-*` flags to build the iframe, and it writes its own wrapper around it.
-      // No source link is added: the plugin supplies its own "watch on Facebook" affordance,
-      // and voz.vn does not add one either.
+      // Keep XenForo's .fb-video markup untouched: the SDK needs data-href and the data-show-* flags. No source
+      // link is added; the plugin supplies its own.
       pendingFacebook = true;
       sawFacebook = true;
     }
@@ -428,14 +393,13 @@ export function restoreMedia(root) {
     if (site === 'imgur') embed.classList.add('media-embed--imgur');
     if (site === 'facebook') embed.classList.add('media-embed--facebook');
     if (['twitter', 'x', 'reddit'].includes(site)) embed.classList.add('media-embed--social');
-    // A pending oEmbed keeps the provider fallback until the picture replaces it.
+    // A pending oEmbed keeps the fallback until the picture replaces it.
     if (pendingOembed) {
       embed.classList.add('media-embed--oembed');
       hydrateOembed(site, key, href);
     } else if (!frame && !pendingFacebook) embed.classList.add('media-embed--fallback');
   }
-  // After the loop, and detached from it: the SDK parses whole containers, and it must run
-  // against the live document rather than the parser document `root` belongs to.
+  // After the loop: the SDK parses whole containers and must run against the live document.
   scheduleFacebookHydration(sawFacebook);
   for (const frame of root.querySelectorAll('iframe.media-frame')) {
     if (!frame.closest('.media-embed')) {

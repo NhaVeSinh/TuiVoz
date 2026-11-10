@@ -1,29 +1,7 @@
-/* Vendored webfonts.
-   Built by tools/build-fonts.py from the upstream OFL files (see fonts/OFL.txt): each family
-   is subset to the latin + vietnamese ranges at 400/500/700 and stored as woff2. Nothing is
-   requested from a font CDN — the CSS feature is `swap` so text paints immediately in the
-   fallback stack and re-renders when the file arrives.
-
-   Only referenced when the user picks a font in Cài đặt → Giao diện: the `@font-face` blocks
-   are inert on their own, and ui/theme.js adds the link for the chosen family, so a visitor
-   who keeps the default never downloads any of these files.
-
-   All the files in this folder are covered by the OFL: OFL.txt for Roboto and Be Vietnam Pro,
-   OFL-BeVietnam.txt for Be Vietnam, OFL-Cantarell.txt for Cantarell. SF Pro Display and
-   Segoe UI are the exceptions — see their blocks below.
-
-   Weight slots
-   ------------
-   The UI asks for `font-weight: 600` in ~24 places (usernames, headings, section titles,
-   buttons) and 700 in ~11; 500 is used once, inside this file. The vendored families only
-   have real 400 / 500 / 700 cuts, so a bare `font-weight: 600` used to pick the 700 file —
-   a true bold — and every heading came out heavier than intended. Roboto and SF Pro Display
-   therefore now declare their 700 file **in the 600 slot**: 600 lands on a real face and 700
-   reuses the same face rather than being synthesised. This mirrors voz.vn, whose own Be
-   Vietnam Pro ships 400 + 600 only (no 700).
-
-   `Be Vietnam` (no "Pro") reproduces voz.vn exactly and deliberately declares a single 400
-   face — see its block below. */
+/* Vendored webfonts, built by tools/build-fonts.py from the upstream OFL files: subset to latin +
+   vietnamese at 400/500/700 as woff2, with `swap`. Only linked when the reader picks a family.
+   Weight slots: the UI asks for 600 far more often than 700, so Roboto and SF Pro Display declare
+   their 700 file in the 600 slot. Be Vietnam declares a single 400 face, like voz.vn. */
 
 @font-face {
   font-family: "Roboto";
@@ -83,24 +61,11 @@
   src: url("../fonts/be-vietnam-pro-italic-600.woff2") format("woff2");
 }
 
-/* Be Vietnam — the family voz.vn actually renders body text in, and the app's default. Its
-   `@font-face` lives in font-default.css instead of here: the default has to be linked from
-   index.html so the first paint is already correct, and putting it in this lazily-injected
-   file would make it arrive after the first paint. See font-default.css for why it is a single
-   400 face and why the other weights must not be added back. */
+/* Be Vietnam — voz.vn's body face and the app default. Its @font-face lives in font-default.css,
+   so the first paint is already correct. */
 
-/* SF Pro Display — Apple's San Francisco. NOT an open-source family: it is proprietary and its
-   embedded licence (name ID 13) restricts use to "creating mock-ups of user interfaces to be
-   used in software products running on Apple's iOS, iPadOS, macOS or tvOS operating systems".
-   There is therefore no OFL file beside these binaries, unlike every other family in this
-   folder. Confirm your own use is covered before shipping the build.
-
-   Built by tools/build-sf-pro-display.py. Upstream ships `SF-Pro-Display-Bold.otf` declaring
-   `usWeightClass 600`, which is convenient: the script rewrites it to 600 and the file is
-   declared in the 600 slot below, so the UI's `font-weight: 600` gets Apple's real semibold
-   grade instead of snapping to the much heavier Heavy/Bold and looking too bold. Only the
-   four cuts the CSS can reach are built; upstream's other fourteen (Thin → Black plus
-   italics) are not vendored. */
+/* SF Pro Display — Apple's San Francisco. Proprietary, not OFL: its licence limits use to mock-ups
+   of UIs on Apple platforms. Built by tools/build-sf-pro-display.py; the Bold cut is weight 600. */
 @font-face {
   font-family: "SF Pro Display";
   font-style: normal;
@@ -130,24 +95,9 @@
   src: url("../fonts/sf-pro-display-italic-400.woff2") format("woff2");
 }
 
-/* Cantarell — Dave Crossland's humanist sans, and the GNOME desktop face. OFL like the
-   families above; see OFL-Cantarell.txt.
-
-   Built by tools/build-cantarell.py. Two things make this family different from the others:
-
-   1. Do NOT vendor Google Fonts' Cantarell. Its `latin`/`latin-ext` woff2 slices have no
-      Vietnamese: `U+01A0/01A1/01AF/01B0` (`Ơ ơ Ư ư`), all 90 stacked forms `U+1EA0-1EF9`
-      and the combining marks are absent from every file, and the files carry no `GSUB`/
-      `GPOS` at all. The browser then synthesises the accents from a fallback font, so
-      Vietnamese renders with mismatched marks and reflows mid-word. The script builds from
-      the upstream GNOME sources instead, which map all of them.
-
-   2. Upstream has no Medium or Semibold cut — its masters are Light 100 → Bold 700 — and
-      the UI asks for `font-weight: 600` far more often than 700. The Bold master is
-      therefore declared in the **600** slot, the same arrangement as Roboto, SF Pro Display
-      and Segoe UI above: 600 lands on a real face and 700 reuses it instead of the browser
-      synthesising a bold from the 400 face. Nothing declares a 500 face, so `font-weight:
-      500` (used once, in the CSS above/below) resolves to 400. */
+/* Cantarell — Dave Crossland's humanist sans, the GNOME desktop face. OFL; see OFL-Cantarell.txt.
+   Do NOT vendor Google Fonts' Cantarell: its latin slices have no Vietnamese, so accents get
+   synthesised and reflow mid-word. No Medium/Semibold, so the Bold master is in the 600 slot. */
 @font-face {
   font-family: "Cantarell";
   font-style: normal;
@@ -163,22 +113,10 @@
   src: url("../fonts/cantarell-600.woff2") format("woff2");
 }
 
-/* Segoe UI — Microsoft's Windows UI face. Like SF Pro Display this is proprietary, not OFL:
-   the installed files carry `fsType = 8` (editable embedding, the most restrictive tier) and a
-   licence string permitting embedding only as those restrictions allow. No OFL file ships
-   beside these binaries. Confirm your own use is covered before redistributing the build.
-
-   Worth knowing before you pick this: Segoe UI is already the Windows fallback in every stack
-   below, so on Windows this option changes nothing. It only matters on macOS/Linux/Android.
-
-   Built by tools/build-segoe-ui.py from the real `C:/Windows/Fonts/segoeui*.ttf`. Do NOT build
-   from the ~34 KB "Segoe UI" repacks found on font-download sites: those are stripped Latin-only
-   subsets (199 glyphs, cmap capped at U+02FF) with zero Vietnamese diacritics, which would break
-   mid-word on almost every line here.
-
-   There is no Medium or Semibold cut installed, and the UI asks for `font-weight: 600` far more
-   often than 700, so the Bold cut is declared in the 600 slot — the same arrangement as Roboto
-   and SF Pro Display above. 700 then reuses that face instead of being synthesised. */
+/* Segoe UI — Microsoft's Windows UI face. Proprietary, not OFL (fsType = 8), so no OFL file ships
+   beside these binaries. On Windows this option changes nothing: Segoe UI is already the fallback.
+   Built by tools/build-segoe-ui.py from the real C:/Windows/Fonts/segoeui*.ttf; do NOT use the
+   Latin-only repacks found on font-download sites. No Medium/Semibold, so Bold is in the 600 slot. */
 @font-face {
   font-family: "Segoe UI Local";
   font-style: normal;

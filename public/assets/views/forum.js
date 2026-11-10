@@ -30,8 +30,8 @@ export async function viewForum(nodeId, page) {
   setActiveNav('home');
   loading();
   try {
-    // /forums/{id} does not include child nodes, so the node tree supplies the sub-forum
-    // block. Both calls run in parallel; the node tree is cached after the first fetch.
+    // /forums/{id} has no child nodes, so the node tree supplies the sub-forum block. Both calls run in
+    // parallel; the node tree is cached after the first fetch.
     const [forumRes, threadsRes, nodesRes] = await Promise.all([
       api.forum(nodeId),
       api.forumThreads(nodeId, page),
@@ -81,7 +81,7 @@ export async function viewForum(nodeId, page) {
   }
 }
 
-// Appends one more page of rows into the list; sticky rows only appear on page 1.
+// Appends one more page of rows; sticky rows only appear on page 1.
 function appendThreadRows(containerId, threads) {
   const container = document.getElementById(containerId);
   if (!container || !threads.length) return 0;
@@ -91,8 +91,8 @@ function appendThreadRows(containerId, threads) {
   return threads.length;
 }
 
-// Aggregated node: threads pulled from many forums, so the forum name belongs in
-// each row's meta (voz.vn renders /s/<slug>.<id>/page-<n> the same way).
+// Aggregated node: threads come from many forums, so the forum name belongs in each row's meta, like voz.vn's
+// /s/<slug>.<id>/page-<n>.
 export async function viewSearchForum(nodeId, page) {
   setActiveNav('home');
   loading();

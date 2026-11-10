@@ -1,4 +1,4 @@
-// pik.vn image hosting
+// pik.vn image hosting.
 
 export const PIK_PROXY = '/api/pik/upload';
 // Mirrors pik.vn's own client constants.
@@ -13,8 +13,7 @@ export function isPikImage(file) {
   return !!file && PIK_TYPES.includes(file.type) && file.size > 0;
 }
 
-// png/webp keep alpha in WebP, so the only reason to prefer JPEG is a browser that cannot
-// encode WebP at all — the same fallback pik.vn itself uses.
+// WebP keeps alpha, so JPEG is only a fallback for browsers that cannot encode WebP.
 let webpSupport = null;
 export function supportsWebp() {
   if (webpSupport) return webpSupport;
@@ -32,8 +31,7 @@ export function supportsWebp() {
 
 export async function sha256Hex(buffer) {
   const view = new Uint8Array(await crypto.subtle.digest('SHA-256', buffer));
-  // Indexed loop, not spread: spreading a cross-compartment typed array is blocked
-  // (and slow) under Firefox's Xray vision.
+  // Indexed loop, not spread: spreading a cross-compartment typed array is blocked in Firefox.
   let hex = '';
   for (let i = 0; i < view.length; i++) hex += view[i].toString(16).padStart(2, '0');
   return hex;
@@ -55,8 +53,7 @@ function loadImage(file) {
   });
 }
 
-// Downscales and re-encodes to what pik.vn accepts. GIFs are flattened to WebP because
-// the server rejects the GIF container; that is also what pik.vn's own uploader does.
+// Downscales and re-encodes to what pik.vn accepts. GIFs become WebP: the server rejects the GIF container.
 export async function preparePikImage(file) {
   if (!isPikImage(file)) throw new Error('Chỉ hỗ trợ JPEG, PNG, WebP, GIF, BMP hoặc AVIF.');
   if (file.size > MAX_BYTES) throw new Error('Ảnh quá lớn (tối đa 12 MB).');
@@ -74,7 +71,7 @@ export async function preparePikImage(file) {
   const context = canvas.getContext('2d');
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = 'high';
-  // JPEG has no alpha channel; fill white so transparent PNGs do not turn black.
+  // JPEG has no alpha; fill white so transparent PNGs do not turn black.
   if (format === 'jpeg') {
     context.fillStyle = '#fff';
     context.fillRect(0, 0, targetWidth, targetHeight);
@@ -88,7 +85,7 @@ export async function preparePikImage(file) {
   return { blob, format, width: targetWidth, height: targetHeight, originalWidth: width, originalHeight: height };
 }
 
-// Uploads one already-prepared image through the proxy and returns its hosted URL.
+// Uploads one prepared image through the proxy and returns its hosted URL.
 export async function uploadPikBlob(blob, { format = 'webp', name = 'image' } = {}) {
   const hash = await sha256Hex(await blob.arrayBuffer());
   const body = new FormData();
@@ -117,7 +114,7 @@ export async function uploadImageFile(file) {
   return { ...uploaded, ...prepared };
 }
 
-// Files are processed a few at a time so a big paste does not flood the proxy.
+// A few files at a time, so a big paste does not flood the proxy.
 export async function uploadImageFiles(files, onProgress) {
   const list = [...files].filter(isPikImage);
   const skipped = [...files].length - list.length;
@@ -142,7 +139,7 @@ export async function uploadImageFiles(files, onProgress) {
   return { results, skipped };
 }
 
-// BBCode for one hosted image, matching what voz.vn stores for a plain upload.
+// BBCode for one hosted image, like voz.vn stores for a plain upload.
 export function pikBbcode(url) {
   return `[IMG]${url}[/IMG]`;
 }

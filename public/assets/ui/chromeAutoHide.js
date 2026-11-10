@@ -1,23 +1,12 @@
-// Auto-hiding page chrome: the header (logo + account controls) and the nav bar slide away
-// while scrolling down and come back on the first upward scroll — the same reveal behaviour
-// the floating "stop continuous scroll" button uses.
-//
-// Both bars are `position: sticky` (see layout.css), so they normally sit on top of the
-// content. Hiding them translates the pair up by their combined height rather than
-// display:none, which keeps the scroll position stable (no reflow of the page above).
-//
-// The offset is published as --header-h (the nav's sticky top) and --chrome-h (the pair's
-// total height) so anything that has to clear the bars — scroll-padding-top, the floating stop
-// button — positions against the real height.
+// Auto-hiding page chrome: the header and nav slide away on scroll down and return on the first upward scroll.
+// Hiding is a transform, so the scroll position stays stable.
 
 import { closeHeaderMenus } from './headerMenus.js';
 
-// Same threshold as ui/infiniteScroll.js: a jittery trackpad or a rubber-banding momentum
-// scroll must not flicker the bars.
+// Same threshold as ui/infiniteScroll.js, so a jittery trackpad cannot flicker the bars.
 const REVEAL_THRESHOLD = 8;
 
-// Ignore bounces at the very top of the page — iOS/macOS rubber-band reports a negative or
-// tiny scrollY that would otherwise read as "scrolled up" and show the bars mid-gesture.
+// Ignore rubber-band bounces at the top, which would read as "scrolled up".
 const TOP_SLACK = 4;
 
 let header = null;
@@ -25,34 +14,28 @@ let nav = null;
 let lastY = 0;
 let hidden = false;
 let sizeObserver = null;
-// Timestamp until which scroll deltas are ignored (see onScroll).
+// Timestamp until which scroll deltas are ignored.
 let suppressUntil = 0;
-// False while the page is still settling after opening on a fragment; the first genuine user
-// scroll re-arms it (see the gesture listeners in wireChromeAutoHide).
+// False while the page settles after opening on a fragment; the first real scroll re-arms it.
 let armed = true;
 
-// Programmatic scrolls fire `scroll` synchronously-ish; ignoring deltas for a moment after the
-// jump keeps a permalink landing from hiding the bars.
+// Ignore deltas for a moment after a programmatic jump, so a permalink does not hide the bars.
 function suppressBriefly() {
   suppressUntil = performance.now() + 250;
   setHidden(false);
   lastY = window.scrollY;
 }
 
-// Measured whenever either bar changes size (boot, resize, font swap, async render).
+// Measured whenever either bar changes size.
 function measure() {
   if (!header) return;
-  // getBoundingClientRect, not offsetHeight: offsetHeight rounds to an integer, so a 44.5px
-  // header reported 45 and the nav parked half a pixel low — leaving a 0.5px seam where the
-  // page background showed through between two bars that share the same colour. The exact
-  // fractional height is kept (trimmed to 3dp to avoid float noise like 44.399999px); a
-  // fractional `top` is perfectly valid and keeps the two edges flush.
+  // getBoundingClientRect, not offsetHeight: rounding to an integer left a 0.5px seam between two bars that
+  // share the same colour. Trimmed to 3dp to avoid float noise.
   const exact = (el) => Math.round(el.getBoundingClientRect().height * 1000) / 1000;
   const headerH = exact(header);
   const navH = nav ? exact(nav) : 0;
   const root = document.documentElement.style;
-  // --header-h parks the sticky nav flush against the header; --chrome-h is the pair's total
-  // height (what the hide transform and scroll-padding-top position against).
+  // --header-h parks the nav flush against the header; --chrome-h is the pair's height.
   root.setProperty('--header-h', `${headerH}px`);
   root.setProperty('--chrome-h', `${Math.round((headerH + navH) * 1000) / 1000}px`);
 }
@@ -60,8 +43,7 @@ function measure() {
 function setHidden(next) {
   if (!header || hidden === next) return;
   hidden = next;
-  // A dropdown menu anchored inside the header would stay floating over the content once its
-  // bar is gone, so close it as the bar leaves.
+  // A header dropdown would float over the content once its bar is gone, so close it.
   if (next) closeHeaderMenus();
   document.documentElement.classList.toggle('chrome-hidden', next);
   for (const bar of [header, nav]) bar?.setAttribute('aria-hidden', next ? 'true' : 'false');
@@ -75,17 +57,14 @@ function onScroll() {
     lastY = y;
     return;
   }
-  // Never hide the bars at the top of the page: there is nothing above to scroll back to, and
-  // the logo is the way home.
+  // Never hide the bars at the top: there is nothing above to scroll back to.
   if (y <= TOP_SLACK) {
     setHidden(false);
     lastY = y;
     return;
   }
-  // A programmatic jump (anchor, post permalink, returning from a form) produces one big
-  // downward delta. Treating that as "the reader scrolled down" would hide the bars the
-  // instant the page jumped, which is the opposite of helpful — so re-seed the reference
-  // point instead of reacting to it.
+  // A programmatic jump produces one big downward delta; re-seed the reference point instead of hiding the bars
+  // the instant the page jumped.
   if (suppressUntil > performance.now()) {
     lastY = y;
     return;
@@ -104,30 +83,25 @@ export function wireChromeAutoHide() {
   measure();
   lastY = window.scrollY;
   setHidden(false);
-  // A deep link (or a browser restore) can open the page already scrolled past the bars; the
-  // first scroll event would then read as "scrolled down" and hide them immediately. While the
-  // page is opening on a fragment, ignore deltas until the reader actually scrolls, so they
-  // see the navigation they arrived for.
+  // A deep link can open the page already scrolled past the bars, so ignore deltas until the reader actually
+  // scrolls.
   if (location.hash) armed = false;
   else suppressBriefly();
 
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', measure, { passive: true });
 
-  // The nav renders its shortcuts and the header renders the account block asynchronously, and
-  // a font swap changes both heights — re-measure instead of trusting the boot value.
+  // Shortcuts, the account block and font swaps all change the heights, so re-measure.
   if (typeof ResizeObserver === 'function') {
     sizeObserver = new ResizeObserver(measure);
     sizeObserver.observe(header);
     if (nav) sizeObserver.observe(nav);
   }
 
-  // A jump to an anchor (or a restored scroll position) can land mid-page; keep the bars
-  // visible so the reader does not start with no navigation.
+  // A jump can land mid-page; keep the bars visible so the reader starts with navigation.
     window.addEventListener('hashchange', suppressBriefly);
 
-    // A real gesture re-arms direction tracking after a fragment-load settling period. Wheel and
-    // touchmove are the gestures that scroll; a bare `scroll` also covers keyboard paging.
+    // A real gesture re-arms direction tracking. Wheel and touchmove scroll; `scroll` covers keyboard paging.
     const arm = () => {
       armed = true;
       lastY = window.scrollY;
@@ -138,9 +112,8 @@ export function wireChromeAutoHide() {
     window.addEventListener('touchmove', arm, { passive: true, once: true });
 }
 
-  // Programmatic scrolls the app performs itself (post permalink focus, inline-edit reveal,
-  // pager arm) should not be mistaken for the reader scrolling down. Views call this right
-  // before their own scrollIntoView().
+  // The app's own scrolls (permalink focus, inline-edit reveal, pager arm) must not read as the reader
+  // scrolling down. Views call this right before their scrollIntoView().
   export function suppressChromeAutoHide() {
     suppressBriefly();
   }

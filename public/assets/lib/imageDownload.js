@@ -1,13 +1,9 @@
-// "Tải ảnh" — a translucent download control on large post images.
-//
-// The wrapper is an inline-block that sits on the text baseline, exactly like voz.vn's
-// `.bbImageWrapper`. `vertical-align: top` pushed a tall image above the line it belongs to
-// and made it overlap the previous line, which is what broke the layout.
+// "Tải ảnh" — a translucent download control on large post images. The wrapper is an inline-block on the text
+// baseline, like voz.vn's .bbImageWrapper.
 import { getImageDownload } from './settings.js';
 import { toast } from '../ui/feedback.js';
 
-// A sticker/emoji is small in *both* dimensions and in area. A wide banner (1600x60) is
-// short but large, so it keeps its button.
+// A sticker is small in both dimensions and in area; a wide banner keeps its button.
 const MIN_EDGE = 96;
 const MIN_AREA = 20_000;
 const WRAPPER_CLASS = 'downloadable-image';
@@ -32,9 +28,8 @@ function imageUrl(img) {
   return img.currentSrc || img.src || '';
 }
 
-// The author's declared size wins over the file's intrinsic size: voz.vn writes
-// [IMG size="80x80"] as width/height attributes, so a 512px sticker file shown at 80px is
-// still a sticker and must not get a button.
+// The declared size wins over the intrinsic one: a 512px sticker shown at 80px is still a sticker and gets no
+// button.
 function imageSize(img) {
   const attrWidth = Number(img.getAttribute('width')) || 0;
   const attrHeight = Number(img.getAttribute('height')) || 0;
@@ -95,10 +90,8 @@ function triggerDownload(blob, name) {
   setTimeout(() => URL.revokeObjectURL(href), 60_000);
 }
 
-// A same-origin image can be read straight from the page. Anything else (voz.vn images,
-// pik.vn stickers) has no CORS header, so a direct fetch always fails; going through the
-// proxy first avoids a wasted round trip that a slow phone connection turns into a
-// multi-second "the button did nothing" delay.
+// A same-origin image is read straight from the page. Anything else has no CORS header, so the proxy is used
+// first instead of wasting a round trip that fails.
 function isSameOrigin(url) {
   try {
     return new URL(url, location.href).origin === location.origin;
@@ -122,9 +115,8 @@ async function fetchImage(url) {
   return response.blob();
 }
 
-// `/attachments/3863508/` is a redirect to the real file and carries no filename. The REST
-// API knows both, so resolve it first: the proxy then fetches the canonical URL directly and
-// the saved file keeps the author's name.
+// /attachments/<id>/ is a redirect with no filename, so the REST API resolves the canonical URL first and the
+// saved file keeps the author's name.
 export async function resolveAttachment(url) {
   const id = url.match(/\/attachments\/(?:[^/?#]*\.)?(\d+)\/?$/)?.[1];
   if (!id) return null;
@@ -139,15 +131,11 @@ export async function resolveAttachment(url) {
   }
 }
 
-// WebP is a RIFF container. An animated one carries an "ANIM" chunk (the animation header)
-// and "ANMF" frames; a static one does not. Drawing an animated WebP to a canvas would keep
-// only the first frame and silently kill the motion, so those are downloaded untouched —
-// voz.vn stores every uploaded GIF as animated WebP, which is why a "GIF" saved as JPG here
-// looked like the conversion had broken the file.
+// An animated WebP carries ANIM/ANMF chunks; drawing it to a canvas would keep only the first frame, so those
+// are downloaded untouched. voz.vn stores every uploaded GIF as animated WebP.
 async function isAnimatedWebp(blob) {
   if (blob.type !== 'image/webp') return false;
-  // The container header precedes the frame data, so a small prefix decides it without
-  // buffering a multi-megabyte animation.
+  // The container header precedes the frame data, so a small prefix decides it.
   const header = await blob.slice(0, 65_536).text();
   return header.includes('ANIM') && header.includes('ANMF');
 }
@@ -176,8 +164,7 @@ function blobToJpeg(blob) {
   });
 }
 
-// Confirms the save happened. Without it a blocked download looks identical to a broken
-// button, which is exactly how this feature was reported.
+// Confirms the save happened; a blocked download would otherwise look like a broken button.
 function flashSaved(button) {
   button.innerHTML = CHECK_ICON;
   button.classList.add('is-saved');
@@ -199,8 +186,7 @@ async function downloadImage(img, button) {
     const attachment = await resolveAttachment(url);
     const source = attachment?.url || url;
     const blob = await fetchImage(source);
-    // Only a *static* WebP is converted: animated WebP (voz.vn's stored form of every
-    // uploaded GIF) must keep its frames, so it is saved as .webp untouched.
+    // Only a static WebP is converted; an animated one keeps its frames as .webp.
     const webp = (blob.type === 'image/webp' || /\.webp(?:$|[?#])/i.test(source)) && !(await isAnimatedWebp(blob));
     const output = webp ? await blobToJpeg(blob) : blob;
     triggerDownload(output, fileName(attachment?.name || source, blob.type, webp));
@@ -217,7 +203,7 @@ async function downloadImage(img, button) {
 
 function addControl(img) {
   if (wrapperOf(img) || isExcludedImage(img) || isSmallImage(img)) return;
-  // A <picture> must be wrapped as a whole, otherwise the wrapper splits it from its sources.
+  // A <picture> must be wrapped as a whole, or it splits from its sources.
   const target = img.closest('picture') || img;
   const wrapper = document.createElement('span');
   wrapper.className = WRAPPER_CLASS;
@@ -231,7 +217,7 @@ function addControl(img) {
   button.setAttribute('aria-label', 'Tải ảnh');
   button.innerHTML = DOWNLOAD_ICON;
   button.addEventListener('click', (event) => {
-    // The image may sit inside a link; stopping the event here keeps the link from opening.
+    // The image may sit inside a link; stop the event so the link does not open.
     event.preventDefault();
     event.stopPropagation();
     downloadImage(img, button);
@@ -259,11 +245,9 @@ function schedule() {
 
 export function wireImageDownloads() {
   refresh();
-  // One observer for the whole document: views re-render by replacing #app, and infinite
-  // scroll appends whole pages, so watching individual images would miss both.
+  // One observer for the whole document covers both re-renders and appended pages.
   new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
-  // Intrinsic sizes are only known after load; images without width/height attributes are
-  // skipped until then, so re-check when one arrives.
+  // Intrinsic sizes are only known after load, so re-check when an image arrives.
   document.addEventListener('load', (event) => {
     if (event.target instanceof HTMLImageElement && event.target.closest('.message-body')) schedule();
   }, true);

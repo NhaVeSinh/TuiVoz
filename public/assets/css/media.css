@@ -1,10 +1,5 @@
-/* Unfurl (link preview) cards.
-   `.bbWrapper img:not(.smilie)` in post.css sets `height: auto` at specificity (0,2,1), which
-   beats a plain `.bbCodeBlockUnfurl-icon` (0,2,0). A favicon that fails to load — discord.com's
-   .ico is a common one — reports naturalHeight 0, so `height: auto` + `width: 16px` renders its
-   alt text in a 16px-wide column hundreds of pixels tall and the card balloons from ~130px to
-   ~400px. Each image is therefore pinned through its own row wrapper, reaching (0,3,0), instead
-   of depending on an ancestor class the card does not always have. */
+/* Unfurl (link preview) cards. post.css sets `height: auto` at (0,2,1), which beats a plain
+   `.bbCodeBlockUnfurl-icon`, so each image is pinned through its own row wrapper at (0,3,0). */
 .bbCodeBlock--unfurl { margin: 1em 0; max-width: 650px; padding: 12px; border: 1px solid var(--border); border-left: 3px solid var(--block-header-bg); border-radius: 4px; background: var(--quote-bg); font-size: calc(13px * var(--ui-scale)); }
 .bbCodeBlock--unfurl .contentRow { display: flex; align-items: center; gap: 12px; }
 .bbCodeBlock--unfurl .contentRow-figure { flex: 0 0 80px; margin: 0; }
@@ -18,8 +13,7 @@
 .media-frame { display: block; width: 100%; aspect-ratio: 16 / 9; height: auto; border: 0; background: var(--content-bg); }
 .media-embed--portrait { max-width: 325px; }
 .media-embed--portrait > .media-frame { aspect-ratio: 9 / 16; }
-/* Douyin's player is a vertical 325x735 frame (the userscript's fixed size). Its own UI is
-   inside the iframe, so the wrapper only reserves the box and keeps the source link below. */
+/* Douyin's player is a vertical 325x735 frame; the wrapper only reserves the box. */
 .media-embed--douyin { max-width: 325px; }
 .media-embed--douyin > .media-frame { aspect-ratio: 325 / 735; height: auto; }
 .media-embed--douyin > .media-source { display: block; text-align: center; }
@@ -27,15 +21,13 @@
 .media-embed--imgur > .media-frame { aspect-ratio: auto; height: 500px; }
 .media-embed--social { max-width: 550px; }
 .media-embed--social > .media-frame { aspect-ratio: auto; height: 650px; }
-/* Facebook renders through its own SDK, which replaces `.fb-video` with a fluid `<span>`
-   wrapper and sizes the iframe itself (a vertical video comes out ~9:16, a post much
-   shorter). So the wrapper must not impose an aspect-ratio or a max-width smaller than the
-   plugin needs — only centre it and keep the source link underneath. */
+/* Facebook's SDK replaces .fb-video with a fluid wrapper and sizes the iframe itself, so the
+   wrapper must not impose an aspect-ratio or a narrow max-width. */
 .media-embed--facebook { max-width: 560px; }
 .media-embed--facebook .fb-video { width: 100%; }
 .media-embed--facebook iframe { border: 0; }
 .media-source { display: inline-block; margin-top: 5px; font-size: calc(12px * var(--ui-scale)); }
-/* oEmbed embeds resolve to a picture (the fallback provider link shows briefly). */
+/* oEmbed embeds resolve to a picture; the fallback link shows briefly. */
 .media-embed--oembed { max-width: 100%; margin: 12px 0; }
 .media-embed--oembed > a { display: inline-block; max-width: 100%; }
 .media-embed--oembed img { max-width: min(100%, 683px); height: auto; }

@@ -24,12 +24,12 @@ import { wireTitleHold } from '../ui/titleHold.js';
 import { mountInfiniteScroll } from '../ui/infiniteScroll.js';
 import { openPostNumberPopup } from '../ui/postNumberPopup.js';
 
-// Posts currently on screen. Filled per page and extended as infinite scroll appends,
-// so the delegated click handler can resolve a post from any appended page.
+// Posts currently on screen, extended as infinite scroll appends, so the delegated click handler can resolve a
+// post from any appended page.
 const postIndex = new Map();
 
-// Every post-action click handler this view has attached to `#app`. Kept as a list rather than
-// a single slot so a concurrent `viewThread` run cannot orphan a listener.
+// Every post-action click handler attached to `#app`. A list rather than a single slot, so a concurrent
+// viewThread run cannot orphan a listener.
 const threadClickHandlers = [];
 
 function removeThreadClickHandlers() {
@@ -38,18 +38,13 @@ function removeThreadClickHandlers() {
   app._threadHandler = null;
 }
 
-// The reply editor keeps the textarea as its source of truth, but the visible surface is the
-// contenteditable `.editor-visual`. Assigning `.value` re-renders the visual editor, so the
-// quote lands in both — no need to touch the DOM by hand.
-// voz.vn stacks quoted posts directly against each other (no blank line between blocks) and
-// leaves a single empty line after the last one. The old code prepended the quote and always
-// emitted `\n\n`, which rendered as three blank lines under the quote.
+// The textarea is the source of truth but the visible surface is the contenteditable .editor-visual; assigning
+// .value re-renders it, so the quote lands in both.
 function insertQuote(post) {
   const textarea = document.getElementById('reply-message');
   if (!textarea) return false;
   const value = textarea.value;
-  // Only the tail newline separates the last quote from where the caret should land, so a
-  // following quote replaces it instead of adding another blank line on top.
+  // Only the tail newline separates the last quote from the caret, so a following quote replaces it.
   const base = value.replace(/\n+$/, '');
   textarea.value = base ? `${base}${quoteBlock(post)}\n` : `${quoteBlock(post)}\n`;
   return true;
@@ -98,16 +93,16 @@ export async function viewThread(threadId, page, focusPost) {
     const [res] = await Promise.all([api.thread(threadId, page === 'last' ? 1 : page), loadSmilies()]);
     const thread = res.thread;
     const posts = res.posts || [];
-    // [ATTACH]id[/ATTACH] needs the post's attachment list to render a picture.
+    // [ATTACH] needs the post's attachment list to render a picture.
     clearAttachments();
     registerAttachments(posts);
     const forum = thread.Forum || {};
 
-    // The API has no "last page" shortcut — resolve it from pagination and refetch.
+    // The API has no "last page" shortcut: resolve it from pagination and refetch.
     if (page === 'last' && res.pagination && res.pagination.last_page > 1) {
       return viewThread(threadId, res.pagination.last_page, focusPost);
     }
-    // Uses the resolved page, so /page-last and /unread get the real number rather than "last".
+    // Uses the resolved page, so /page-last and /unread get the real number.
     setThreadTitle(thread, res.pagination && res.pagination.current_page);
     setBreadcrumbs([
       { label: 'Diễn đàn', href: '/' },
@@ -166,8 +161,8 @@ export async function viewThread(threadId, page, focusPost) {
     wirePageJump((p) => withPage(threadPath(thread), p));
     wireScrollArm();
     hydrateReactionLists(app);
-    // Continuous scrolling: append the next page under the current one. Attachments and
-    // member tooltips are registered per page, so each append repeats that wiring.
+    // Continuous scrolling: append the next page. Attachments and member tooltips are registered per page, so
+    // each append repeats that wiring.
     mountInfiniteScroll({
       makeHref: (p) => withPage(threadPath(thread), p),
       currentPage: res.pagination?.current_page || 1,
@@ -187,8 +182,8 @@ export async function viewThread(threadId, page, focusPost) {
         return more.length;
       },
     });
-    // Opening a thread marks it read, which is what clears the bold title in the
-    // forum listing (thread.is_unread). Only the last page counts as "read".
+    // Opening a thread marks it read, clearing the bold title in the forum listing. Only the last page counts
+    // as "read".
     if (state.loggedIn && thread.is_unread && res.pagination && res.pagination.current_page >= res.pagination.last_page) {
       api.markThreadRead(threadId, Math.floor(Date.now() / 1000)).catch(() => {});
     }
@@ -211,11 +206,8 @@ function wireThreadActions(threadId, posts, thread, page = 1) {
   const byId = { get: (id) => postIndex.get(id) };
   const reload = (target, focus) => viewThread(threadId, target, focus);
 
-  // Every listener this view ever attached is tracked, and all are removed before a new one is
-  // added. A single `app._threadHandler` slot was not enough: `viewThread` can run twice
-  // concurrently (the `page === 'last'` recursion, and an SPA navigation), and the second run
-  // overwrote the slot while the first run's listener stayed attached. One click then ran the
-  // handler twice, which made the post number popup open and immediately toggle closed.
+  // Every listener this view attached is tracked and removed before a new one is added: a single slot was
+  // overwritten when viewThread ran twice concurrently, so one click ran twice.
   removeThreadClickHandlers();
 
   const onClick = async (event) => {
@@ -228,9 +220,8 @@ function wireThreadActions(threadId, posts, thread, page = 1) {
     }
     const postNumberLink = event.target.closest('[data-post-number]');
     if (postNumberLink) {
-      // The jump is left to the browser (the href is the real `#post-…` permalink); the
-      // popup only adds the two copy actions. `preventDefault` is deliberately not called so
-      // the reader keeps the normal scroll-to-post behaviour.
+      // The jump is left to the browser (the href is the real permalink); the popup only adds the copy actions,
+      // so preventDefault is deliberately not called.
       openPostNumberPopup(
         postNumberLink,
         thread,
@@ -319,7 +310,7 @@ function wireThreadActions(threadId, posts, thread, page = 1) {
       if (!state.loggedIn) return navigate('/login');
       const post = byId.get(Number(replyLink.dataset.reply));
       if (!post) return;
-      // Trả lời quotes the post *and* takes the reader to the box, caret at the end.
+      // Trả lời quotes the post and takes the reader to the box, caret at the end.
       if (!insertQuote(post)) return;
       const block = document.getElementById('reply-block');
       block?.scrollIntoView({ behavior: 'smooth', block: 'center' });

@@ -1,6 +1,5 @@
-// In-place post editing, matching voz.vn: the post body is swapped for an editor
-// inside the same post container, no dialog. Saving restores the body without a
-// page reload; cancelling puts the original markup back untouched.
+// In-place post editing, like voz.vn: the body is swapped for an editor inside the same post container. Saving
+// restores the body without a reload; cancelling puts the original back.
 
 import { esc, timeAgo, fullDate, postDate } from '../core/utils.js';
 import { threadPath, withPage } from '../core/paths.js';
@@ -27,7 +26,7 @@ export function cancelInlineEdit() {
   cell.classList.remove('is-editing');
 }
 
-// Returns false when the post has no editable markup (e.g. it was re-rendered).
+// False when the post has no editable markup (e.g. it was re-rendered).
 export function openInlineEdit(post, thread, page) {
   cancelInlineEdit();
   const article = document.getElementById(`post-${post.post_id}`);
@@ -35,7 +34,7 @@ export function openInlineEdit(post, thread, page) {
   const main = cell?.querySelector('.message-main');
   if (!cell || !main) return false;
 
-  // Make sure this post's attachments resolve even if the list was rendered elsewhere.
+  // Make sure this post's attachments resolve even if rendered elsewhere.
   registerAttachments(post);
 
   const form = document.createElement('form');
@@ -64,8 +63,8 @@ export function openInlineEdit(post, thread, page) {
     }
   });
   textarea.focus();
-  // Revealing the editor scrolls with block:'nearest', which can tuck the form under the
-  // sticky bars; tell the auto-hide watcher this scroll is ours, not the reader's.
+  // Revealing the editor can tuck the form under the sticky bars; tell the auto-hide watcher this scroll is
+  // ours.
   suppressChromeAutoHide();
   form.scrollIntoView({ block: 'nearest' });
 
@@ -96,8 +95,7 @@ export function openInlineEdit(post, thread, page) {
   return true;
 }
 
-// Only the message body and the attribution line change; the rest of the post
-// (avatar, action bar, reactions) stays as it is.
+// Only the body and the attribution line change; the rest of the post stays as it is.
 function renderEditResult(post, article, thread, page) {
   const body = article.querySelector('.message-userContent');
   if (body) body.innerHTML = `<article class="message-body bbWrapper">${sanitizeHtml(post.message_parsed || esc(post.message), post.message)}</article>`;

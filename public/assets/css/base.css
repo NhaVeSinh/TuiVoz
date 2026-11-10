@@ -1,12 +1,7 @@
-/* VOZ-style theme — palette sampled from voz.vn */
+/* VOZ-style theme — palette sampled from voz.vn. */
 
-/* Two palettes share one set of token names. `:root` is the light palette; the dark block
-   below re-points the same names. Components never hardcode a colour, so setting
-   data-theme on <html> is the only thing needed to flip the whole reading surface.
-
-   The page chrome (header, nav, footer) is intentionally identical in both modes: voz.vn's
-   own styling there is already dark, and changing it would make the switch feel like a
-   different site rather than a reading preference. */
+/* Two palettes, one set of token names: `:root` is light, the dark block re-points them.
+   Components never hardcode a colour, so data-theme on <html> flips the reading surface. */
 :root {
   /* chrome — dark in both themes */
   --header-bg: #363d45;
@@ -15,19 +10,14 @@
   --chrome-page-bg: #373d43;
   --nav-fg: #d1d4d6;
   --nav-active: #ff6600;
-  /* Accent for text/state on the reading surface. --nav-active is the untouched brand orange
-     and is only used on the dark chrome; on light surfaces it fails AA as text, so state
-     text (an active reaction) uses this darker sibling instead. */
+  /* Accent text on the reading surface; --nav-active fails AA as text on light. */
   --accent-text: #a84300;
-  /* Controls that live ON the chrome are frozen: the chrome is identical in both themes, so
-     these must not follow the reading surface or the header search would invert underneath
-     its own dark background. */
+  /* Controls on the chrome are frozen: the chrome never changes with the theme. */
   --chrome-field-bg: #eff0f0;
   --chrome-field-fg: #202122;
   --chrome-field-hover: #6b80ab;
   --chrome-avatar-bg: #4a525b;
-  /* Muted text that sits on the dark page background (breadcrumbs). Frozen for the same
-     reason as the field colours: the background behind it never changes with the theme. */
+  /* Muted text on the dark page background (breadcrumbs). Frozen like the field colours. */
   --chrome-dimmed: #adb3bb;
   --footer-bg: #102138;
   --footer-fg: #ebf1f9;
@@ -36,26 +26,22 @@
   --block-header-hover: #4c5f83;
   --block-header-fg: #f2f4f8;
   --link: #23497b;
-  /* voz.vn's hover orange. As *text on a light surface* pure #ff6600 only reaches 2.7:1, so
-     the token carries a darkened variant that clears AA while keeping the same hue; the
-     untouched brand orange stays for chrome accents (--nav-active, badges, CTA). */
+  /* voz.vn's hover orange, darkened to clear AA as text; brand orange stays on chrome. */
   --link-hover: #a84300;
   --text: #202122;
-  /* Muted text sits on white, #f4f5f5, #eef0f1, #eaeaeb and #dfe2e4 depending on the
-     component. #606569 is the lightest grey that still clears 4.5:1 on all of them (worst
-     case 4.53 on the #dfe2e4 chip), so secondary text never drops below WCAG AA. */
+  /* Lightest grey that still clears 4.5:1 on every light surface (worst case 4.53). */
   --dimmed: #606569;
   --page-bg: var(--chrome-page-bg);
   --content-bg: #f4f5f5;
   --content-bg-alt: #eef0f1;
   --border: #d5d8db;
   --border-faint: #e2e5e8;
-  /* Page-jump numbers sit on --content-bg-alt; #6b7075 only reached 4.37 there. */
+  /* Page-jump numbers sit on --content-bg-alt, where #6b7075 only reached 4.37. */
   --dimmed-2: #63686d;
   --quote-bg: #eaeaeb;
   --quote-border: #ff944c;
 
-  /* surfaces and controls that were previously hardcoded per file */
+  /* surfaces and controls */
   --surface: #fff;                 /* input fields, menu rows, cards */
   --surface-sunken: #eff0f0;       /* header search pill, flat list backgrounds */
   --surface-raised: #dfe2e4;       /* separators and small chips above --surface */
@@ -104,29 +90,20 @@
 
   --radius: 4px;
   --max-width: 1058px;
-    /* The stock stack, used until ui/theme.js applies the reader's choice (and permanently for
-       `system`). It names "Be Vietnam" first because that is FONT_DEFAULT: the face is declared
-       in font-default.css, which index.html links, so this stack resolves on the very first
-       paint instead of falling through to the OS font. */
+    /* Stock stack, used until ui/theme.js applies the reader's choice (and for `system`).
+       "Be Vietnam" is first because font-default.css declares it and index.html links it. */
     --font-post: "Be Vietnam", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --font-control: "Be Vietnam", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --font: var(--font-control);
-    /* Cỡ chữ: --ui-scale sizes everything outside a post body, --post-scale sizes the prose
-       inside one. Both are unitless multipliers set from Cài đặt (lib/settings.js). Sizes that
-       can appear inside a post use calc(<px> * var(--post-scale)); everything else uses
-       var(--ui-scale). A post body sets --ui-scale to var(--post-scale) for its subtree so a
-       nested component (a quoted card, a code block) keeps scaling with the post, not the page. */
+    /* Cỡ chữ: --ui-scale sizes everything outside a post body, --post-scale the prose inside
+       one. A post body re-points --ui-scale to --post-scale for its subtree. */
     --ui-scale: 1;
     --post-scale: 1;
-    /* The bold grade every `font-weight: 600` / `700` in the stylesheets resolves to. 600 is
-       the stock value; theme.css re-points it to 500 for the families whose 600 slot holds a
-       full Bold (see the note there). */
+    /* The grade every 600/700 resolves to; theme.css lowers it to 500 for some families. */
     --fw-bold: 600;
   }
 
-/* Dark reading surface: same token names, re-pointed. Values keep body text and links at or
-   above WCAG AA against their own background — see the contrast notes in
-   voz-forum-deploy.md §Giao diện. */
+/* Dark reading surface: same token names, re-pointed. Text and links stay at or above AA. */
 :root[data-theme="dark"] {
   --header-bg: #181a1b;
   --nav-bg: #181a1b;
@@ -175,7 +152,7 @@
 
   --chip-fg: #e6e8ea;
   --chip-bg: #333a44;
-  /* --link is light in dark mode, so anything drawn on a link-coloured surface must be dark */
+  /* --link is light in dark mode, so text on a link-coloured surface must be dark. */
   --on-accent: #1b1f24;
   --shadow-menu: 0 6px 20px rgba(0, 0, 0, .55);
   --shadow-card: 0 4px 16px rgba(0, 0, 0, .55);
@@ -192,10 +169,8 @@
 
 html { background: var(--page-bg); }
 
-/* The header + nav are sticky, so an anchor jump or scrollIntoView() would land the target
-   underneath them. scroll-padding-top reserves their combined height (published as --chrome-h
-   by ui/chromeAutoHide.js) and is the only mechanism that also applies to the programmatic
-   scrolls the app performs, not just hash navigation. */
+/* The header + nav are sticky, so scroll-padding-top reserves their height (--chrome-h).
+   It is the only mechanism that also covers the app's own programmatic scrolls. */
 html { scroll-padding-top: var(--chrome-h, 0px); }
 
 body {

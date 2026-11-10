@@ -1,23 +1,6 @@
-/* The default reading font, linked from index.html so the very first paint is already
-   correct. Kept separate from fonts.css on purpose:
-
-   - `be-vietnam` is FONT_DEFAULT in lib/settings.js, so unlike the other vendored families it
-     cannot wait for ui/theme.js to inject a stylesheet — the text would paint in the fallback
-     and visibly swap when the lazy link landed.
-   - Loading all of fonts.css here would defeat the opt-in design for the other five families:
-     a browser downloads every face a linked stylesheet declares once something uses it. This
-     file carries the one 400 face the default needs and nothing else.
-
-   The other families are still declared in fonts.css and fetched only when chosen.
-
-   Be Vietnam reproduces voz.vn exactly: voz.vn loads it from Google's gstatic
-   (`fonts.gstatic.com/s/bevietnam/v10/…`) and declares it at ONLY weight 400, so
-   `font-weight: 500` renders the plain 400 cut and 600/700 are browser-synthesised bold.
-   There is no italic file, so `font-style: italic` is a synthetic oblique. Both facts are
-   reproduced here on purpose — see the full notes in fonts.css.
-
-   Declaring only 400 is deliberate, not an omission: adding a real 500 or 700 back would
-   reintroduce the width mismatch that made the text look bolder than voz.vn. */
+/* The default reading font, linked from index.html so the first paint is already correct. Kept
+   out of fonts.css because `be-vietnam` is FONT_DEFAULT and cannot wait for the lazy link.
+   Only the 400 face is declared, like voz.vn: 500 renders the 400 cut, 600/700 are synthesised. */
 
 @font-face {
   font-family: "Be Vietnam";

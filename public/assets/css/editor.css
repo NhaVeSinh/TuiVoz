@@ -30,12 +30,11 @@
 .editor-visual:empty::before { content: attr(data-placeholder); color: var(--dimmed); pointer-events: none; }
 .rich-editor .editor-source { font-family: ui-monospace, Consolas, monospace; resize: vertical; }
 .editor-visual img, .editor-preview img { max-width: 100%; max-height: 450px; object-fit: contain; }
-/* Stickers and attachments carry an explicit size; keep it instead of being clamped
-   by the editor's max-height, which would shrink the picture inside its own box. */
+/* Stickers and attachments carry an explicit size; do not clamp it. */
 .editor-visual img[data-bb-tag="img"], .editor-preview img[data-bb-tag="img"],
 .editor-visual img[data-bb-tag="attach"], .editor-preview img[data-bb-tag="attach"] { max-height: none; }
 .editor-visual img[style*="width:"], .editor-preview img[style*="width:"] { max-width: none; }
-/* A block-level picture follows the editor's own alignment, not a stale centred box. */
+/* A block-level picture follows the editor's alignment. */
 .editor-visual img[data-bb-tag="attach"] { display: inline-block; }
 .editor-visual blockquote, .editor-preview blockquote { margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(--link); background: var(--surface-quote); }
 .editor-visual blockquote[aria-label]::before { content: attr(aria-label); display: block; font-size: calc(12px * var(--ui-scale)); color: var(--dimmed); }
@@ -55,15 +54,13 @@
 .editor-panel [role="alert"] { color: var(--danger-text); font-size: calc(12px * var(--ui-scale)); }
 .editor-smilies { display: flex; flex-wrap: wrap; gap: 3px; max-height: 210px; overflow-y: auto; width: 100%; }
 .editor-smilies button { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; padding: 2px; border-radius: 4px; transition: transform .15s, background-color .15s; }
-/* Same pop-on-hover feedback as the sticker grid, so both pickers feel alike. */
+/* Same pop-on-hover feedback as the sticker grid. */
 .editor-smilies button:hover { transform: scale(1.25); background: var(--surface-tint); }
-/* voz.vn caps picker smilies at 32px, so the 24px sources are never upscaled and stay sharp. */
+/* voz.vn caps picker smilies at 32px, so the 24px sources stay sharp. */
 .editor-smilies img { display: block; width: auto; height: auto; max-width: 32px; max-height: 32px; object-fit: contain; }
 .editor-status { display: block; min-height: 0; padding: 0 8px; text-align: right; font-size: calc(10px * var(--ui-scale)); line-height: 1.6; color: var(--dimmed); }
-/* pik.vn upload strip inside the shared image panel. Kept compact: a single-line
-   drop target, then status and per-file rows only once an upload starts.
-   Scoped to `.editor-panel` because `.editor-panel label` (font-size, flex-basis
-   180px) is more specific than a bare `.editor-upload-drop`. */
+/* pik.vn upload strip inside the shared image panel. Scoped to .editor-panel because
+   `.editor-panel label` is more specific than a bare `.editor-upload-drop`. */
 .editor-upload-slot { display: block; width: 100%; }
 .editor-upload { display: flex; flex-direction: column; gap: 6px; width: 100%; }
 .editor-panel .editor-upload-drop { display: flex; flex: 0 0 auto; flex-direction: row; align-items: center; justify-content: center; gap: 6px; width: auto; margin: 0; padding: 6px 10px; border: 1px dashed var(--border); border-radius: 4px; background: var(--surface); color: var(--text); font-size: calc(12px * var(--ui-scale)); line-height: 1.4; text-align: center; cursor: pointer; }

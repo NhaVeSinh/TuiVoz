@@ -29,9 +29,8 @@
   .p-breadcrumbs { align-items: flex-start; }
   .p-breadcrumbs .button { flex: 0 0 auto; }
 }
-/* Full-bleed content, the way voz.vn does it: at this width the page gutter is dropped and
-   every block runs edge to edge, so no page background shows as a stripe down either side.
-   The gutter moves onto the elements that need it (breadcrumbs, pager, thread header). */
+/* Full-bleed content like voz.vn: the gutter moves onto the elements that need it (breadcrumbs,
+   pager, thread header). */
 @media (max-width: 650px) {
   .p-body { padding-left: 0; padding-right: 0; }
   .p-breadcrumbs { padding: 0 12px; }

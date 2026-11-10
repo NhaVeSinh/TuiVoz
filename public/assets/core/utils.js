@@ -8,11 +8,8 @@ export const esc = (value) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-// voz.vn rounds to whole K/M (12301 → 12K, 443764 → 444K, 1274095 → 1M). Cài đặt → Hệ thống
-// can turn that off, either inside threads only or across the whole site, so every formatter
-// takes an optional scope: 'thread' marks a call site that renders inside a thread view, and
-// the default covers everything else. The mode itself is pushed in by ui/theme.js from the
-// saved settings — core/ must not import lib/.
+// voz.vn rounds to K/M; the Hệ thống setting can print full figures. `scope` is 'thread' inside a thread view.
+// The mode is pushed in by ui/theme.js — core/ must not import lib/.
 export const FULL_NUMBERS_MODES = ['off', 'thread', 'all'];
 let fullNumbersMode = 'off';
 
@@ -33,12 +30,10 @@ export const num = (value, scope) => {
 
 export const unix = (seconds) => (seconds ? Number(seconds) * 1000 : 0);
 
-// Post numbers are shown in full with thousands separators — voz.vn prints `#13,661`, not
-// the rounded `#14K` that `num()` produces for statistics.
+// Post numbers are always full: #13,661, never the rounded #14K.
 export const postNumber = (value) => (Number(value) || 0).toLocaleString('en-US');
 
-// Relative time ("3 giờ trước"). With full numbers on, the same slot prints the absolute
-// timestamp instead — a reader who asked for exact figures wants the exact moment too.
+// Relative time; the full-numbers mode prints the absolute timestamp instead.
 export function timeAgo(seconds, scope) {
   const ms = unix(seconds);
   if (!ms) return '';
@@ -71,8 +66,7 @@ export function fullDate(seconds) {
   });
 }
 
-// Join date. voz.vn's post sidebar only prints the year; the full setting prints the whole
-// date, which is what the reader asked for.
+// voz.vn prints only the year; the full-numbers mode prints the whole date.
 export function joinDate(seconds, scope) {
   const ms = unix(seconds);
   if (!ms) return '—';

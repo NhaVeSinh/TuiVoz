@@ -1,7 +1,5 @@
-// VOZ forum — edge API (Singapore region).
-// Proxies voz.vn/api with the app's guest key or the user's OAuth bearer token,
-// and runs the OAuth2 + PKCE code exchange server-side (the token endpoint
-// rejects requests without the `VOZ/MA26` User-Agent, which a browser cannot set).
+// VOZ forum — edge API (Singapore region). Proxies voz.vn/api with the guest key or the user's OAuth bearer
+// token, and runs the OAuth2 + PKCE exchange server-side (the token endpoint needs a browser-only User-Agent).
 
 export const config = {
   runtime: 'edge',
@@ -12,8 +10,7 @@ const SITE = 'https://voz.vn';
 const API_BASE = `${SITE}/api`;
 const GUEST_KEY = '5tYQHu6ETKPFQ4W-fQGd_78ttL1LyZpD';
 const CLIENT_ID = '2424906941304717';
-// imgur Client-ID used by the sticker-album importer. Fixed, not user-supplied: see the
-// /imgur/ branch below.
+// imgur Client-ID for the sticker-album importer. Fixed, not user-supplied.
 const IMGBUR_CLIENT_ID = '66850c248e91c93';
 const REDIRECT_URI = 'vozma26://oauth';
 const UA = 'VOZ/MA26';
@@ -39,19 +36,16 @@ const OEMBED_TARGETS = {
   flickr: (key) => `https://www.flickr.com/services/oembed/?url=${encodeURIComponent(`https://flic.kr/p/${key}`)}&format=json`,
 };
 
-// Douyin (抖音) share links. Douyin's player needs the numeric aweme id, which a short
-// `v.douyin.com/<code>/` link only reveals through its `Location` header — and douyin.com
-// sends no CORS headers, so the browser cannot read that redirect itself. Following it here
-// is one hop: `v.douyin.com` answers 302 straight to `www.iesdouyin.com/share/video/<id>/`.
+// Douyin (抖音) share links. The player needs the numeric aweme id, which a short v.douyin.com link only reveals
+// through its Location header, and douyin.com sends no CORS headers.
 const DOUYIN_SHORT_HOSTS = ['v.douyin.com'];
 const DOUYIN_MEDIA_HOSTS = ['www.douyin.com', 'douyin.com', 'www.iesdouyin.com', 'iesdouyin.com'];
 const DOUYIN_VIDEO_ID = /\/(?:share\/)?video\/(\d{6,25})(?:[/?#]|$)/;
 const DOUYIN_SHORT_CODE = /^\/[\w-]{4,32}\/?$/;
 const DOUYIN_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 
-// Accepts either a full share URL or a bare numeric id and returns the aweme id, or null.
-// Anything not recognisably douyin is rejected before a fetch, so this cannot be pointed at
-// an arbitrary host.
+// Accepts a full share URL or a bare numeric id and returns the aweme id, or null. Anything not recognisably
+// douyin is rejected before a fetch.
 async function resolveDouyinVideoId(raw) {
   if (/^\d{6,25}$/.test(raw)) return raw;
   let url;
@@ -64,8 +58,7 @@ async function resolveDouyinVideoId(raw) {
   const direct = url.pathname.match(DOUYIN_VIDEO_ID);
   if (DOUYIN_MEDIA_HOSTS.includes(url.hostname) && direct) return direct[1];
   if (!DOUYIN_SHORT_HOSTS.includes(url.hostname) || !DOUYIN_SHORT_CODE.test(url.pathname)) return null;
-  // `redirect: 'manual'` would hand back the 302 without a body on Node but not on every
-  // edge runtime, so the hops are walked explicitly, capped, and re-checked each time.
+  // `redirect: 'manual'` is not portable across runtimes, so the hops are walked explicitly and capped.
   let next = url.href;
   for (let hop = 0; hop < 4; hop++) {
     let res;
@@ -224,9 +217,8 @@ async function fetchMe(tokens) {
   return data.me || null;
 }
 
-// The REST API only exposes reaction *counts*. The member list lives on the web
-// route /p/{id}/reactions, which Cloudflare blocks for server-side fetch (TLS
-// fingerprint), so the browser fetches it directly and parses the HTML here.
+// The REST API only exposes reaction counts. The member list lives on /p/{id}/reactions, which Cloudflare
+// blocks for server-side fetch, so the browser fetches it and parses here.
 function decodeEntities(text) {
   return String(text || '')
     .replace(/&amp;/g, '&')
@@ -330,10 +322,8 @@ async function handleProxy(request, url, tokens) {
 
 export default async function handler(request) {
   const url = new URL(request.url);
-  // vercel.json rewrites every /api/* request to this single function as
-  // /api/handler?__path=<rest>. Rebuild the original path so the routing below
-  // sees /api/xf/..., /api/oauth/..., etc. (Catch-all `[...path].js` filenames
-  // only work in Next.js; on a plain Vercel project they match one segment.)
+  // vercel.json rewrites every /api/* request to this function as /api/handler?__path=<rest>, so the original
+  // path is rebuilt here. Catch-all `[...path].js` only works in Next.js.
   if (url.searchParams.has('__path')) {
     const rest = url.searchParams.get('__path') || '';
     url.searchParams.delete('__path');
@@ -355,8 +345,7 @@ export default async function handler(request) {
     });
   }
 
-  // Douyin share links. The page needs the numeric aweme id to build a player iframe but
-  // cannot follow the `v.douyin.com` redirect from the browser, so the hop happens here.
+  // Douyin share links: the page needs the aweme id but cannot follow the redirect itself.
   if (path === '/api/xf/douyin') {
     const id = await resolveDouyinVideoId(url.searchParams.get('url') || '');
     const headers = new Headers(corsHeaders(request));
@@ -365,9 +354,8 @@ export default async function handler(request) {
     return json({ id, embed: `https://open.douyin.com/player/video?vid=${id}&autoplay=0`, page: `https://www.douyin.com/video/${id}` }, { status: 200, headers });
   }
 
-  // XenForo resolves some embeds (flickr, …) through oEmbed instead of an iframe. voz.vn
-  // does that server-side with data-xf-init="oembed"; neither provider sends CORS headers,
-  // so the page must relay through us.
+  // XenForo resolves some embeds (flickr, …) through oEmbed instead of an iframe. Neither provider sends CORS
+  // headers, so the page relays through us.
   if (path === '/api/xf/oembed') {
     const site = (url.searchParams.get('site') || '').toLowerCase();
     const key = url.searchParams.get('key') || '';
@@ -406,10 +394,8 @@ export default async function handler(request) {
     );
   }
 
-  // Sticker albums are imported straight from imgur. The userscript used
-  // GM_xmlhttpRequest to skip CORS; a page cannot, so relay it here. The Client-ID is fixed
-  // server-side: accepting one from the query string let any caller burn an arbitrary
-  // third party's imgur quota, and the settings field that produced it is gone.
+  // Sticker albums are imported straight from imgur. A page cannot skip CORS, so it relays here. The Client-ID
+  // is fixed server-side: a query-string one let any caller burn a third party's quota.
   if (path.startsWith('/api/xf/imgur/')) {
     const sub = path.replace('/api/xf/imgur', '');
     const upstream = await fetch(`https://api.imgur.com/3${sub}`, {
@@ -435,14 +421,11 @@ export default async function handler(request) {
     if (target.protocol !== 'https:' || target.username || target.password) {
       return json({ error: 'invalid_image_url' }, { status: 400, headers: corsHeaders(request) });
     }
-    // `limit` asks upstream for only the first N bytes. The avatar freezer uses it to tell an
-    // animated avatar from a static one without downloading most of them in full; the full
-    // body is requested only once an animation is confirmed. A server that ignores Range just
-    // sends everything, which is still correct — the caller sees the real length.
+    // `limit` asks upstream for only the first N bytes, so the avatar freezer can tell an animated avatar from
+    // a static one without downloading it in full.
     const limit = Number(url.searchParams.get('limit')) || 0;
-    // voz.vn sits behind Cloudflare, which answers a plain server-side fetch with a
-    // challenge page roughly half the time. A challenge is a 403 with an HTML body, so it
-    // is retried; a real 404 is not.
+    // Cloudflare answers a plain server-side fetch with a challenge page about half the time. A challenge is a
+    // 403 with an HTML body, so it is retried; a real 404 is not.
     const attempt = () => {
       const headers = { Accept: 'image/*', 'User-Agent': UA };
       if (limit > 0) headers.Range = `bytes=0-${limit - 1}`;
@@ -461,9 +444,8 @@ export default async function handler(request) {
     }
     const headers = new Headers(corsHeaders(request));
     headers.set('Content-Type', contentType);
-    // Avatars carry a `?<mtime>` cache-buster, so the bytes behind one URL never change: the
-    // browser may reuse them instead of re-downloading on every page. `private` keeps them out
-    // of shared caches, since the URL is the member's own image.
+    // Avatars carry a `?<mtime>` cache-buster, so the bytes never change and the browser may reuse them.
+    // `private` keeps them out of shared caches.
     headers.set('Cache-Control', 'private, max-age=86400');
     if (limit > 0) {
       // Reported so the caller can tell a truncated prefix from the whole file.
@@ -473,9 +455,8 @@ export default async function handler(request) {
     return new Response(upstream.body, { status: 200, headers });
   }
 
-  // pik.vn image host. Its uploader sends no CORS headers, so the page cannot call it
-  // directly and we relay here. The body is multipart (file + hash + format) and must be
-  // forwarded untouched so pik.vn's SHA-256 check still matches the bytes it receives.
+  // pik.vn image host. Its uploader sends no CORS headers, so the page relays here. The multipart body must be
+  // forwarded untouched so pik.vn's SHA-256 check still matches.
   if (path === '/api/pik/upload' && request.method === 'POST') {
     const contentType = request.headers.get('content-type') || '';
     if (!contentType.startsWith('multipart/form-data')) {
@@ -483,8 +464,8 @@ export default async function handler(request) {
     }
     let upstream;
     try {
-      // Buffered (not streamed) so the relay works identically on Node and the edge runtime,
-      // where forwarding a request stream requires the non-portable `duplex: 'half'`.
+      // Buffered, not streamed: forwarding a request stream needs the non-portable `duplex: 'half'` on the edge
+      // runtime.
       const body = await request.arrayBuffer();
       upstream = await fetch('https://pik.vn/api/upload', {
         method: 'POST',

@@ -1,13 +1,13 @@
-// Thin client for the edge API. Every voz.vn call goes through /api/xf/*,
-// which attaches the guest key or the session bearer token server-side.
+// Thin client for the edge API. Every voz.vn call goes through /api/xf/*, which attaches the guest key or the
+// session bearer token server-side.
 
 const XF = '/api/xf';
 
 export class ApiError extends Error {
   constructor(status, payload) {
     const first = payload && payload.errors && payload.errors[0];
-    // `error` is a string from our edge handler, but an object ({ code, message }) when the
-    // response is a Vercel platform error (e.g. NOT_FOUND) — never show "[object Object]".
+    // `error` is a string from our handler, but an object ({ code, message }) for a Vercel platform error —
+    // never show "[object Object]".
     const rawError = payload && payload.error;
     const errorText = rawError && typeof rawError === 'object' ? rawError.message || rawError.code : rawError;
     super((first && first.message) || (errorText ? String(errorText) : '') || `HTTP ${status}`);

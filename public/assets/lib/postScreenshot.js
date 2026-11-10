@@ -1,12 +1,5 @@
-// "Chụp bài viết" — rasterise one post plus the thread title into a downloadable PNG.
-//
-// A canvas cannot read an <img> that came from another origin (it "taints" the bitmap and
-// toDataURL throws). Every picture in a post lives on voz.vn / imgur / pik.vn, so each one
-// is first pulled through the same-origin image proxy and re-encoded as a data URL.
-//
-// The layout is produced by rendering the cloned markup inside an SVG <foreignObject>
-// rather than by hand-measuring text, which keeps fonts, wrapping and the post's own CSS
-// intact without pulling in a rendering dependency.
+// "Chụp bài viết" — rasterise one post plus the thread title into a PNG. Pictures go through the proxy as
+// data URLs (a canvas cannot read a cross-origin <img>), and layout comes from an SVG <foreignObject>.
 
 import { toast } from '../ui/feedback.js';
 import { getPostScreenshot } from './settings.js';
@@ -16,19 +9,17 @@ const BUTTON_CLASS = 'post-screenshot-button';
 const ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
 const CHECK_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4 10-10"/></svg>';
 
-// The raster is rendered at up to 2x so text stays sharp on a high-DPI display. A very long
-// post would otherwise allocate a bitmap big enough to fail or exhaust memory, so the scale
-// is reduced until the canvas fits inside this budget. The post is never clipped.
+// Rendered at up to 2x so text stays sharp. A very long post would allocate a bitmap big enough to fail, so the
+// scale drops until it fits. The post is never clipped.
 const SCALE = 2;
 const MAX_PIXELS = 40_000_000;
-// Firefox refuses to paint a foreignObject taller than its own coordinate space, and cannot
-// allocate an image beyond a platform limit, so an extremely long post is capped here.
+// Firefox refuses a foreignObject taller than its coordinate space, so a very long post is capped here.
 const MAX_HEIGHT = 16000;
 
 function threadTitle() {
   const el = document.getElementById('thread-title');
   if (!el) return document.title || '';
-  // The header holds a prefix badge plus the title text; only the text is wanted.
+  // The header holds a prefix badge plus the title; only the text is wanted.
   const clone = el.cloneNode(true);
   clone.querySelectorAll('.label, .labelLink, .prefix').forEach((n) => n.remove());
   return clone.textContent.replace(/\s+/g, ' ').trim();
@@ -41,8 +32,7 @@ function inlineStyles() {
     try {
       rules = sheet.cssRules;
     } catch {
-      // A cross-origin sheet (the webfont host) throws; those rules are not needed because
-      // the fonts are already loaded and applied through the computed cascade.
+      // A cross-origin sheet throws; those rules are not needed, the fonts are already loaded.
       continue;
     }
     for (const rule of rules) css += `${rule.cssText}\n`;
@@ -50,14 +40,14 @@ function inlineStyles() {
   return css;
 }
 
-// Re-encode through the proxy so the canvas stays untainted. Images that cannot be read are
-// dropped rather than left to throw, which would fail the whole capture.
+// Re-encode through the proxy so the canvas stays untainted. Unreadable images are dropped rather than failing
+// the whole capture.
 async function toDataUrl(img) {
   const url = img.currentSrc || img.src || '';
   if (!url) return null;
   if (url.startsWith('data:')) return url;
-  // Attachment links must be resolved to their canonical URL first: the short form is a
-  // redirect that Cloudflare answers with a challenge about half the time.
+  // Attachments resolve to their canonical URL first: the short form is a redirect that Cloudflare often
+  // answers with a challenge.
   const resolved = await resolveAttachment(url);
   const source = resolved?.url || url;
   const blob = await fetchImageBlob(source).catch(() => null);
@@ -86,8 +76,7 @@ async function inlineImages(root) {
 }
 
 function buildSheet(threadName, postNode) {
-  // A plain wrapper is easier to measure than the cloned grid, and it guarantees the title
-  // sits above the post without inheriting the article's own absolute positioning.
+  // A plain wrapper is easier to measure and keeps the title above the post.
   const holder = document.createElement('div');
   holder.className = 'screenshot-sheet';
   holder.style.cssText = 'box-sizing:border-box;background:#fff;padding:16px;font-family:inherit;';
@@ -101,15 +90,15 @@ function buildSheet(threadName, postNode) {
 function rasterize(node) {
   const width = Math.ceil(node.scrollWidth || node.getBoundingClientRect().width);
   const height = Math.ceil(node.scrollHeight || node.getBoundingClientRect().height);
-  // Keep the full post: shrink the pixel ratio instead of cropping when it would not fit.
+  // Keep the full post: shrink the pixel ratio instead of cropping.
   let scale = SCALE;
   if (height * scale > MAX_HEIGHT) scale = MAX_HEIGHT / height;
   while (width * scale * (height * scale) > MAX_PIXELS && scale > 0.5) scale -= 0.1;
   const outWidth = Math.max(1, Math.round(width * scale));
   const outHeight = Math.max(1, Math.round(height * scale));
 
-  // The measuring copy is parked far off-screen; that offset must not leak into the SVG or
-  // the whole post renders outside the foreignObject's viewport and the bitmap comes out blank.
+  // The measuring copy is parked off-screen; that offset must not leak into the SVG, or the bitmap comes out
+  // blank.
   const clone = node.cloneNode(true);
   clone.style.position = 'static';
   clone.style.left = 'auto';
@@ -117,8 +106,8 @@ function rasterize(node) {
   clone.style.width = `${width}px`;
   const style = `<style>${inlineStyles()}</style>`;
   const markup = new XMLSerializer().serializeToString(clone);
-  // `viewBox` keeps the layout in CSS pixels while the outer width/height apply the scale,
-  // so text wraps identically no matter what ratio the bitmap ends up at.
+  // `viewBox` keeps the layout in CSS pixels while width/height apply the scale, so text wraps identically at
+  // any ratio.
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${outWidth}" height="${outHeight}" viewBox="0 0 ${width} ${height}">` +
     `<foreignObject x="0" y="0" width="${width}" height="${height}">` +
@@ -134,8 +123,7 @@ function rasterize(node) {
       canvas.width = outWidth;
       canvas.height = outHeight;
       const context = canvas.getContext('2d');
-      // The clone is painted on white so a transparent post background does not come out
-      // black once flattened into the PNG.
+      // Painted on white so a transparent background does not flatten to black.
       context.fillStyle = '#fff';
       context.fillRect(0, 0, canvas.width, canvas.height);
       context.drawImage(image, 0, 0, outWidth, outHeight);
@@ -187,8 +175,7 @@ async function capturePost(article, button) {
   try {
     const source = article.cloneNode(true);
     source.querySelectorAll(`.${BUTTON_CLASS}`).forEach((n) => n.remove());
-    // The clone is rendered off-screen to measure it, then rasterised; it never becomes
-    // visible to the reader.
+    // The clone is measured off-screen, then rasterised; it never becomes visible.
     const sheet = buildSheet(threadTitle(), source);
     sheet.style.position = 'fixed';
     sheet.style.left = '-100000px';
@@ -210,15 +197,14 @@ async function capturePost(article, button) {
   } finally {
     button.disabled = false;
     button.classList.remove('is-loading');
-    // Rendering the measuring copy can nudge the scroll position; the reader must not lose
-    // their place in a long thread.
+    // Measuring can nudge the scroll position; the reader must not lose their place.
     if (window.scrollY !== scrollY) window.scrollTo(0, scrollY);
   }
 }
 
 function removeControl(article) {
   const button = article.querySelector(`:scope .${BUTTON_CLASS}`);
-  // The control is wrapped in a list item; leaving the empty <li> would keep its flex gap.
+  // The control is wrapped in a list item; an empty <li> would keep its flex gap.
   const host = button?.closest('.message-attribution-opposite > li') || button;
   host?.remove();
   article.classList.remove('has-screenshot-button');
@@ -238,7 +224,7 @@ function addControl(article) {
     event.stopPropagation();
     capturePost(article, button);
   });
-  // Before the bookmark, so the control sits to its left and never covers the post number.
+  // Before the bookmark, so it never covers the post number.
   const item = document.createElement('li');
   item.append(button);
   list.prepend(item);
@@ -265,8 +251,7 @@ function schedule() {
 
 export function wirePostScreenshots() {
   refresh();
-  // Views replace #app wholesale and infinite scroll appends whole pages, so one observer on
-  // the body covers both.
+  // One observer on the body covers both re-renders and appended pages.
   new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
   window.addEventListener('voz:settings', schedule);
 }

@@ -1,9 +1,5 @@
-// Reaction buttons and the "who reacted" strip.
-//
-// The member list is not in the REST API — it is scraped from the web route
-// /p/{id}/reactions, which only the browser can reach (Cloudflare blocks server
-// fetch, and the route sends no CORS header). When both paths fail the strip
-// removes itself so no empty box is left behind.
+// Reaction buttons and the "who reacted" strip. The member list is not in the REST API: it is scraped from
+// /p/{id}/reactions, which only the browser can reach.
 
 import { state } from '../core/dom.js';
 import { esc } from '../core/utils.js';
