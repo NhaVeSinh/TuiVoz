@@ -30,10 +30,10 @@ export function saveScroll() {
 // Called after a popstate render. Images and lazily-filled strips can still grow the page, so a single
 // `scrollTo` would land short; retry on the next frames until the position sticks.
 export function restoreScroll() {
-  // A `#post-…` entry belongs to the post, not to a remembered offset: the view already jumped to the anchor
-  // (and called keepCurrentScroll), so restoring the old offset would undo it.
+  // A `#post-...` / `#conversation-message-...` entry belongs to the post, not to a remembered offset: the view
+  // already jumped to the anchor (and called keepCurrentScroll), so restoring the old offset would undo it.
   const hash = location.hash.slice(1);
-  if (hash.startsWith('post-') && document.getElementById(hash)) return;
+  if ((hash.startsWith('post-') || hash.startsWith('conversation-message-')) && document.getElementById(hash)) return;
   const key = stampKey(false);
   const top = (key && scrollPositions.get(key)) || 0;
   if (!top) {

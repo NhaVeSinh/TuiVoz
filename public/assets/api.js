@@ -71,6 +71,8 @@ export const api = {
   reactions: () => xf('/voz/reactions'),
   conversations: (page = 1, filter) => xf('/conversations/', { query: { page, ...filter } }),
   conversation: (id, page = 1) => xf(`/conversations/${id}/`, { query: { with_messages: 'true', page } }),
+  // A conversation message carries its `conversation_id`, which the alert payload omits.
+  conversationMessage: (id) => xf(`/conversation-messages/${id}/`),
   createConversation: (recipientIds, title, message) =>
     xf('/conversations/', { method: 'POST', body: { recipient_ids: recipientIds, title, message } }),
   replyConversation: (conversationId, message) =>

@@ -1,7 +1,7 @@
 // History-API router. The page number lives in the path (/t/slug.123/page-2).
 
 import { app } from './dom.js';
-import { idFromSegment, threadPath, withPage } from './paths.js';
+import { idFromSegment, threadPath, dmPath, withPage } from './paths.js';
 import { api } from '../api.js';
 import { navigate } from './nav.js';
 import { setRouteHandler } from './nav.js';
@@ -82,6 +82,16 @@ export async function route() {
     if (head === 'new') return await viewNewThreads(page);
     if (head === 'search') return await viewSearch(params.get('q') || '', params.get('id'), page);
     if (head === 'direct-messages' || head === 'dm') {
+      // voz.vn alert URLs point here for a reacted DM message; the message resolves its conversation.
+      if (segments[1] === 'replies' && /^\d+$/.test(segments[2] || '')) {
+        const messageId = Number(segments[2]);
+        const { message } = await api.conversationMessage(messageId);
+        const conversationId = message && message.conversation_id;
+        if (!conversationId) throw new Error('Không xác định được hộp thư của tin nhắn');
+        const result = await api.conversation(conversationId, 1);
+        const conversation = result.conversation || { conversation_id: conversationId, title: '' };
+        return navigate(`${dmPath(conversation)}#conversation-message-${messageId}`, { replace: true });
+      }
       if (segments[1] === 'new') return await viewNewDm(params.get('to') || '');
       if (segments[1]) return await viewDm(idFromSegment(segments[1]), page);
       return await viewDmList(page);

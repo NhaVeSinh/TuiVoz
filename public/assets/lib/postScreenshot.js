@@ -33,9 +33,11 @@ function scaleTokens() {
   return { ui: normalizeFontScale(uiSize) / 100, post: normalizeFontScale(postSize) / 100 };
 }
 
+// The page heading: a thread's `#thread-title`, or a conversation's `#conversation-title`. Falls back to
+// document.title, which already carries the thread/conversation name on both routes.
 function threadTitle() {
-  const el = document.getElementById('thread-title');
-  if (!el) return document.title || '';
+  const el = document.getElementById('thread-title') || document.getElementById('conversation-title');
+  if (!el) return (document.title || '').replace(/\s*\|\s*VOZ\s*$/, '');
   // The header holds a prefix badge plus the title; only the text is wanted.
   const clone = el.cloneNode(true);
   clone.querySelectorAll('.label, .labelLink, .prefix').forEach((n) => n.remove());
@@ -373,9 +375,10 @@ function triggerDownload(blob, name) {
   setTimeout(() => URL.revokeObjectURL(href), 60_000);
 }
 
-function fileName(post) {
-  const base = `voz-post-${post?.post_id || 'unknown'}`;
-  return `${base}.png`;
+function fileName(article) {
+  const kind = article.dataset.messageId ? 'dm' : 'post';
+  const id = article.dataset.messageId || article.dataset.postId || 'unknown';
+  return `voz-${kind}-${id}.png`;
 }
 
 function flashSaved(button) {
@@ -392,6 +395,7 @@ async function capturePost(article, button) {
   if (button.disabled) return;
   button.disabled = true;
   button.classList.add('is-loading');
+  const noun = article.dataset.messageId ? 'tin nhắn' : 'bài viết';
   try {
     const source = article.cloneNode(true);
     source.querySelectorAll(`.${BUTTON_CLASS}`).forEach((n) => n.remove());
@@ -409,27 +413,19 @@ async function capturePost(article, button) {
       // Inlining swaps every src, so the layout is only final once those decode.
       await settle(sheet);
       const png = await rasterize(sheet, fonts);
-      triggerDownload(png, fileName({ post_id: article.dataset.postId }));
+      triggerDownload(png, fileName(article));
     } finally {
       sheet.remove();
     }
     flashSaved(button);
-    toast('Đã lưu ảnh bài viết.');
+    toast(`Đã lưu ảnh ${noun}.`);
   } catch (error) {
-    toast(error instanceof Error ? error.message : 'Không chụp được bài viết.', true);
+    toast(error instanceof Error ? error.message : `Không chụp được ${noun}.`, true);
     window.dispatchEvent(new CustomEvent('voz:post-screenshot-error', { detail: error }));
   } finally {
     button.disabled = false;
     button.classList.remove('is-loading');
   }
-}
-
-function removeControl(article) {
-  const button = article.querySelector(`:scope .${BUTTON_CLASS}`);
-  // The control is wrapped in a list item; an empty <li> would keep its flex gap.
-  const host = button?.closest('.message-attribution-opposite > li') || button;
-  host?.remove();
-  article.classList.remove('has-screenshot-button');
 }
 
 function addControl(article) {
@@ -438,8 +434,9 @@ function addControl(article) {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = BUTTON_CLASS;
-  button.title = 'Chụp bài viết';
-  button.setAttribute('aria-label', 'Chụp bài viết');
+  const label = article.dataset.messageId ? 'Chụp tin nhắn' : 'Chụp bài viết';
+  button.title = label;
+  button.setAttribute('aria-label', label);
   button.innerHTML = ICON;
   button.addEventListener('click', (event) => {
     event.preventDefault();
@@ -453,9 +450,18 @@ function addControl(article) {
   article.classList.add('has-screenshot-button');
 }
 
+function removeControl(article) {
+  const button = article.querySelector(`:scope .${BUTTON_CLASS}`);
+  // The control is wrapped in a list item; an empty <li> would keep its flex gap.
+  const host = button?.closest('.message-attribution-opposite > li') || button;
+  host?.remove();
+  article.classList.remove('has-screenshot-button');
+}
+
 function refresh() {
   const enabled = getPostScreenshot();
-  for (const article of document.querySelectorAll('#post-list .message--post')) {
+  // Thread posts and conversation messages share the post layout, so both are candidates.
+  for (const article of document.querySelectorAll('#post-list .message--post, .block--conversation .message--conversation')) {
     if (enabled) addControl(article);
     else removeControl(article);
   }
