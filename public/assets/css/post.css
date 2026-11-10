@@ -263,15 +263,18 @@
   .post-screenshot-button { opacity: .75; }
 }
 
-/* Off-screen capture sheet: the wrapper drawn into the PNG, plus the title band. */
-.screenshot-sheet { color: var(--text); padding: 16px; font-family: var(--font); }.screenshot-title {
-  margin: 0 0 12px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid var(--border);
-  font-size: calc(20px * var(--ui-scale));
-  font-weight: var(--fw-bold);
+/* Off-screen capture sheet: the wrapper drawn into the PNG, plus the title band. The page backdrop is the dark
+   chrome, so the post card reads as a card sitting on the site rather than on a flat light field. */
+.screenshot-sheet { background: var(--page-bg); color: var(--text); padding: 16px; font-family: var(--font); }
+.screenshot-title {
+  /* Mirrors .block--messages > .block-header: no background of its own, near-white text directly on the page
+     backdrop. */
+  margin: 0 0 10px;
+  padding: 7px 0;
+  font-size: calc(19px * var(--ui-scale));
+  font-weight: 400;
   line-height: 1.35;
-  color: var(--text);
+  color: var(--block-header-fg);
 }
 .screenshot-sheet .message { margin: 0; overflow: visible; }
 .screenshot-sheet .message-inner { align-items: flex-start; }

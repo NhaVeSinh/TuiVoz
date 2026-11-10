@@ -4,6 +4,7 @@
 import { toast } from '../ui/feedback.js';
 import { getPostScreenshot, getFontScale, normalizeFontScale } from './settings.js';
 import { resolveAttachment, fetchImageBlob } from './imageDownload.js';
+import { pruneUnloadedReactionStrips } from '../ui/reactions.js';
 
 const BUTTON_CLASS = 'post-screenshot-button';
 const ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
@@ -197,8 +198,6 @@ function buildSheet(threadName, postNode, width) {
   holder.style.width = `${width}px`;
   holder.style.setProperty('--ui-scale', String(ui));
   holder.style.setProperty('--post-scale', String(post));
-  // The post surface, not the page chrome: the PNG is a picture of the post, not of the window around it.
-  holder.style.background = 'var(--content-bg)';
   const heading = document.createElement('div');
   heading.className = 'screenshot-title';
   heading.textContent = threadName;
@@ -225,12 +224,19 @@ function rasterize(node, fonts = '') {
   clone.style.width = `${width}px`;
   const style = `<style>${fonts}\n${inlineStyles()}</style>`;
   const markup = new XMLSerializer().serializeToString(clone);
+  // Firefox lays the title out slightly shorter than the DOM measurement, so the sheet can end a few dozen pixels
+  // above the bottom of the bitmap. The outer wrapper carries the same theme attributes as the sheet, so that
+  // leftover strip is drawn in the page colour instead of the default light one.
+  const theme = node.dataset.theme ? ` data-theme="${node.dataset.theme}"` : '';
+  const font = node.dataset.font ? ` data-font="${node.dataset.font}"` : '';
+  const sheetBg = getComputedStyle(node).backgroundColor;
+  const scaleVars = `--ui-scale:${getComputedStyle(node).getPropertyValue('--ui-scale') || 1};--post-scale:${getComputedStyle(node).getPropertyValue('--post-scale') || 1};`;
   // `viewBox` keeps the layout in CSS pixels while width/height apply the scale, so text wraps identically at
-  // any ratio. The background is painted on the wrapper itself so the theme's page colour is what shows.
+  // any ratio.
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${outWidth}" height="${outHeight}" viewBox="0 0 ${width} ${height}">` +
     `<foreignObject x="0" y="0" width="${width}" height="${height}">` +
-    `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px">${style}${markup}</div>` +
+    `<div xmlns="http://www.w3.org/1999/xhtml"${theme}${font} style="width:${width}px;min-height:${height}px;${scaleVars}background:${sheetBg}">${style}${markup}</div>` +
     '</foreignObject></svg>';
 
   const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
@@ -242,6 +248,9 @@ function rasterize(node, fonts = '') {
       canvas.width = outWidth;
       canvas.height = outHeight;
       const context = canvas.getContext('2d');
+      // Any sub-pixel row the SVG leaves unpainted must read as the sheet, not as transparency.
+      context.fillStyle = sheetBg;
+      context.fillRect(0, 0, canvas.width, canvas.height);
       context.drawImage(image, 0, 0, outWidth, outHeight);
       URL.revokeObjectURL(href);
       canvas.toBlob((png) => (png ? resolve(png) : reject(new Error('Không tạo được ảnh PNG.'))), 'image/png');
@@ -287,7 +296,6 @@ async function capturePost(article, button) {
   if (button.disabled) return;
   button.disabled = true;
   button.classList.add('is-loading');
-  const scrollY = window.scrollY;
   try {
     const source = article.cloneNode(true);
     source.querySelectorAll(`.${BUTTON_CLASS}`).forEach((n) => n.remove());
@@ -299,6 +307,7 @@ async function capturePost(article, button) {
     sheet.style.top = '0';
     document.body.append(sheet);
     try {
+      pruneUnloadedReactionStrips(sheet);
       const fonts = await embedFonts();
       await inlineImages(sheet);
       const png = await rasterize(sheet, fonts);
@@ -314,8 +323,6 @@ async function capturePost(article, button) {
   } finally {
     button.disabled = false;
     button.classList.remove('is-loading');
-    // Measuring can nudge the scroll position; the reader must not lose their place.
-    if (window.scrollY !== scrollY) window.scrollTo(0, scrollY);
   }
 }
 

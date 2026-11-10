@@ -125,3 +125,13 @@ async function fillReactionStrip(strip) {
   strip.innerHTML = `<span class="reactionsBar-icons">${icons}</span>
     <span class="reactionsBar-users">${names}${more}</span>`;
 }
+
+// A screenshot clone is parked off-screen, so the visibility observer never fires inside it and the
+// "Đang tải thành viên…" placeholder would be baked into the PNG. Strips that already resolved keep their list;
+// the rest are dropped. No request is made — voz.vn sends no CORS header on /p/{id}/reactions, so fetching from
+// here can only fail and would still leave the placeholder.
+export function pruneUnloadedReactionStrips(root) {
+  for (const strip of root.querySelectorAll('.reactionsBar[data-reaction-list]')) {
+    if (!strip.querySelector('.reactionsBar-users')) strip.remove();
+  }
+}
