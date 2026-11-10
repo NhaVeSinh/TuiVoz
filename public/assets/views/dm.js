@@ -81,7 +81,6 @@ export async function viewDm(conversationId, page) {
     setBreadcrumbs([
       { label: 'Diễn đàn', href: '/' },
       { label: 'Hộp thư', href: '/direct-messages' },
-      { label: conv.title },
     ]);
     setTitle(conv.title, currentPage);
     // A conversation by nature has two sides; opening it clears its unread state like a thread does.
