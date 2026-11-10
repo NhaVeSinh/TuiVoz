@@ -239,9 +239,67 @@ function buildSheet(threadName, postNode, width) {
   return holder;
 }
 
+// The sheet is measured the instant it is built, but inlined images have no layout yet at that moment, so the
+// bitmap would be sized from a shorter box than what is finally drawn — leaving either a clipped tail or a band
+// of empty backdrop. Wait for the images to decode and for layout to settle before anything is measured.
+function settle(node) {
+  const frames = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const images = [...node.querySelectorAll('img')].map((img) => {
+    if (img.complete && img.naturalWidth) return img.decode?.().catch(() => {}) ?? Promise.resolve();
+    return new Promise((resolve) => {
+      img.addEventListener('load', resolve, { once: true });
+      img.addEventListener('error', resolve, { once: true });
+    }).then(() => img.decode?.().catch(() => {}));
+  });
+  return Promise.all([...images, frames(), frames()]);
+}
+
+// The SVG lays the sheet out shorter than the DOM predicts, so the bitmap is allocated taller than what is drawn
+// and the surplus is uniform backdrop below the post. Find the last row that still contains post content and cut
+// there, keeping the sheet's own bottom padding.
+function trimTail(canvas, context, width, background, scale = SCALE) {
+  const height = canvas.height;
+  const grab = (y) => context.getImageData(0, y, width, 1).data;
+  const probe = new Uint8ClampedArray(grab(0));
+  const baseline = /^#?[0-9a-f]{6}$/i.test(background) ? background.replace('#', '') : null;
+  const bg = baseline
+    ? [parseInt(baseline.slice(0, 2), 16), parseInt(baseline.slice(2, 4), 16), parseInt(baseline.slice(4, 6), 16)]
+    : null;
+  const isBackdrop = (data) => {
+    for (let x = 0; x < width * 4; x += 8) {
+      if (!bg) {
+        if (Math.abs(data[x] - probe[x]) > 4 || Math.abs(data[x + 1] - probe[x + 1]) > 4) return false;
+        continue;
+      }
+      if (Math.abs(data[x] - bg[0]) > 4 || Math.abs(data[x + 1] - bg[1]) > 4 || Math.abs(data[x + 2] - bg[2]) > 4) return false;
+    }
+    return true;
+  };
+  let last = height - 1;
+  while (last > 0 && isBackdrop(grab(last))) last -= 1;
+  // The last non-backdrop row holds the final glyph or border; add back the sheet's 16px bottom padding.
+  return Math.min(height, last + Math.ceil(16 * scale) + 2);
+}
+
+function crop(canvas, width, height) {
+  const out = document.createElement('canvas');
+  out.width = width;
+  out.height = height;
+  out.getContext('2d').drawImage(canvas, 0, 0, width, height, 0, 0, width, height);
+  return out;
+}
+
 function rasterize(node, fonts = '') {
   const width = Math.ceil(node.scrollWidth || node.getBoundingClientRect().width);
-  const height = Math.ceil(node.scrollHeight || node.getBoundingClientRect().height);
+  // The sheet is `position: fixed`, so it shrink-wraps its content and the box excludes the bottom margin. The
+  // real content height is the last child's bottom edge plus that margin, which keeps the bitmap free of empty
+  // backdrop below the post.
+  const rect = node.getBoundingClientRect();
+  const last = node.lastElementChild;
+  const contentHeight = last
+    ? Math.ceil(last.getBoundingClientRect().bottom - rect.top + (parseFloat(getComputedStyle(last).marginBottom) || 0))
+    : Math.ceil(node.scrollHeight || rect.height);
+  const height = Math.max(Math.ceil(node.scrollHeight || 0), contentHeight, 1);
   // Keep the full post: shrink the pixel ratio instead of cropping.
   let scale = SCALE;
   if (height * scale > MAX_HEIGHT) scale = MAX_HEIGHT / height;
@@ -287,7 +345,11 @@ function rasterize(node, fonts = '') {
       context.fillRect(0, 0, canvas.width, canvas.height);
       context.drawImage(image, 0, 0, outWidth, outHeight);
       URL.revokeObjectURL(href);
-      canvas.toBlob((png) => (png ? resolve(png) : reject(new Error('Không tạo được ảnh PNG.'))), 'image/png');
+      // Firefox lays the sheet out shorter inside the SVG than in the DOM, so the bitmap is allocated taller than
+      // what is actually drawn. Trim the uniform tail so the PNG ends at the post instead of on empty backdrop.
+      const trimmed = trimTail(canvas, context, outWidth, sheetBg, scale);
+      const final = trimmed === outHeight ? canvas : crop(canvas, outWidth, trimmed);
+      final.toBlob((png) => (png ? resolve(png) : reject(new Error('Không tạo được ảnh PNG.'))), 'image/png');
     };
     image.onerror = () => {
       URL.revokeObjectURL(href);
@@ -344,6 +406,8 @@ async function capturePost(article, button) {
       pruneUnloadedReactionStrips(sheet);
       const fonts = await embedFonts();
       await inlineImages(sheet);
+      // Inlining swaps every src, so the layout is only final once those decode.
+      await settle(sheet);
       const png = await rasterize(sheet, fonts);
       triggerDownload(png, fileName({ post_id: article.dataset.postId }));
     } finally {
