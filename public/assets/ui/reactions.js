@@ -69,33 +69,59 @@ export function reactionSummary(post) {
 }
 
 export async function hydrateReactionLists(root) {
-  const strips = [...root.querySelectorAll('.reactionsBar[data-reaction-list]')];
-  await Promise.all(
-    strips.map(async (strip) => {
-      const postId = strip.dataset.reactionList;
-      const users = await loadReactionUsers(postId);
-      if (!strip.isConnected) return;
-      if (!users.length) {
-        strip.remove();
-        return;
+  // The member list is a cross-origin scrape per post, so a page of 20 posts would fire 20 requests right after
+  // render. Each strip waits until it is near the viewport, keeping the numbers in `reaction_counts` immediate.
+  for (const strip of root.querySelectorAll('.reactionsBar[data-reaction-list]')) {
+    if (strip.dataset.reactionWired) continue;
+    strip.dataset.reactionWired = 'true';
+    observeReactionStrip(strip);
+  }
+}
+
+let stripObserver = null;
+
+function observeReactionStrip(strip) {
+  if (!('IntersectionObserver' in window)) {
+    fillReactionStrip(strip);
+    return;
+  }
+  stripObserver ||= new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        stripObserver.unobserve(entry.target);
+        fillReactionStrip(entry.target);
       }
-      const catalogue = state.reactions || [];
-      const byId = new Map(catalogue.map((r) => [r.reaction_id, r]));
-      const shown = users.slice(0, 6);
-      const names = shown
-        .map((u) => `<a href="${userPath({ user_id: u.userId, username: u.username })}" class="reactionsBar-user">${esc(u.username)}</a>`)
-        .join(', ');
-      const more = users.length > shown.length ? ` và ${users.length - shown.length} người khác` : '';
-      const icons = [...new Set(users.map((u) => u.reactionId))]
-        .filter(Boolean)
-        .map((id) => {
-          const r = byId.get(id);
-          if (!r) return '';
-          return `<img src="${esc(r.image_url)}" alt="${esc(r.title)}" title="${esc(r.title)}" referrerpolicy="no-referrer" class="reaction-image">`;
-        })
-        .join('');
-      strip.innerHTML = `<span class="reactionsBar-icons">${icons}</span>
-        <span class="reactionsBar-users">${names}${more}</span>`;
-    })
+    },
+    // Start early enough that the strip is filled before it scrolls into view.
+    { rootMargin: '400px 0px' }
   );
+  stripObserver.observe(strip);
+}
+
+async function fillReactionStrip(strip) {
+  const postId = strip.dataset.reactionList;
+  const users = await loadReactionUsers(postId);
+  if (!strip.isConnected) return;
+  if (!users.length) {
+    strip.remove();
+    return;
+  }
+  const catalogue = state.reactions || [];
+  const byId = new Map(catalogue.map((r) => [r.reaction_id, r]));
+  const shown = users.slice(0, 6);
+  const names = shown
+    .map((u) => `<a href="${userPath({ user_id: u.userId, username: u.username })}" class="reactionsBar-user">${esc(u.username)}</a>`)
+    .join(', ');
+  const more = users.length > shown.length ? ` và ${users.length - shown.length} người khác` : '';
+  const icons = [...new Set(users.map((u) => u.reactionId))]
+    .filter(Boolean)
+    .map((id) => {
+      const r = byId.get(id);
+      if (!r) return '';
+      return `<img src="${esc(r.image_url)}" alt="${esc(r.title)}" title="${esc(r.title)}" referrerpolicy="no-referrer" class="reaction-image">`;
+    })
+    .join('');
+  strip.innerHTML = `<span class="reactionsBar-icons">${icons}</span>
+    <span class="reactionsBar-users">${names}${more}</span>`;
 }
