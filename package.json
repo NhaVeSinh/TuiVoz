@@ -6,6 +6,7 @@
   "description": "VOZ-style forum front-end built on the voz.vn REST API (OAuth2 + PKCE)",
   "scripts": {
     "dev": "vercel dev",
+    "build": "node tools/build-css.mjs",
     "deploy": "vercel --prod"
   }
 }

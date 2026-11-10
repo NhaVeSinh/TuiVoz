@@ -14,9 +14,9 @@
 <!-- The default reading face, preloaded before any stylesheet so the first text paint already has it. The
      inline script below drops this link when the reader picked a different family. -->
 <link rel="preload" id="font-preload" href="/assets/fonts/be-vietnam-400.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/css/base.css">
-<link rel="stylesheet" href="/assets/css/font-default.css">
-<link rel="stylesheet" href="/assets/css/theme.css">
+<!-- One bundle instead of 16 stylesheets: 16 render-blocking requests cost ~4.4s on Slow 4G. Rebuild with
+     `node tools/build-css.mjs` after editing any file in assets/css/. -->
+<link rel="stylesheet" href="/assets/css/app.css">
 <script>
   // Runs while the head is still parsing, before anything paints, so a dark-mode reader never
   // sees a white flash. Only the attributes the CSS keys off, read from localStorage;
@@ -66,19 +66,6 @@
             } catch (e) { /* storage disabled: fall through to the light default */ }
   })();
 </script>
-<link rel="stylesheet" href="/assets/css/layout.css">
-<link rel="stylesheet" href="/assets/css/forum.css">
-<link rel="stylesheet" href="/assets/css/avatar.css">
-<link rel="stylesheet" href="/assets/css/post.css">
-<link rel="stylesheet" href="/assets/css/media.css">
-<link rel="stylesheet" href="/assets/css/reaction.css">
-<link rel="stylesheet" href="/assets/css/forms.css">
-<link rel="stylesheet" href="/assets/css/editor.css">
-<link rel="stylesheet" href="/assets/css/account.css">
-<link rel="stylesheet" href="/assets/css/misc.css">
-<link rel="stylesheet" href="/assets/css/responsive.css">
-<link rel="stylesheet" href="/assets/css/headerMenus.css">
-<link rel="stylesheet" href="/assets/css/home.css">
 <!-- Route-only stylesheets: `async` keeps them out of the critical path, and `onload` promotes them once they
      arrive. Render-blocking CSS is what pushed Speed Index to 4.1s. -->
 <link rel="stylesheet" href="/assets/css/settings.css" media="print" onload="this.media='all'">

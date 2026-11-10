@@ -15,7 +15,7 @@ Web diễn đàn theo phong cách voz.vn — thin client chạy trực tiếp tr
 
 - `api/[...path].js` — Vercel Edge Function (region `sin1`): proxy `/api/xf/*` → `voz.vn/api` + các endpoint OAuth
 - `public/` — SPA thuần ES modules (router History API), không framework, không bundler
-- `tools/` — script Python dựng woff2 từ font gốc OFL
+- `tools/` — `build-css.mjs` gộp stylesheet thành `public/assets/css/app.css`; script Python dựng woff2 từ font gốc OFL
 
 ## Chạy local
 
@@ -23,6 +23,14 @@ Web diễn đàn theo phong cách voz.vn — thin client chạy trực tiếp tr
 node dev-server.mjs 3111
 # → http://localhost:3111
 ```
+
+Sửa bất kỳ file trong `public/assets/css/` thì chạy lại:
+
+```powershell
+node tools/build-css.mjs
+```
+
+`settings.css` và `stickers.css` không nằm trong bundle (được defer riêng), sửa hai file đó không cần build.
 
 ## Deploy
 
