@@ -264,8 +264,7 @@
 }
 
 /* Off-screen capture sheet: the wrapper drawn into the PNG, plus the title band. */
-.screenshot-sheet { color: var(--text); }
-.screenshot-title {
+.screenshot-sheet { color: var(--text); padding: 16px; font-family: var(--font); }.screenshot-title {
   margin: 0 0 12px;
   padding-bottom: 8px;
   border-bottom: 2px solid var(--border);
@@ -276,6 +275,8 @@
 }
 .screenshot-sheet .message { margin: 0; overflow: visible; }
 .screenshot-sheet .message-inner { align-items: flex-start; }
+/* The control is stripped from the clone, but a leftover list item would hold its gap. */
+.screenshot-sheet .message-attribution-opposite > li:empty { display: none; }
 /* Touch devices have no hover, so the control stays visible. */
 @media (hover: none) {
   .image-download-button { opacity: .75; }
