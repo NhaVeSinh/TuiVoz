@@ -3,8 +3,20 @@
   "regions": ["sin1"],
   "outputDirectory": "public",
   "rewrites": [
+    { "source": "/api/og", "destination": "/api/og?__path=" },
     { "source": "/api", "destination": "/api/handler?__path=" },
     { "source": "/api/(.*)", "destination": "/api/handler?__path=$1" },
+    {
+      "source": "/((?!api/|assets/|userscript/|robots\\.txt$|sitemap\\.xml$).*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(facebookexternalhit|Facebot|Twitterbot|TelegramBot|WhatsApp|Discordbot|Slackbot|LinkedInBot|Zalo|Pinterest|redditbot|Googlebot|bingbot|YandexBot|Applebot|Embedly|Iframely|vkShare|curl|wget)"
+        }
+      ],
+      "destination": "/api/og?__path=$1"
+    },
     { "source": "/((?!api/|assets/|userscript/|robots\\.txt$|sitemap\\.xml$).*)", "destination": "/index.html" }
   ],
   "headers": [

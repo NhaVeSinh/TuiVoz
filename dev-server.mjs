@@ -23,6 +23,10 @@ const MIME = {
 };
 
 const { default: handler } = await import('./api/handler.js');
+const { default: ogHandler } = await import('./api/og.js');
+
+// Crawlers that need server-rendered Open Graph tags. Mirrors the `has` rule in vercel.json.
+const CRAWLER_UA = /facebookexternalhit|Facebot|Twitterbot|TelegramBot|WhatsApp|Discordbot|Slackbot|LinkedInBot|Zalo|Pinterest|redditbot|Applebot|Googlebot|bingbot|YandexBot|DuckDuckBot|Baiduspider|Embedly|Iframely|vkShare|W3C_Validator|curl|wget|python-requests|Go-http-client|axios|node-fetch/i;
 
 // Everything under /assets/ plus the shell's own filenames must be a real file; other paths are SPA routes.
 const ASSET_RE = /^\/(assets|userscript)\//;
@@ -99,6 +103,18 @@ const server = http.createServer(async (req, res) => {
       for await (const chunk of req) chunks.push(chunk);
       const body = Buffer.concat(chunks);
       const webRes = await handler(toRequest(req, body));
+      await sendWebResponse(res, webRes);
+      return;
+    }
+    // A crawler (or `?og=1` for manual checks) gets the shell with server-rendered Open Graph tags, matching the
+    // vercel.json rule so previews can be verified locally.
+    const wantsOg =
+      (CRAWLER_UA.test(req.headers['user-agent'] || '') || url.searchParams.has('og')) &&
+      !ASSET_RE.test(url.pathname) &&
+      !ROOT_FILES.has(url.pathname);
+    if (wantsOg) {
+      url.searchParams.delete('og');
+      const webRes = await ogHandler(toRequest(req, Buffer.alloc(0)));
       await sendWebResponse(res, webRes);
       return;
     }
