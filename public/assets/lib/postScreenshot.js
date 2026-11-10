@@ -17,13 +17,14 @@ const MAX_PIXELS = 40_000_000;
 // Firefox refuses a foreignObject taller than its coordinate space, so a very long post is capped here.
 const MAX_HEIGHT = 16000;
 
-// A post keeps its two-column shape at every size, so the sheet's width drives the layout. Above 1000px the
-// capture uses the page's own column width, capped so a huge monitor does not produce a wall of whitespace.
+// A post keeps its two-column shape at every size, so the sheet's width drives the layout. It must be the post's
+// own on-screen width, not a rounded stand-in: a 390px phone would otherwise be captured at 430px and rules such
+// as `max-width: 400px` would not match. Only a very wide window is capped, so a huge monitor does not produce a
+// wall of whitespace.
 const MAX_SHEET_WIDTH = 1000;
 function layoutWidth(article) {
-  const viewport = document.documentElement.clientWidth;
-  if (viewport > MAX_SHEET_WIDTH) return Math.min(Math.round(article.getBoundingClientRect().width) || MAX_SHEET_WIDTH, MAX_SHEET_WIDTH);
-  return viewport > 600 ? 600 : 430;
+  const measured = Math.round(article.getBoundingClientRect().width);
+  return Math.min(measured || document.documentElement.clientWidth, MAX_SHEET_WIDTH);
 }
 
 // The reader's own text size must survive into the picture, or the PNG disagrees with what they see.
@@ -63,16 +64,49 @@ function prefixSelector(text) {
   return `${selectors.join(', ')} ${text.slice(open)}`;
 }
 
-function prefixRule(rule) {
+function serializeRule(rule, width) {
+  if (rule.type === CSSRule.MEDIA_RULE) {
+    const query = rule.conditionText || rule.media?.mediaText || '';
+    // Keep the sheet's own width as the reference even when the query is flattened away.
+    const body = [...rule.cssRules].map((child) => serializeRule(child, width)).join('');
+    return queryMatches(query, width) ? body : '';
+  }
   const text = rule.cssText.trimStart();
   const cssText = text.startsWith('@') ? rule.cssText : prefixSelector(rule.cssText);
   if (!rule.cssRules?.length) return cssText;
   const head = cssText.slice(0, cssText.indexOf('{') + 1);
   const tail = cssText.slice(cssText.lastIndexOf('}'));
-  return head + [...rule.cssRules].map(prefixRule).join('') + tail;
+  return head + [...rule.cssRules].map((child) => serializeRule(child, width)).join('') + tail;
 }
 
-function inlineStyles() {
+// Media queries inside a foreignObject are evaluated against the SVG document, not the sheet's CSS width, so at
+// 2x a 430px mobile sheet reports 860px and every `max-width: 620px` rule is skipped. The mobile layout is then
+// never applied, the desktop two-column post overflows the sheet, and the capture comes out too wide and cut
+// short. Flattening the width queries against the sheet width at build time is what makes the capture match the
+// screen.
+function widthMatches(query, width) {
+  const min = query.match(/min-width:\s*([\d.]+)px/);
+  const max = query.match(/max-width:\s*([\d.]+)px/);
+  if (!min && !max) return null;
+  if (min && width < Number(min[1])) return false;
+  if (max && width > Number(max[1])) return false;
+  return true;
+}
+
+function queryMatches(query, width) {
+  // A comma is an `or`, so one matching branch is enough.
+  for (const part of query.split(',')) {
+    const text = part.trim();
+    const byWidth = widthMatches(text, width);
+    if (byWidth === false) continue;
+    // pointer/hover/color-scheme and friends are unknowable here: keep the block and let the browser decide.
+    if (byWidth === null && !/^all$/.test(text)) return true;
+    if (byWidth === true) return true;
+  }
+  return false;
+}
+
+function inlineStyles(width) {
   let css = '';
   for (const sheet of document.styleSheets) {
     let rules;
@@ -82,7 +116,7 @@ function inlineStyles() {
       // A cross-origin sheet throws; those rules are not needed, the fonts are already loaded.
       continue;
     }
-    for (const rule of rules) css += `${prefixRule(rule)}\n`;
+    for (const rule of rules) css += `${serializeRule(rule, width)}\n`;
   }
   return css;
 }
@@ -222,7 +256,7 @@ function rasterize(node, fonts = '') {
   clone.style.left = 'auto';
   clone.style.top = 'auto';
   clone.style.width = `${width}px`;
-  const style = `<style>${fonts}\n${inlineStyles()}</style>`;
+  const style = `<style>${fonts}\n${inlineStyles(width)}</style>`;
   const markup = new XMLSerializer().serializeToString(clone);
   // Firefox lays the title out slightly shorter than the DOM measurement, so the sheet can end a few dozen pixels
   // above the bottom of the bitmap. The outer wrapper carries the same theme attributes as the sheet, so that

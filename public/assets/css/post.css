@@ -277,7 +277,9 @@
   color: var(--block-header-fg);
 }
 .screenshot-sheet .message { margin: 0; overflow: visible; }
-.screenshot-sheet .message-inner { align-items: flex-start; }
+/* Must stay `stretch`: on narrow widths `.message-inner` is a column, and `flex-start` would shrink-wrap the main
+   cell so a wide child (a [code] block, a long URL) pushes it past the sheet, cropping the capture horizontally. */
+.screenshot-sheet .message-inner { align-items: stretch; }
 /* The control is stripped from the clone, but a leftover list item would hold its gap. */
 .screenshot-sheet .message-attribution-opposite > li:empty { display: none; }
 /* Touch devices have no hover, so the control stays visible. */
