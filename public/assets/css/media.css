@@ -3,6 +3,10 @@
 .bbCodeBlock--unfurl { margin: 1em 0; max-width: 650px; padding: 12px; border: 1px solid var(--border); border-left: 3px solid var(--block-header-bg); border-radius: 4px; background: var(--quote-bg); font-size: calc(13px * var(--ui-scale)); }
 .bbCodeBlock--unfurl .contentRow { display: flex; align-items: center; gap: 12px; }
 .bbCodeBlock--unfurl .contentRow-figure { flex: 0 0 80px; margin: 0; }
+/* The pending spinner is voz.vn's inline `<svg>` with no width/height; unsized it falls back to 300x150 and
+   stretches the figure, so the placeholder must be pinned like the resolved image. */
+.bbCodeBlock--unfurl .contentRow-figure > span { display: flex; align-items: center; justify-content: center; width: 80px; height: 80px; }
+.bbCodeBlock--unfurl .contentRow-figure svg { width: 24px; height: 24px; }
 .bbCodeBlock--unfurl .contentRow-figure .bbCodeBlockUnfurl-image { display: block; width: 80px; height: 80px; object-fit: cover; margin: 0; }
 .bbCodeBlock--unfurl .contentRow-main { flex: 1; min-width: 0; }
 .bbCodeBlock--unfurl .contentRow-header { margin: 0 0 4px; font-size: calc(15px * var(--ui-scale)); line-height: 1.4; }
@@ -39,5 +43,6 @@
   .bbCodeBlock--unfurl { padding: 8px; }
   .bbCodeBlock--unfurl .contentRow { gap: 8px; }
   .bbCodeBlock--unfurl .contentRow-figure { flex-basis: 60px; }
+  .bbCodeBlock--unfurl .contentRow-figure > span { width: 60px; height: 60px; }
   .bbCodeBlock--unfurl .contentRow-figure .bbCodeBlockUnfurl-image { width: 60px; height: 60px; }
 }
