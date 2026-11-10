@@ -75,6 +75,9 @@ export const api = {
     xf('/conversations/', { method: 'POST', body: { recipient_ids: recipientIds, title, message } }),
   replyConversation: (conversationId, message) =>
     xf('/conversation-messages/', { method: 'POST', body: { conversation_id: conversationId, message } }),
+  // Author-only; there is no DELETE for conversation messages (the API answers 404 invalid_method).
+  editConversationMessage: (messageId, message) =>
+    xf(`/conversation-messages/${messageId}/`, { method: 'POST', body: { message } }),
   alerts: (page = 1) => xf('/alerts/', { query: { page } }),
   markAlertsViewed: () => xf('/alerts/mark-all', { method: 'POST', body: { viewed: true } }),
   markConversationRead: (id, date) => xf(`/conversations/${id}/mark-read`, { method: 'POST', body: { date } }),

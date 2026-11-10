@@ -41,8 +41,8 @@
 }
 @media (max-width: 620px) {
   .block--messages .pageNav a.pageNav-author { display: none; }
-  .block--messages > .block-header > .block-header-extra,
-  .block--messages > .block-header > #watch-btn { display: none; }
+  .block--messages:not(.block--conversation) > .block-header > .block-header-extra,
+  .block--messages:not(.block--conversation) > .block-header > #watch-btn { display: none; }
   #thread-title { user-select: text; -webkit-user-select: text; -webkit-touch-callout: default; }
   #thread-title:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; }
   .p-header-inner { flex-wrap: wrap; }

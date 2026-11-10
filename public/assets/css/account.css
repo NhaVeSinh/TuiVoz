@@ -15,15 +15,10 @@
 .dm-main { flex: 1 1 auto; min-width: 0; }
 .dm-title { font-weight: var(--fw-bold); color: var(--link); }
 .dm-meta { font-size: calc(12px * var(--ui-scale)); color: var(--dimmed); }
-.dm-message {
-  background: var(--content-bg);
-  border-radius: var(--radius);
-  padding: 10px 12px;
-  margin-bottom: 8px;
-}
-.dm-message.is-mine { background: var(--info-bg); }
-.dm-message-head { display: flex; gap: 8px; font-size: calc(12px * var(--ui-scale)); color: var(--dimmed); margin-bottom: 4px; }
-.dm-message-head .username { color: var(--link); font-weight: var(--fw-bold); }
+
+/* A conversation reuses the post layout; the header keeps the normal opaque block styling that the thread view
+   deliberately drops. */
+.block--conversation > .block-header { background: var(--block-header-bg); padding: 7px 12px; }
 
 /* ---------- alerts ---------- */
 .alert-row {
