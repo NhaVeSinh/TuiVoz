@@ -29,12 +29,13 @@ document.addEventListener('click', (event) => {
   const url = new URL(link.href, location.origin);
   if (url.origin !== location.origin) return;
   if (/^\/(api|assets|userscript)\//.test(url.pathname)) return;
-  // Same page, only a #post-… fragment: let the browser scroll, no re-render.
+  // Same page, only a #post-… fragment: scroll in place, no re-render. Anchored at the post's top: a voice
+  // post can be several screens tall, and `center` dropped the reader into its middle.
   if (url.pathname === location.pathname && url.search === location.search && url.hash) {
     const target = document.getElementById(url.hash.slice(1));
     if (target) {
       event.preventDefault();
-      target.scrollIntoView({ block: 'center' });
+      target.scrollIntoView({ block: 'start' });
       history.replaceState({}, '', url.pathname + url.search + url.hash);
     }
     return;
@@ -54,9 +55,9 @@ wireStaticAvatars();
 wirePostScreenshots();
 wireAllQuoteExpansion();
 
-window.addEventListener('popstate', () => {
+window.addEventListener('popstate', async () => {
+  await route();
   window.scrollTo({ top: 0 });
-  route();
 });
 
 // "Hiện thị số liệu không rút gọn" changes how numbers and dates are formatted, and those strings are baked

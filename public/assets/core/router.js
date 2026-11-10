@@ -53,7 +53,7 @@ async function unreadTarget(threadId) {
 export async function route() {
   const { segments, params, page } = parsePath();
   const head = segments[0] || '';
-  teardownInfiniteScroll();
+  teardownInfiniteScroll({ keepSentinel: true });
 
   try {
     if (!head) return await viewHome();

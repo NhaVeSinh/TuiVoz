@@ -189,11 +189,14 @@ function hideStopButton() {
   stopButton = null;
 }
 
-export function teardownInfiniteScroll() {
+export function teardownInfiniteScroll({ keepSentinel = false } = {}) {
   hideStopButton();
   if (!current) return;
   current.observer?.disconnect();
-  current.sentinel?.remove();
+  // A navigation keeps the sentinel: it is 38px of document height, and dropping it before the next view has
+  // written its markup shortens the document mid-navigation, so the browser clamps scrollY and the list jumps up
+  // before the thread appears. The next `app.innerHTML` removes it in the same task.
+  if (!keepSentinel) current.sentinel?.remove();
   current = null;
 }
 

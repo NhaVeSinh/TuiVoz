@@ -120,6 +120,10 @@
   max-width: var(--max-width);
   margin: 0 auto;
   padding: 14px 12px 40px;
+  /* Every view replaces #app's innerHTML in one write. Scroll anchoring then picks a node inside the outgoing
+     view and scrolls to keep it in place, so the list visibly jumped before the new page settled. With
+     anchoring off, the router owns the scroll position alone. */
+  overflow-anchor: none;
 }
 .p-breadcrumbs {
   font-size: calc(14px * var(--ui-scale));

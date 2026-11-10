@@ -3,7 +3,7 @@
 import { app, state } from '../core/dom.js';
 import { esc, num } from '../core/utils.js';
 import { threadPath, forumPath, userPath, withPage } from '../core/paths.js';
-import { currentPage, navigate } from '../core/nav.js';
+import { currentPage, navigate, keepCurrentScroll } from '../core/nav.js';
 import { ICON_EYE_ON, ICON_EYE_OFF, ICON_USER } from '../core/icons.js';
 import { api, ApiError } from '../api.js';
 import { setActiveNav, setBreadcrumbs } from '../ui/chrome.js';
@@ -78,8 +78,16 @@ function wireSignatureToggles(root) {
   });
 }
 
-export async function viewThread(threadId, page, focusPost) {
-  setActiveNav('home');
+// `block: 'center'` put a tall post's middle in the viewport, so the reader landed inside a post they never
+// aimed at. Anchoring the top of the post under the sticky bars is what the permalink implies.
+function jumpToPost(id) {
+  const el = document.getElementById(id);
+  if (!el) return false;
+  el.scrollIntoView({ block: 'start' });
+  return true;
+}
+
+export async function viewThread(threadId, page, focusPost) {  setActiveNav('home');
   loading();
   try {
     if (!state.reactions) {
@@ -189,11 +197,9 @@ export async function viewThread(threadId, page, focusPost) {
     }
 
     if (focusPost) {
-      const el = document.getElementById(`post-${focusPost}`);
-      if (el) el.scrollIntoView({ block: 'center' });
+      if (jumpToPost(`post-${focusPost}`)) keepCurrentScroll();
     } else if (location.hash.startsWith('#post-')) {
-      const el = document.getElementById(location.hash.slice(1));
-      if (el) el.scrollIntoView({ block: 'center' });
+      if (jumpToPost(location.hash.slice(1))) keepCurrentScroll();
     }
   } catch (err) {
     app.innerHTML = errorBox(err);
