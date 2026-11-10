@@ -80,14 +80,48 @@ function wireSignatureToggles(root) {
 
 // `block: 'center'` put a tall post's middle in the viewport, so the reader landed inside a post they never
 // aimed at. Anchoring the top of the post under the sticky bars is what the permalink implies.
+// Images above the target have no intrinsic size yet, so the first jump lands short; keep correcting while the
+// layout settles, stopping as soon as the reader scrolls away on their own.
 function jumpToPost(id) {
   const el = document.getElementById(id);
   if (!el) return false;
   el.scrollIntoView({ block: 'start' });
+  const startedAt = Date.now();
+  let userMoved = false;
+  const onUserScroll = () => {
+    userMoved = true;
+  };
+  window.addEventListener('wheel', onUserScroll, { passive: true, once: true });
+  window.addEventListener('touchmove', onUserScroll, { passive: true, once: true });
+  const settle = () => {
+    if (userMoved || !el.isConnected) {
+      window.removeEventListener('wheel', onUserScroll);
+      window.removeEventListener('touchmove', onUserScroll);
+      return;
+    }
+    const top = el.getBoundingClientRect().top;
+    const target = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+    if (Math.abs(top - target) > 2) el.scrollIntoView({ block: 'start' });
+    if (Date.now() - startedAt < 1200) requestAnimationFrame(settle);
+    else {
+      window.removeEventListener('wheel', onUserScroll);
+      window.removeEventListener('touchmove', onUserScroll);
+    }
+  };
+  requestAnimationFrame(settle);
+  // Late-loading pictures change the offset after the frames above are gone.
+  const onLoad = () => {
+    if (!userMoved && el.isConnected) el.scrollIntoView({ block: 'start' });
+  };
+  for (const img of document.querySelectorAll('.message--post img')) {
+    if (img.complete) continue;
+    img.addEventListener('load', onLoad, { once: true, passive: true });
+  }
   return true;
 }
 
-export async function viewThread(threadId, page, focusPost) {  setActiveNav('home');
+export async function viewThread(threadId, page, focusPost) {
+  setActiveNav('home');
   loading();
   try {
     if (!state.reactions) {

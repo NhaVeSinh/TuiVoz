@@ -1061,7 +1061,7 @@ function wireSettingsTabs() {
   const legacy = String(location.hash || '').replace(/^#/, '');
   if (legacy && !TAB_IDS.has(legacy) && TAB_ALIASES[legacy]) {
     try {
-      history.replaceState(null, '', `${location.pathname}${location.search}#${TAB_ALIASES[legacy]}`);
+      history.replaceState(history.state, '', `${location.pathname}${location.search}#${TAB_ALIASES[legacy]}`);
     } catch {
       /* the panel is already correct; only the URL lags. */
     }
@@ -1080,7 +1080,7 @@ function wireSettingsTabs() {
       panel.hidden = panel.id !== `panel-${id}`;
     }
     try {
-      history.replaceState(null, '', `${location.pathname}${location.search}#${id}`);
+      history.replaceState(history.state, '', `${location.pathname}${location.search}#${id}`);
     } catch {
       /* replaceState can fail on a stale entry; the tab still switched, only the URL lags. */
     }

@@ -1,7 +1,7 @@
 // Entry point: wires global listeners and boots the router. All data comes from /api/xf/* (edge proxy), so the
 // guest key and the OAuth bearer token never reach the browser.
 
-import { navigate } from './core/nav.js';
+import { navigate, restoreScroll } from './core/nav.js';
 import { route } from './core/router.js';
 import { loadSession } from './ui/session.js';
 import { wireHeaderMenus } from './ui/headerMenus.js';
@@ -36,7 +36,9 @@ document.addEventListener('click', (event) => {
     if (target) {
       event.preventDefault();
       target.scrollIntoView({ block: 'start' });
-      history.replaceState({}, '', url.pathname + url.search + url.hash);
+      // Keep `history.state`: the scroll-position bookkeeping stamps a key into it, and `replaceState({})` wiped
+      // that key, so going back to this entry could not find its remembered offset.
+      history.replaceState({ ...(history.state || {}) }, '', url.pathname + url.search + url.hash);
     }
     return;
   }
@@ -55,9 +57,11 @@ wireStaticAvatars();
 wirePostScreenshots();
 wireAllQuoteExpansion();
 
+// Back/forward restores the scroll position the reader left on that history entry; `scrollRestoration` is
+// manual, so the browser cannot do it.
 window.addEventListener('popstate', async () => {
   await route();
-  window.scrollTo({ top: 0 });
+  restoreScroll();
 });
 
 // "Hiện thị số liệu không rút gọn" changes how numbers and dates are formatted, and those strings are baked
@@ -72,7 +76,7 @@ window.addEventListener('voz:format-change', async () => {
 (async function boot() {
   // Legacy hash URLs (#/t/123) are rewritten to the path form.
   if (location.hash.startsWith('#/')) {
-    history.replaceState({}, '', location.hash.slice(1));
+    history.replaceState({ ...(history.state || {}) }, '', location.hash.slice(1));
   }
   await loadSession();
   await route();

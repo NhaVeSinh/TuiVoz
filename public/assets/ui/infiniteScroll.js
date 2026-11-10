@@ -69,7 +69,8 @@ export function mountInfiniteScroll(options) {
       }
       state.page = target;
       try {
-        history.replaceState(null, '', `${state.makeHref(target)}${location.hash}`);
+        // Keep `history.state`: it carries the scroll-position key, and passing `null` would drop it.
+        history.replaceState(history.state, '', `${state.makeHref(target)}${location.hash}`);
       } catch {
         /* replaceState can fail on a stale entry; the URL is cosmetic here. */
       }
