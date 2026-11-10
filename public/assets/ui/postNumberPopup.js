@@ -51,6 +51,11 @@ async function copy(text) {
 let open = null;
 let watchRaf = 0;
 
+// The number is also the permalink of its own post, so the same click opens the menu *and* scrolls the page to
+// that post. That programmatic scroll used to close the menu immediately — measured as
+// `doc-click → popup add → popup remove → scroll`. Inside this window a scroll only re-anchors the menu.
+const JUMP_GRACE_MS = 700;
+
 export function closePostNumberPopup() {
   if (watchRaf) {
     cancelAnimationFrame(watchRaf);
@@ -62,8 +67,35 @@ export function closePostNumberPopup() {
   open = null;
   document.removeEventListener('click', onDocumentClick, true);
   document.removeEventListener('keydown', onKeydown, true);
-  window.removeEventListener('scroll', closePostNumberPopup, true);
+  window.removeEventListener('scroll', onScroll, true);
   window.removeEventListener('resize', closePostNumberPopup, true);
+  window.removeEventListener('wheel', onUserScroll, { capture: true });
+  window.removeEventListener('touchmove', onUserScroll, { capture: true });
+}
+
+// Anchored below the number and kept inside the viewport. Fixed so it escapes the post's stacking context.
+function place() {
+  if (!open) return;
+  const { root, trigger } = open;
+  const rect = trigger.getBoundingClientRect();
+  const width = root.offsetWidth;
+  const left = Math.min(Math.max(8, rect.right - width), window.innerWidth - width - 8);
+  root.style.left = `${left}px`;
+  root.style.top = `${rect.bottom + 6}px`;
+}
+
+function onScroll() {
+  if (!open) return;
+  // Still settling from the anchor jump this click caused: follow the number instead of dying.
+  if (performance.now() - open.openedAt < JUMP_GRACE_MS) {
+    place();
+    return;
+  }
+  closePostNumberPopup();
+}
+
+function onUserScroll() {
+  closePostNumberPopup();
 }
 
 // The post list is replaced by innerHTML on some navigations, detaching the trigger with no event to listen
@@ -73,6 +105,8 @@ function watchTrigger() {
   const tick = () => {
     if (!open) return;
     if (!open.trigger.isConnected) return closePostNumberPopup();
+    // The anchor jump moves the number under the menu; keep the menu attached to it until it settles.
+    if (performance.now() - open.openedAt < JUMP_GRACE_MS) place();
     watchRaf = requestAnimationFrame(tick);
   };
   watchRaf = requestAnimationFrame(tick);
@@ -114,17 +148,12 @@ export function openPostNumberPopup(trigger, thread, page, postId) {
     )
     .join('');
   document.body.append(root);
-
-  // Anchored below the number and kept inside the viewport. Fixed so it escapes the post's stacking context.
-  const rect = trigger.getBoundingClientRect();
-  const width = root.offsetWidth;
-  const left = Math.min(Math.max(8, rect.right - width), window.innerWidth - width - 8);
-  root.style.left = `${left}px`;
-  root.style.top = `${rect.bottom + 6}px`;
+  place();
 
   trigger.setAttribute('aria-expanded', 'true');
-  open = { root, trigger };
+  open = { root, trigger, openedAt: performance.now() };
   watchTrigger();
+  place();
 
   root.addEventListener('click', async (event) => {
     const option = event.target.closest('.post-share-option');
@@ -142,8 +171,11 @@ export function openPostNumberPopup(trigger, thread, page, postId) {
     if (!open || open.trigger !== trigger) return;
     document.addEventListener('click', onDocumentClick, true);
     document.addEventListener('keydown', onKeydown, true);
-    window.addEventListener('scroll', closePostNumberPopup, true);
+    window.addEventListener('scroll', onScroll, true);
     window.addEventListener('resize', closePostNumberPopup, true);
+    // A wheel or touch is unambiguously the reader scrolling, so it closes at once even inside the grace window.
+    window.addEventListener('wheel', onUserScroll, { capture: true, passive: true });
+    window.addEventListener('touchmove', onUserScroll, { capture: true, passive: true });
   }, 0);
 
   root.querySelector('.post-share-option')?.focus();
