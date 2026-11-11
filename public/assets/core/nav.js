@@ -6,6 +6,8 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 let routeHandler = () => {};
 // Set by a view that positions the page itself (a `#post-…` target), so the reset below does not undo it.
 let keepScroll = false;
+// Set when a nested navigate consumed `keepScroll`, so the outer navigate's reset does not undo the same jump.
+let placedByNestedNavigate = false;
 
 // Scroll position per history entry. Entries are identified by a key stamped into `history.state`, because the
 // URL is not unique (a page can be pushed twice) and `history.state` is the only per-entry storage the platform
@@ -75,6 +77,14 @@ export function navigate(path, { replace = false } = {}) {
       keepScroll = false;
       // The view placed itself (a post permalink); record that position for this entry too.
       saveScroll();
+      // An enclosing navigate (the /p/{id}/ → thread redirect) must not reset the scroll this one just set.
+      placedByNestedNavigate = true;
+      return;
+    }
+    // A nested navigate (e.g. /p/{id}/ → /t/…/#post-{id}) already placed the view and consumed the flag. Resetting
+    // here would undo that jump, which is what made the page snap back to the top after following an alert.
+    if (placedByNestedNavigate) {
+      placedByNestedNavigate = false;
       return;
     }
     window.scrollTo({ top: 0 });

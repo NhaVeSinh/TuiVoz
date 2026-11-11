@@ -17,37 +17,12 @@ import { registerAttachments } from '../lib/attachments.js';
 import { postHtml } from '../ui/post.js';
 import { openInlineEditWith } from '../ui/inlineEdit.js';
 import { wireMemberTooltips } from '../ui/memberTooltip.js';
+import { jumpToAnchor } from '../lib/jumpToAnchor.js';
 
 // Same anchoring as a thread permalink: land the message's top under the sticky bars, then correct while
 // late-loading images and lazily-filled strips settle. `#conversation-message-...` is what an alert links to.
 function jumpToMessage(id) {
-  const el = document.getElementById(id);
-  if (!el) return false;
-  el.scrollIntoView({ block: 'start' });
-  const startedAt = Date.now();
-  let userMoved = false;
-  const onUserScroll = () => {
-    userMoved = true;
-  };
-  window.addEventListener('wheel', onUserScroll, { passive: true, once: true });
-  window.addEventListener('touchmove', onUserScroll, { passive: true, once: true });
-  const settle = () => {
-    if (userMoved || !el.isConnected) {
-      window.removeEventListener('wheel', onUserScroll);
-      window.removeEventListener('touchmove', onUserScroll);
-      return;
-    }
-    const top = el.getBoundingClientRect().top;
-    const target = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
-    if (Math.abs(top - target) > 2) el.scrollIntoView({ block: 'start' });
-    if (Date.now() - startedAt < 1200) requestAnimationFrame(settle);
-    else {
-      window.removeEventListener('wheel', onUserScroll);
-      window.removeEventListener('touchmove', onUserScroll);
-    }
-  };
-  requestAnimationFrame(settle);
-  return true;
+  return jumpToAnchor(id);
 }
 
 // Every conversation click handler attached to `#app`. The router never removes them, and a re-render keeps the

@@ -13,9 +13,9 @@ Web diễn đàn theo phong cách voz.vn — thin client chạy trực tiếp tr
 
 ## Kiến trúc
 
-- `api/[...path].js` — Vercel Edge Function (region `sin1`): proxy `/api/xf/*` → `voz.vn/api` + các endpoint OAuth
+- `api/handler.js` — Vercel Edge Function (region `sin1`): proxy `/api/xf/*` → `voz.vn/api` + các endpoint OAuth
+- `api/og.js` — Edge Function render `og:*` / `twitter:*` cho crawler (link preview), chỉ route request có User-Agent crawler
 - `public/` — SPA thuần ES modules (router History API), không framework, không bundler
-- `tools/` — script Python dựng woff2 từ font gốc OFL
 
 ## Chạy local
 
