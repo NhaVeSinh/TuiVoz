@@ -38,8 +38,8 @@ export async function resolveUnread({ thread, visitorReadDate, fetchPostPage }) 
     if (!firstUnread) break; // page fully read: the candidate from a later page stands
     found = { page, postId: firstUnread.post_id };
     if (page === 1 || (Number(posts[0].post_date) || 0) <= readDate) return found; // exact page
-    // The whole page is unread, so the first unseen post may sit earlier; check the page before it.
-    backward = true;
+    // The whole page is unread, so the first unseen post may sit earlier; the loop's `page -= 1` checks the
+    // page before it.
   }
   if (!found) return null;
 
