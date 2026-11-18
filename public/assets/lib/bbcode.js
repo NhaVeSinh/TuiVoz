@@ -85,6 +85,10 @@ function applyImageSizes(root, bbcode) {
   for (const img of root.querySelectorAll('img')) {
     if (img.closest('.bbCodeBlock--unfurl')) continue;
     img.classList.add('bbImage');
+    // Off-screen photo posts must not pull multi-megabyte originals on render. Lazy only defers: an
+    // in-viewport image still loads immediately, so nothing above the fold changes.
+    img.loading = 'lazy';
+    img.decoding = 'async';
     if (!sizes.size) continue;
     const spec = sizes.get(normalizeImgSrc(img.getAttribute('src')));
     if (!spec) continue;
