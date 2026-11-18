@@ -26,6 +26,7 @@ export async function resolveUnread({ thread, visitorReadDate, fetchPostPage }) 
   // Walk back from the end: every unread page becomes the candidate until a fully read page brackets it.
   let found = null;
   let page = lastPage;
+  let bracketed = false;
   for (let walked = 0; walked < END_WALK && page >= 1; walked += 1, page -= 1) {
     let posts;
     try {
@@ -35,13 +36,18 @@ export async function resolveUnread({ thread, visitorReadDate, fetchPostPage }) 
     }
     if (!posts || !posts.length) return found;
     const firstUnread = posts.find((post) => (Number(post.post_date) || 0) > readDate);
-    if (!firstUnread) break; // page fully read: the candidate from a later page stands
+    if (!firstUnread) {
+      // Page fully read: the candidate from a later page stands, and no search is needed.
+      bracketed = true;
+      break;
+    }
     found = { page, postId: firstUnread.post_id };
     if (page === 1 || (Number(posts[0].post_date) || 0) <= readDate) return found; // exact page
     // The whole page is unread, so the first unseen post may sit earlier; the loop's `page -= 1` checks the
     // page before it.
   }
   if (!found) return null;
+  if (bracketed) return found;
 
   // Binary search pages [1, page] for the first page whose opening post postdates the read mark: posts are
   // date-ordered across pages, so every page before it is fully read and its opening post is the first unseen
