@@ -1,7 +1,8 @@
 // "Jump to first unread post", like voz.vn's /t/<id>/unread. The API exposes no first-unread id, only
 // `visitor_read_date`, so the page is derived by walking back from the last page.
 
-const POSTS_PER_PAGE = 20;
+// The API's fixed page size, verified against /api/threads (list and posts endpoints alike).
+export const POSTS_PER_PAGE = 20;
 
 // Upper bound on post-page requests. Falling back to page 1 is better than a long chain.
 const MAX_PAGE_WALKS = 12;

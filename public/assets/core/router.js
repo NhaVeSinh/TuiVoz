@@ -6,7 +6,7 @@ import { api } from '../api.js';
 import { navigate } from './nav.js';
 import { setRouteHandler } from './nav.js';
 import { errorBox, finishLoading } from '../ui/feedback.js';
-import { resolveUnread, threadLastPage } from '../lib/unread.js';
+import { resolveUnread, threadLastPage, POSTS_PER_PAGE } from '../lib/unread.js';
 import { viewHome, viewForum, viewSearchForum, viewNewThreads } from '../views/forum.js';
 import { viewThread } from '../views/thread.js';
 import { viewSearch } from '../views/search.js';
@@ -37,7 +37,11 @@ export function parsePath() {
 // Resolves a thread's first unread post. A read thread falls back to page 1 with no post, like voz.vn. The
 // thread object comes back so the caller keeps the canonical slug.
 async function unreadTarget(threadId) {
-  const head = await api.thread(threadId, 1);
+  // Metadata only — the walk needs is_unread / visitor_read_date / reply_count, not twenty post bodies. The
+  // bare endpoint carries no posts; visitor fields are absent for guest responses, so a probe without
+  // `is_unread` falls back to the full fetch (same cost as before, never more).
+  let head = await api.threadMeta(threadId);
+  if (head.thread?.is_unread === undefined) head = await api.thread(threadId, 1);
   const thread = head.thread || { thread_id: threadId, title: '' };
   const fallback = { thread, page: 1, postId: null };
   if (!thread.is_unread) return fallback;
@@ -61,12 +65,13 @@ export async function route() {
     if (!head) return await viewHome();
     if (head === 'p' && /^\d+$/.test(segments[1] || '')) {
       const { post } = await api.post(Number(segments[1]));
-      const threadId = post.thread_id || post.Thread?.thread_id;
-      const result = await api.thread(threadId, 1);
-      const perPage = result.pagination?.per_page;
-      if (!perPage || !Number.isFinite(Number(post.position))) throw new Error('Không xác định được trang của bài viết');
-      const targetPage = Math.floor(Number(post.position) / perPage) + 1;
-      return navigate(`${withPage(threadPath(result.thread), targetPage)}#post-${post.post_id}`, { replace: true });
+      // The post payload carries Thread (title builds the slug) and position, and per-page is the API-wide
+      // 20. The old code fetched thread page 1 with all its posts just to read pagination.per_page — three
+      // payloads where one does. Without an embedded Thread the slug-less /t/<id>/ form routes fine.
+      const thread = post.Thread || { thread_id: post.thread_id, title: '' };
+      if (!thread.thread_id || !Number.isFinite(Number(post.position))) throw new Error('Không xác định được trang của bài viết');
+      const targetPage = Math.max(1, Math.floor(Number(post.position) / POSTS_PER_PAGE) + 1);
+      return navigate(`${withPage(threadPath(thread), targetPage)}#post-${post.post_id}`, { replace: true });
     }
     if (head === 'f' && segments[2] === 'post-thread') return await viewCompose(idFromSegment(segments[1]));
     if (head === 'f') return await viewForum(idFromSegment(segments[1]), page);
