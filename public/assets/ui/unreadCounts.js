@@ -2,6 +2,12 @@ import { state } from '../core/dom.js';
 import { api } from '../api.js';
 
 let pending;
+let lastRefresh = 0;
+
+// Navigation, focus and visibility all fire refreshes; a completed fetch at most every 30s keeps the badges
+// honest without paying two list payloads per navigation. force (menu open, explicit mark-read actions)
+// bypasses both the interval and the in-flight dedupe.
+const MIN_REFRESH_INTERVAL = 30_000;
 
 export async function refreshUnreadCounts(force = false) {
   if (!state.loggedIn || !state.me) return;
@@ -9,9 +15,11 @@ export async function refreshUnreadCounts(force = false) {
     if (force === true) await pending;
     else return pending;
   }
+  if (!force && Date.now() - lastRefresh < MIN_REFRESH_INTERVAL) return;
   if (!state.loggedIn || !state.me) return;
   const userId = state.me.user_id;
   pending = Promise.allSettled([api.unreadConversations(), api.unviewedAlerts()]).then((results) => {
+    lastRefresh = Date.now();
     if (!state.loggedIn || state.me?.user_id !== userId) return;
     for (const [index, kind] of ['dm', 'alerts'].entries()) {
       if (results[index].status !== 'fulfilled') continue;
