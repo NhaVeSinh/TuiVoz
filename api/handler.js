@@ -224,6 +224,24 @@ async function fetchMe(tokens) {
 // The reaction member list is scraped by the browser (ui/reactions.js): Cloudflare blocks a server-side fetch
 // of /p/{id}/reactions, so there is no proxy route for it.
 
+// Browser-cacheable GET responses, tiered by what staleness actually costs. The /voz/* app-support endpoints
+// are identical for every user and voz.vn itself tags them with ETags + a max-age, so the response's own ETag
+// and cache policy are passed through (a stale entry revalidates with If-None-Match and voz.vn answers 304).
+// The node tree changes rarely and is worth an hour. Everything else keeps no-store: voz.vn sends no ETags for
+// entities, so a cached thread page would render replies and read-state late — e.g. a reply navigating to the
+// page it just posted to.
+function cacheControlFor(method, sub, upstreamHeaders, headers) {
+  if (method !== 'GET') return 'private, no-store, max-age=0';
+  if (sub === '/nodes') return 'private, max-age=3600';
+  if (sub.startsWith('/voz/reactions') || sub.startsWith('/voz/smilies')) {
+    const etag = upstreamHeaders.get('etag');
+    if (etag) headers.set('ETag', etag);
+    return upstreamHeaders.get('cache-control') || 'private, max-age=3600';
+  }
+  if (sub.startsWith('/voz/app-config')) return upstreamHeaders.get('cache-control') || 'private, max-age=60';
+  return 'private, no-store, max-age=0';
+}
+
 async function handleProxy(request, url, tokens) {
   const sub = url.pathname.replace(/^\/api\/xf/, '') || '/';
   const target = `${API_BASE}${sub}${url.search}`;
@@ -268,7 +286,8 @@ async function handleProxy(request, url, tokens) {
 
   const headers = new Headers();
   headers.set('Content-Type', upstream.headers.get('content-type') || 'application/json; charset=utf-8');
-  headers.set('Cache-Control', 'private, no-store, max-age=0');
+  // Cacheable tiers only apply to successful upstream responses — a proxied 5xx must never be cached.
+  headers.set('Cache-Control', upstream.ok ? cacheControlFor(method, sub, upstream.headers, headers) : 'private, no-store, max-age=0');
   for (const name of ['xf-request-user', 'xf-request-user-extras']) {
     const value = upstream.headers.get(name);
     if (value) headers.set(name, value);
