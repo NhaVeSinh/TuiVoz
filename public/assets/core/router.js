@@ -38,10 +38,16 @@ export function parsePath() {
 // thread object comes back so the caller keeps the canonical slug.
 async function unreadTarget(threadId) {
   // Metadata only — the walk needs is_unread / visitor_read_date / reply_count, not twenty post bodies. The
-  // bare endpoint carries no posts; visitor fields are absent for guest responses, so a probe without
-  // `is_unread` falls back to the full fetch (same cost as before, never more).
+  // bare endpoint carries no posts, but a probe is only trustworthy when it carries the complete visitor state
+  // the walk needs: an `is_unread` without `visitor_read_date` reads as "never read anything" and walks every
+  // page back to 1. Without usable visitor fields (guest context, or a bare response that omits them) fall
+  // back to the full fetch — never more costly than before.
   let head = await api.threadMeta(threadId);
-  if (head.thread?.is_unread === undefined) head = await api.thread(threadId, 1);
+  const probe = head.thread;
+  const usable = !!probe
+    && typeof probe.is_unread === 'boolean'
+    && (!probe.is_unread || probe.visitor_read_date !== undefined);
+  if (!usable) head = await api.thread(threadId, 1);
   const thread = head.thread || { thread_id: threadId, title: '' };
   const fallback = { thread, page: 1, postId: null };
   if (!thread.is_unread) return fallback;
