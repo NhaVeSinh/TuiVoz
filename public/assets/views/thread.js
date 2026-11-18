@@ -478,8 +478,18 @@ function wireThreadActions(threadId, posts, thread, page = 1) {
         if (!res.ok) throw new ApiError(res.status, payload);
         clearEditorDraft(textarea);
         toast('Đã gửi trả lời');
-        navigate(`${withPage(threadPath(thread), res.pagination ? res.pagination.last_page : 1)}?post=${payload.post.post_id}`);
-        await viewThread(threadId, 'last', payload.post.post_id);
+        // The reply response carries the thread's pagination: one navigation renders the last page with the
+        // focus post. The old code read `pagination` off the fetch Response (always undefined, so it landed on
+        // page 1) and re-rendered again through viewThread('last'), which refetched page 1 to resolve the real
+        // page — three payloads and a wasted render per reply.
+        const lastPage = Number(payload.pagination?.last_page);
+        if (lastPage) {
+          navigate(`${withPage(threadPath(thread), lastPage)}?post=${payload.post.post_id}`);
+        } else {
+          // No pagination in the payload: resolve 'last' through the view like before, without the extra
+          // page-1 navigation render.
+          await viewThread(threadId, 'last', payload.post.post_id);
+        }
       } catch (err) {
         toast(err.message || 'Gửi thất bại', true);
         submit.disabled = false;
