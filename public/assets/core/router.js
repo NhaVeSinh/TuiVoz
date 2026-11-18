@@ -1,7 +1,7 @@
 // History-API router. The page number lives in the path (/t/slug.123/page-2).
 
 import { app } from './dom.js';
-import { idFromSegment, threadPath, dmPath, withPage } from './paths.js';
+import { idFromSegment, threadPath, dmPath, withPage, postPage } from './paths.js';
 import { api } from '../api.js';
 import { navigate } from './nav.js';
 import { setRouteHandler } from './nav.js';
@@ -50,6 +50,23 @@ async function unreadTarget(threadId) {
   return { thread, page: target.page, postId: target.postId };
 }
 
+// Page, thread and title for one post id: `?post=` links and `/p/{id}/` both need to know which page a post
+// lives on before the thread can be rendered there.
+async function postLocation(postId) {
+  try {
+    const { post } = await api.post(postId);
+    const threadId = Number(post?.thread_id || post?.Thread?.thread_id) || 0;
+    if (!threadId) return null;
+    const res = await api.thread(threadId, 1);
+    const title = res.thread?.title || post.Thread?.title || '';
+    const page = postPage(post, res.pagination?.per_page);
+    if (!page) return null;
+    return { threadId, page, title };
+  } catch {
+    return null;
+  }
+}
+
 export async function route() {
   const { segments, params, page } = parsePath();
   const head = segments[0] || '';
@@ -60,26 +77,35 @@ export async function route() {
   try {
     if (!head) return await viewHome();
     if (head === 'p' && /^\d+$/.test(segments[1] || '')) {
-      const { post } = await api.post(Number(segments[1]));
-      const threadId = post.thread_id || post.Thread?.thread_id;
-      const result = await api.thread(threadId, 1);
-      const perPage = result.pagination?.per_page;
-      if (!perPage || !Number.isFinite(Number(post.position))) throw new Error('Không xác định được trang của bài viết');
-      const targetPage = Math.floor(Number(post.position) / perPage) + 1;
-      return navigate(`${withPage(threadPath(result.thread), targetPage)}#post-${post.post_id}`, { replace: true });
+      const target = await postLocation(Number(segments[1]));
+      if (!target) throw new Error('Không xác định được trang của bài viết');
+      return navigate(`${withPage(threadPath({ thread_id: target.threadId, title: target.title }), target.page)}#post-${segments[1]}`, { replace: true });
     }
     if (head === 'f' && segments[2] === 'post-thread') return await viewCompose(idFromSegment(segments[1]));
     if (head === 'f') return await viewForum(idFromSegment(segments[1]), page);
     if (head === 's') return await viewSearchForum(idFromSegment(segments[1]), page);
     if (head === 't') {
       const threadId = idFromSegment(segments[1]);
+      const focusPost = Number(params.get('post')) || null;
       // /t/<slug>.<id>/unread — resolve the page, then replace the URL like voz.vn's redirect.
       if (segments[2] === 'unread') {
         const target = await unreadTarget(threadId);
         const href = `${withPage(threadPath(target.thread), target.page)}${target.postId ? `#post-${target.postId}` : ''}`;
         return navigate(href, { replace: true });
       }
-      return await viewThread(threadId, page, Number(params.get('post')) || null);
+      // A bare `?post=` carries no page, so the thread would open at the top whenever the post is past page 1.
+      // As `/p/{id}/` does, resolve the page from the post's position and rewrite the URL to the form everything
+      // else links with.
+      if (focusPost) {
+        const target = await postLocation(focusPost);
+        // A post that no longer resolves (deleted) falls through: the thread opens normally instead of erroring.
+        if (target) {
+          const href = `${withPage(threadPath({ thread_id: target.threadId, title: target.title }), target.page)}#post-${focusPost}`;
+          if (`${location.pathname}${location.search}${location.hash}` !== href) return await navigate(href, { replace: true });
+          if (target.threadId === threadId) return await viewThread(threadId, target.page, focusPost);
+        }
+      }
+      return await viewThread(threadId, page, focusPost);
     }
     if (head === 'new') return await viewNewThreads(page);
     if (head === 'search') return await viewSearch(params.get('q') || '', params.get('id'), page);

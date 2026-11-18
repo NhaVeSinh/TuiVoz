@@ -116,9 +116,9 @@ TuiVoz/
 | Tập tin | Chức năng |
 |---|---|
 | `core/dom.js` | Quản lý các handle DOM gốc (`#app`, `#breadcrumbs`, `#header-account`, `#nav-list`, `#toast`, `#modal-root`) và `state` mutable toàn cục (`me`, `loggedIn`, `reactions`, `activeNav`, `breadcrumbs`). |
-| `core/router.js` | History API Router chính: phân tích URL, tách phân trang `page-N`, điều phối routing đến các View tương ứng (`viewHome`, `viewForum`, `viewSearchForum`, `viewThread`, `viewSearch`, `viewDmList`, `viewDm`, `viewNewDm`, `viewAlerts`, `viewBookmarks`, `viewWatched`, `viewUser`, `viewCompose`, `viewSettings`, `viewLogin`). Hỗ trợ redirect bài viết `/p/:id` về đúng trang của thread, xử lý route nhảy tới bài chưa đọc `/t/:id/unread`. |
+| `core/router.js` | History API Router chính: phân tích URL, tách phân trang `page-N`, điều phối routing đến các View tương ứng (`viewHome`, `viewForum`, `viewSearchForum`, `viewThread`, `viewSearch`, `viewDmList`, `viewDm`, `viewNewDm`, `viewAlerts`, `viewBookmarks`, `viewWatched`, `viewUser`, `viewCompose`, `viewSettings`, `viewLogin`). Hỗ trợ redirect bài viết `/p/:id` về đúng trang của thread, xử lý route nhảy tới bài chưa đọc `/t/:id/unread`, và chuẩn hóa mọi permalink cũ dạng `?post=<id>` sang `/page-N/#post-<id>` qua helper `postLocation` (xem §7.1). |
 | `core/nav.js` | Điều hướng không reload trang (`navigate`), lưu vị trí cuộn trang (`saveScroll`, `restoreScroll`) theo từng entry history state tránh bị nhảy lên đầu trang khi back/forward, kiểm soát cờ `keepCurrentScroll` khi chuyển tới bookmark/post anchor. |
-| `core/paths.js` | Định dạng đường dẫn URL chuẩn SEO phong cách voz.vn: slugify tiêu đề tiếng Việt loại bỏ dấu (`threadPath`, `forumPath`, `searchForumPath`, `userPath`, `dmPath`), trích xuất ID từ chuỗi `slug.id`, gắn hậu tố phân trang `withPage(path, page)`. |
+| `core/paths.js` | Định dạng đường dẫn URL chuẩn SEO phong cách voz.vn: slugify tiêu đề tiếng Việt loại bỏ dấu (`threadPath`, `forumPath`, `searchForumPath`, `userPath`, `dmPath`), trích xuất ID từ chuỗi `slug.id`, gắn hậu tố phân trang `withPage(path, page)`, và permalink bài viết `postPage(post, perPage)` / `postPath(post, thread, perPage)` → `/t/<slug>.<id>/page-N/#post-<id>`. |
 | `core/icons.js` | Tập hợp icon vector SVG inline dạng hàm tối ưu (Bookmark, Search, Mail, Bell, Power, Comments, Eye On/Off, Quote, Reply, Report, Edit, Delete, User, Camera...) không phụ thuộc icon font. |
 | `core/utils.js` | Tiện ích định dạng dữ liệu: escape HTML (`esc`), rút gọn số lượt xem/bình luận theo chuẩn K/M (`num`) hoặc hiển thị đầy đủ dựa theo cài đặt, định dạng thời gian tương đối (`timeAgo` - "vừa xong", "x phút trước") và ngày tháng tuyệt đối (`fullDate`, `postDate`, `joinDate`). |
 
@@ -307,3 +307,28 @@ Cấu hình trong `vercel.json`:
 ## 6. Tổng Kết
 
 Toàn bộ 65 tập tin JS, 20 tập tin CSS cùng các tài nguyên font chữ và hình ảnh trong dự án `TuiVoz` tạo nên một cấu trúc chặt chẽ, hoạt động không cần cơ sở dữ liệu nội bộ và bảo mật tuyệt đối thông qua tầng Edge Proxy. Tài liệu này cung cấp đầy đủ bản đồ kỹ thuật phục vụ việc bảo trì, phát triển tính năng mới và triển khai dự án lên môi trường production.
+
+---
+
+## 7. Nhật Ký Sửa Lỗi
+
+### 7.1. Nhảy sai bài khi bấm kết quả tìm kiếm (permalink bài viết không có trang)
+
+**Triệu chứng:** Trang `/search?q=…&member=…`, bấm một dòng kết quả thì thread mở ra ở **bài đầu tiên** thay vì bài vừa tìm được (đặc biệt rõ với bài nằm ở trang 2 trở đi).
+
+**Nguyên nhân:** Hai lỗi cộng dồn.
+
+1. `ui/threadRow.js` (`postRow`, và cả `memberPostRow` / `memberActivityRow`) dựng link dạng `/t/<slug>.<id>/?post=<post_id>` — dạng này **không mang số trang**. `views/thread.js` vì thế luôn tải trang 1; nếu bài nằm ở trang khác thì phần tử `#post-<id>` không tồn tại, `jumpToAnchor` trả `false`, `keepCurrentScroll()` không được gọi, và `navigate()` trong `core/nav.js` reset `window.scrollTo({ top: 0 })` → người đọc rơi về bài #1. (Dạng `/t/<slug>/post-<id>` của tab hoạt động thành viên thậm chí còn trỏ tới một route không tồn tại.)
+2. Khi `?post=` trỏ tới bài **có** trên trang 1 nhưng không tìm thấy phần tử, `viewThread` im lặng bỏ qua và cũng bị reset về đầu trang.
+
+**Cách sửa:**
+
+| Tập tin | Thay đổi |
+|---|---|
+| `core/paths.js` | Thêm `postPage(post, perPage)` (đổi `position` 0-based của XenForo thành số trang) và `postPath(post, thread, perPage)` — permalink chuẩn duy nhất: `/t/<slug>.<id>/page-N/#post-<id>`. |
+| `ui/threadRow.js` | `postRow`, `memberPostRow`, `memberActivityRow` nhận thêm tham số `perPage` và dựng link qua `postPath`, nên mọi danh sách bài viết (tìm kiếm, đánh dấu, hoạt động thành viên) trỏ thẳng tới đúng trang + đúng anchor. |
+| `views/search.js`, `views/lists.js` (bookmarks), `views/user.js` (tab activity / postings) | Truyền `res.pagination.per_page` xuống các hàm dựng row. |
+| `core/router.js` | Thêm `postLocation(postId)` (1 request `/posts/{id}` + 1 request thread để lấy `per_page`) và dùng chung cho cả `/p/:id/` lẫn route thread: mọi URL cũ còn sót `?post=<id>` được **replace** sang dạng `/t/<slug>.<id>/page-N/#post-<id>` trước khi render, thay vì render sai trang. Bài đã bị xóa thì rơi về hành vi cũ (mở thread bình thường). |
+| `views/thread.js` | Có `focusPost` thì **luôn** gọi `keepCurrentScroll()` trước khi jump, để không bao giờ bị reset về đầu trang kể cả khi không tìm thấy anchor. |
+
+**Đã kiểm chứng** (Firefox, dev server local): 6 kết quả tìm kiếm liên tiếp (bài ở trang 1, 3, 5, 14, 17) đều landing đúng `#post-<id>` với `top = 82px` (đúng `scroll-padding-top` của header dính), `document.elementFromPoint` tại vùng đó nằm trong chính bài viết; back/forward giữ đúng vị trí; link cũ `?post=`, `/t/<id>/?post=` và `/p/<id>/` đều redirect về cùng URL chuẩn.

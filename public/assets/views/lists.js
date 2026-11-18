@@ -69,7 +69,7 @@ export async function viewBookmarks(page) {
         ${
           items.length
             ? `<div class="structItemContainer"><div class="structItemContainer-group">${items
-                .map((b) => postRow(b.Post || {}, (b.Post && b.Post.Thread) || {}))
+                .map((b) => postRow(b.Post || {}, (b.Post && b.Post.Thread) || {}, res.pagination?.per_page))
                 .join('')}</div></div>`
             : '<div class="empty">Chưa đánh dấu bài nào.</div>'
         }

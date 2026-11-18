@@ -254,7 +254,10 @@ export async function viewThread(threadId, page, focusPost) {
     }
 
     if (focusPost) {
-      if (jumpToPost(`post-${focusPost}`)) keepCurrentScroll();
+      // A permalink owns the scroll even when the post is not on this page: falling through to the reset would
+      // drop the reader at the top of the thread instead of at the post they asked for.
+      keepCurrentScroll();
+      jumpToPost(`post-${focusPost}`);
     } else if (location.hash.startsWith('#post-')) {
       if (jumpToPost(location.hash.slice(1))) keepCurrentScroll();
     }
