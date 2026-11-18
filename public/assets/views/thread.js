@@ -232,7 +232,9 @@ export async function viewThread(threadId, page, focusPost) {
       currentPage: res.pagination?.current_page || 1,
       lastPage: res.pagination?.last_page || 1,
       after: document.getElementById('pager-slot'),
-      fetchPage: (p) => api.thread(threadId, p),
+      // Appending needs only the next page's posts: the full thread payload would re-send the thread metadata
+      // (Forum, permissions, …) on every page for nothing.
+      fetchPage: (p) => api.threadPosts(threadId, p),
       insert: (p, next) => {
         const list = document.getElementById('post-list');
         const more = next.posts || [];
