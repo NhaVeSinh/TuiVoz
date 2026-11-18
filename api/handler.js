@@ -232,7 +232,8 @@ async function fetchMe(tokens) {
 // page it just posted to.
 function cacheControlFor(method, sub, upstreamHeaders, headers) {
   if (method !== 'GET') return 'private, no-store, max-age=0';
-  if (sub === '/nodes') return 'private, max-age=3600';
+  // The rewritten path keeps its trailing slash (/api/xf/nodes/ → sub "/nodes/"), so match by prefix.
+  if (sub.startsWith('/nodes')) return 'private, max-age=3600';
   if (sub.startsWith('/voz/reactions') || sub.startsWith('/voz/smilies')) {
     const etag = upstreamHeaders.get('etag');
     if (etag) headers.set('ETag', etag);
