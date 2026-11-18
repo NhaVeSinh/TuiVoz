@@ -221,54 +221,8 @@ async function fetchMe(tokens) {
   return data.me || null;
 }
 
-// The REST API only exposes reaction counts. The member list lives on /p/{id}/reactions, which Cloudflare
-// blocks for server-side fetch, so the browser fetches it and parses here.
-function decodeEntities(text) {
-  return String(text || '')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
-}
-
-function parseReactionList(html) {
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  const rows = [];
-  for (const row of doc.querySelectorAll('.block-row--separated')) {
-    const user = row.querySelector('.username[data-user-id]');
-    if (!user) continue;
-    const reaction = row.querySelector('.reaction[data-reaction-id]');
-    const img = row.querySelector('.reaction-image');
-    const time = row.querySelector('time');
-    rows.push({
-      user_id: Number(user.getAttribute('data-user-id')),
-      username: user.textContent.trim(),
-      reaction_id: reaction ? Number(reaction.getAttribute('data-reaction-id')) : null,
-      reaction_title: img ? img.getAttribute('alt') : null,
-      date: time ? time.getAttribute('datetime') : null,
-    });
-  }
-  return rows;
-}
-
-const reactionCache = new Map();
-const REACTION_TTL = 60_000;
-
-async function fetchReactionUsers(postId) {
-  const cached = reactionCache.get(postId);
-  if (cached && Date.now() - cached.at < REACTION_TTL) return cached.data;
-  const res = await fetch(`https://voz.vn/p/${postId}/reactions`, {
-    credentials: 'omit',
-    headers: { Accept: 'text/html' },
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const html = await res.text();
-  const data = { reactions: parseReactionList(html) };
-  reactionCache.set(postId, { at: Date.now(), data });
-  return data;
-}
+// The reaction member list is scraped by the browser (ui/reactions.js): Cloudflare blocks a server-side fetch
+// of /p/{id}/reactions, so there is no proxy route for it.
 
 async function handleProxy(request, url, tokens) {
   const sub = url.pathname.replace(/^\/api\/xf/, '') || '/';
