@@ -5,6 +5,7 @@ import { editorCodeHtml, editorDomCode, editorCodePlain } from '../lib/editorCod
 import { loadSmilies, smiliesReady, renderSmilies } from '../lib/smilies.js';
 import { editorToolbar, showToolPanel, panelTools } from './editorTools.js';
 import { attachImageResizer } from './imageResizer.js';
+import { openMentionMenu, mentionContext } from './mentionMenu.js';
 import { uploadImageFiles, pikBbcode } from '../lib/pikUpload.js';
 import { AttachmentUploads, attachmentSupported, ATTACH_ACCEPT } from '../lib/uploadAttachments.js';
 
@@ -20,6 +21,7 @@ export function editorHtml(id, value = '', placeholder = 'Nội dung…', contex
     <textarea class="textarea editor-source" id="${esc(id)}" placeholder="${esc(placeholder)}" aria-label="${esc(placeholder)}">${esc(value)}</textarea>
     <div class="editor-visual" role="textbox" aria-multiline="true" aria-label="${esc(placeholder)}" data-placeholder="${esc(placeholder)}" contenteditable="true" hidden></div>
     <div class="editor-preview bbWrapper" aria-label="Xem trước cục bộ" hidden></div>
+    <ul class="mention-menu" role="listbox" aria-label="Gợi ý thành viên" hidden></ul>
     <span role="status" class="editor-status"></span>
   </div>`;
 }
@@ -46,6 +48,7 @@ function wireOneEditor(editor) {
     const panel = editor.querySelector('.editor-panel');
     const preview = editor.querySelector('.editor-preview');
     const status = editor.querySelector('.editor-status');
+    const mentionList = editor.querySelector('.mention-menu');
     attachImageResizer(editor, visual);
     const native = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
     let sourceMode = false, savedRange = null, sourceSelection = [0, 0], composing = false;
@@ -178,6 +181,27 @@ function wireOneEditor(editor) {
       }
     };
     const wrap = (tag, attrs = '') => insert(`[${tag}${attrs}]${selected() || '…'}[/${tag}]`);
+    // The menu writes into the visual editor, so the textarea and the draft follow through `record()`.
+    const mention = openMentionMenu({
+      ed: visual,
+      list: mentionList,
+      commit: (username) => {
+        const selection = document.getSelection();
+        const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+        const node = range?.startContainer;
+        const ctx = range && node?.nodeType === 3 ? mentionContext(node.nodeValue, range.startOffset) : null;
+        visual.focus();
+        if (range && ctx) {
+          range.setStart(node, ctx.start);
+          range.setEnd(node, ctx.end);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+        document.execCommand('insertText', false, `@${username} `);
+        native.set.call(textarea, editorDomCode(visual));
+        record();
+      },
+    });
     const undo = (direction) => {
       const next = position + direction;
       if (next < 0 || next >= history.length) return;
@@ -221,6 +245,7 @@ function wireOneEditor(editor) {
     panel.addEventListener('editor:panel-close', closePanel);
     const outsidePointer = (event) => {
       if (!editor.isConnected) { document.removeEventListener('pointerdown', outsidePointer); return; }
+      if (!event.target.closest('.mention-menu')) mention.close();
       if (event.target.closest('.editor-toolbar, .editor-panel')?.closest('.rich-editor') === editor) return;
       // The emoji and sticker pickers stay open until their own toolbar button is pressed again; they cover a lot
       // of the screen on mobile, so an outside tap is the only other way to dismiss them.
@@ -230,6 +255,7 @@ function wireOneEditor(editor) {
     document.addEventListener('pointerdown', outsidePointer);
     editor.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') {
+        if (mention.isOpen()) { event.stopPropagation(); return; }
         const toggle = editor.querySelector('[data-menu][aria-expanded="true"]');
         closeMenus(); closePanel(); toggle?.focus();
       }
@@ -240,7 +266,17 @@ function wireOneEditor(editor) {
       const menu = event.target.closest?.('[data-menu-panel]');
       if (menu && !menu.hidden && menu.classList.contains('is-open')) menu.style.height = 'auto';
     });
-    editor.addEventListener('pointerdown', (event) => { if (event.target.closest('.editor-toolbar')) { rememberSelection(); if (event.target.closest('button')) event.preventDefault(); } });
+    editor.addEventListener('pointerdown', (event) => {
+      const option = event.target.closest('.mention-menu li[data-username]');
+      if (option && mentionList.contains(option)) {
+        // Keep the editor from taking the caret back before the click lands.
+        event.preventDefault();
+        event.stopPropagation();
+        mention.choose([...mentionList.children].indexOf(option));
+        return;
+      }
+      if (event.target.closest('.editor-toolbar')) { rememberSelection(); if (event.target.closest('button')) event.preventDefault(); }
+    });
     for (const surface of [visual, textarea]) {
       surface.addEventListener('keyup', rememberSelection); surface.addEventListener('mouseup', rememberSelection); surface.addEventListener('blur', rememberSelection);
       surface.addEventListener('input', () => {
@@ -249,11 +285,15 @@ function wireOneEditor(editor) {
         rememberSelection(); record();
         // Typing a smilie code shows the image immediately.
         if (surface === visual) liveSmilies();
+        // @name suggestions only exist while the member is typing them.
+        if (surface === visual) mention.update();
       });
       surface.addEventListener('compositionstart', () => { composing = true; });
       surface.addEventListener('compositionend', () => { composing = false; surface.dispatchEvent(new Event('input', { bubbles: true })); });
       surface.addEventListener('beforeinput', (event) => { if (event.inputType === 'historyUndo' || event.inputType === 'historyRedo') { event.preventDefault(); undo(event.inputType === 'historyUndo' ? -1 : 1); } });
       surface.addEventListener('keydown', (event) => {
+        // Arrow keys, Enter, Tab and Escape belong to the open @mention list; Ctrl+Z stays with the editor.
+        if (surface === visual && !event.ctrlKey && !event.metaKey && !event.altKey && !composing && mention.key(event)) return;
         if ((event.ctrlKey || event.metaKey) && ['z', 'y'].includes(event.key.toLowerCase())) { event.preventDefault(); undo(event.key.toLowerCase() === 'y' || event.shiftKey ? 1 : -1); }
         if ((event.ctrlKey || event.metaKey) && ['b', 'i', 'u'].includes(event.key.toLowerCase()) && !sourceMode) {
           event.preventDefault(); rememberSelection(); document.execCommand({ b: 'bold', i: 'italic', u: 'underline' }[event.key.toLowerCase()]); native.set.call(textarea, editorDomCode(visual)); record();
