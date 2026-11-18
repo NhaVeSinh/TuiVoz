@@ -6,7 +6,7 @@ import { api } from '../api.js';
 import { navigate } from './nav.js';
 import { setRouteHandler } from './nav.js';
 import { errorBox, finishLoading } from '../ui/feedback.js';
-import { resolveUnread, threadLastPage, POSTS_PER_PAGE } from '../lib/unread.js';
+import { resolveUnread, POSTS_PER_PAGE } from '../lib/unread.js';
 import { viewHome, viewForum, viewSearchForum, viewNewThreads } from '../views/forum.js';
 import { viewThread } from '../views/thread.js';
 import { viewSearch } from '../views/search.js';
@@ -37,26 +37,17 @@ export function parsePath() {
 // Resolves a thread's first unread post. A read thread falls back to page 1 with no post, like voz.vn. The
 // thread object comes back so the caller keeps the canonical slug.
 async function unreadTarget(threadId) {
-  // Metadata only — the walk needs is_unread / visitor_read_date / reply_count, not twenty post bodies. The
-  // bare endpoint carries no posts, but a probe is only trustworthy when it carries the complete visitor state
-  // the walk needs: an `is_unread` without `visitor_read_date` reads as "never read anything" and walks every
-  // page back to 1. Without usable visitor fields (guest context, or a bare response that omits them) fall
-  // back to the full fetch — never more costly than before.
-  let head = await api.threadMeta(threadId);
-  const probe = head.thread;
-  const usable = !!probe
-    && typeof probe.is_unread === 'boolean'
-    && (!probe.is_unread || probe.visitor_read_date !== undefined);
-  if (!usable) head = await api.thread(threadId, 1);
+  // One bare probe carries everything resolution needs — is_unread, visitor_read_date and the thread's date
+  // range — so no post bodies and no fallback fetch.
+  const head = await api.threadMeta(threadId);
   const thread = head.thread || { thread_id: threadId, title: '' };
-  const fallback = { thread, page: 1, postId: null };
-  if (!thread.is_unread) return fallback;
-
-  const target = await resolveUnread(
-    { visitorReadDate: thread.visitor_read_date, lastPage: threadLastPage(thread) },
-    (p) => api.threadPosts(threadId, p)
-  );
-  if (!target) return fallback;
+  if (!thread.is_unread) return { thread, page: 1, postId: null };
+  const target = await resolveUnread({
+    thread,
+    visitorReadDate: thread.visitor_read_date,
+    fetchPostPage: (p) => api.threadPosts(threadId, p),
+  });
+  if (!target) return { thread, page: 1, postId: null };
   return { thread, page: target.page, postId: target.postId };
 }
 

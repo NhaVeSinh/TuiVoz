@@ -78,6 +78,15 @@ function quickReplyUserHtml() {
                         </div>`;
 }
 
+// voz.vn web marks a thread read up to the newest post on the page being viewed; without these marks the
+// server's read state stays empty and /t/<id>/unread always resolves to page 1. Marks only ever advance and
+// voz.vn discards cutoffs older than its retention window, so out-of-order or stale pages are harmless no-ops.
+function markReadUpTo(threadId, unread, posts) {
+  const cutoff = posts.reduce((max, post) => Math.max(max, Number(post.post_date) || 0), 0);
+  if (!state.loggedIn || !unread || !cutoff) return;
+  api.markThreadRead(threadId, cutoff).catch(() => {});
+}
+
 function wireSignatureToggles(root) {
   root.querySelectorAll('.message-signature').forEach((signature) => {
     const button = signature.nextElementSibling;
@@ -246,14 +255,13 @@ export async function viewThread(threadId, page, focusPost) {
         hydrateReactionLists(list);
         wireMemberTooltips(list, more.map((post) => post.User));
         for (const post of more) postIndex.set(post.post_id, post);
+        markReadUpTo(threadId, thread.is_unread, more);
         return more.length;
       },
     });
-    // Opening a thread marks it read, clearing the bold title in the forum listing. Only the last page counts
-    // as "read".
-    if (state.loggedIn && thread.is_unread && res.pagination && res.pagination.current_page >= res.pagination.last_page) {
-      api.markThreadRead(threadId, Math.floor(Date.now() / 1000)).catch(() => {});
-    }
+    // Opening a thread page marks it read up to that page's newest post, like voz.vn web — reading the last
+    // page clears the bold title in the forum listing.
+    markReadUpTo(threadId, thread.is_unread, posts);
 
     if (focusPost) {
       if (jumpToPost(`post-${focusPost}`)) keepCurrentScroll();
