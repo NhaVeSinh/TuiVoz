@@ -3,6 +3,7 @@
 // anyway, but this avoids wasted requests).
 
 import { api } from '../api.js';
+import { isDataSaving } from './dataSaving.js';
 import { state } from '../core/dom.js';
 
 const queue = [];
@@ -15,7 +16,8 @@ function flush() {
 }
 
 export function signal(event) {
-  if (!state.loggedIn || !event?.type) return;
+  // Data-saving skips the analytics POSTs entirely; nothing user-visible depends on them.
+  if (!state.loggedIn || !event?.type || isDataSaving()) return;
   queue.push({ timestamp: Math.floor(Date.now() / 1000), ...event });
   clearTimeout(timer);
   timer = setTimeout(flush, 5000);
