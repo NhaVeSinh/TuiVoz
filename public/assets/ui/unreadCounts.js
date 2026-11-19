@@ -1,5 +1,6 @@
 import { state } from '../core/dom.js';
 import { api } from '../api.js';
+import { isDataSaving } from '../lib/dataSaving.js';
 
 let pending;
 let lastRefresh = 0;
@@ -50,6 +51,8 @@ export function wireUnreadCounts() {
     if (!document.hidden) refreshUnreadCounts();
   });
   setInterval(() => {
-    if (!document.hidden) refreshUnreadCounts();
+    // Save mode pauses the background poll entirely — navigation and returning focus still refresh (throttled),
+    // so only "sitting on one page for minutes" defers badge updates.
+    if (!document.hidden && !isDataSaving()) refreshUnreadCounts();
   }, 60000);
 }
