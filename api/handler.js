@@ -143,7 +143,22 @@ function json(data, init = {}) {
 
 function corsHeaders(request) {
   const origin = request.headers.get('origin') || '';
-  const allowed = origin === SITE || origin.endsWith('.vercel.app') || origin.startsWith('http://localhost');
+  // Portable rule that works on any deployment of this code — production domain, previews, custom domains,
+  // forks — without hardcoding a single project name: the origin may read the API when it IS the host the
+  // request was made to (same-origin fetches never even need these headers, but the userscript on voz.vn and
+  // local dev do), when it is the site itself, or a local dev server. Everything else — every other Vercel
+  // customer's app, lookalike hosts like localhost.evil.com — gets the site as its ACAO and cannot read.
+  let originUrl = null;
+  try {
+    originUrl = origin ? new URL(origin) : null;
+  } catch {
+    originUrl = null;
+  }
+  const sameHost = originUrl !== null
+    && (originUrl.protocol === 'https:' || originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1')
+    && originUrl.host === request.headers.get('host');
+  const allowed = origin === SITE || sameHost
+    || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
   return {
     'Access-Control-Allow-Origin': allowed ? origin : SITE,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
