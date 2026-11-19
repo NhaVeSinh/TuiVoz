@@ -46,6 +46,7 @@ export const emptySettings = () => ({
   staticAvatars: STATIC_AVATARS_DEFAULT,
   bannedUsers: BANNED_USERS_DEFAULT,
   fullNumbers: FULL_NUMBERS_DEFAULT,
+  dataSaving: DATA_SAVING_DEFAULT,
 });
 
 // Colour scheme for the content area; the chrome keeps its dark styling in both modes.
@@ -128,6 +129,24 @@ export const FULL_NUMBERS_LABELS = {
   all: 'Áp dụng cho toàn bộ web',
 };
 
+// Tiết kiệm dữ liệu — the switch behind every Tier-1 saving lever (paused unread polling, counts-only
+// reaction strips, tap-to-load video embeds, no avatar sniffing, no prefetch, no analytics):
+//   auto — on when the device itself signals saving (Android Data Saver via navigator.connection.saveData,
+//          slow effective types, or cellular); iOS exposes none of these, so there the manual toggle is the
+//          only path; on — always; off — never.
+export const DATA_SAVING_MODES = ['auto', 'on', 'off'];
+export const DATA_SAVING_DEFAULT = 'auto';
+export const DATA_SAVING_LABELS = {
+  auto: 'Tự động theo thiết bị',
+  on: 'Luôn bật',
+  off: 'Tắt',
+};
+export const DATA_SAVING_HELP = {
+  auto: 'Bật khi trình duyệt báo đang dùng dữ liệu di động, Data Saver, hoặc mạng 2G (Chrome và trình duyệt Chromium trên Android). Firefox không đọc được tín hiệu này — dùng Bật/Tắt thủ công. WiFi và máy tính giữ nguyên như bình thường.',
+  on: 'Áp dụng mọi biện pháp tiết kiệm ở mọi nơi, mọi thiết bị.',
+  off: 'Không bao giờ tiết kiệm, kể cả khi thiết bị báo.',
+};
+
 export function normalizeFontScale(value) {
   // Number(null) and Number('') are 0, which would clamp to the floor, so only accept a number or a numeric
   // string.
@@ -175,6 +194,7 @@ export function normalizeSettings(raw) {
       ? raw.bannedUsers
       : BANNED_USERS_DEFAULT;
   out.fullNumbers = FULL_NUMBERS_MODES.includes(raw?.fullNumbers) ? raw.fullNumbers : FULL_NUMBERS_DEFAULT;
+  out.dataSaving = DATA_SAVING_MODES.includes(raw?.dataSaving) ? raw.dataSaving : DATA_SAVING_DEFAULT;
   const list = Array.isArray(raw?.navShortcuts) ? raw.navShortcuts : [];
   const seen = new Set();
   for (const item of list.slice(0, MAX_SHORTCUTS)) {
@@ -250,6 +270,12 @@ export function moveShortcut(id, toIndex) {
 export function setInfiniteScroll(mode) {
   const settings = loadSettings();
   settings.infiniteScroll = SCROLL_MODES.includes(mode) ? mode : SCROLL_DEFAULT;
+  return saveSettings(settings);
+}
+
+export function setDataSaving(mode) {
+  const settings = loadSettings();
+  settings.dataSaving = DATA_SAVING_MODES.includes(mode) ? mode : DATA_SAVING_DEFAULT;
   return saveSettings(settings);
 }
 
