@@ -232,14 +232,18 @@ async function fetchMe(tokens) {
 // page it just posted to.
 function cacheControlFor(method, sub, upstreamHeaders, headers) {
   if (method !== 'GET') return 'private, no-store, max-age=0';
-  // The rewritten path keeps its trailing slash (/api/xf/nodes/ → sub "/nodes/"), so match by prefix.
-  if (sub.startsWith('/nodes')) return 'private, max-age=3600';
-  if (sub.startsWith('/voz/reactions') || sub.startsWith('/voz/smilies')) {
+  if (sub.startsWith('/voz/reactions') || sub.startsWith('/voz/smilies') || sub.startsWith('/voz/app-config')) {
+    // The /voz/* app-support payloads are identical for every user and voz.vn tags them with an ETag + a
+    // max-age — both pass through, but forced private: these responses also carry xf-request-user headers,
+    // and a public CDN-cached copy would hand one visitor's user id to the next within the max-age window.
     const etag = upstreamHeaders.get('etag');
     if (etag) headers.set('ETag', etag);
-    return upstreamHeaders.get('cache-control') || 'private, max-age=3600';
+    const maxAge = /max-age=(\d+)/.exec(upstreamHeaders.get('cache-control') || '')?.[1]
+      || (sub.startsWith('/voz/app-config') ? '60' : '3600');
+    return `private, max-age=${maxAge}`;
   }
-  if (sub.startsWith('/voz/app-config')) return upstreamHeaders.get('cache-control') || 'private, max-age=60';
+  // Everything else — including /nodes, whose freshness the home revalidation depends on — stays no-store:
+  // voz.vn sends no ETags for entities, and cached content pages would render replies and read-state late.
   return 'private, no-store, max-age=0';
 }
 
