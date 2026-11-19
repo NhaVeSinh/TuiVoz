@@ -31,6 +31,11 @@
 .media-embed--facebook .fb-video { width: 100%; }
 .media-embed--facebook iframe { border: 0; }
 .media-source { display: inline-block; margin-top: 5px; font-size: calc(12px * var(--ui-scale)); }
+/* Data-saving placeholder: video embeds render as this button until the reader taps, then the real iframe
+   replaces it in place. */
+.media-play-button { display: block; width: 100%; margin: 0; padding: 16px 12px; border: 1px solid var(--border); border-radius: 4px; background: var(--quote-bg); color: inherit; font-size: calc(14px * var(--ui-scale)); text-align: center; cursor: pointer; }
+.media-play-button:active { background: var(--block-header-bg); }
+.media-play-button[disabled] { opacity: 0.7; }
 /* oEmbed embeds resolve to a picture; the fallback link shows briefly. */
 .media-embed--oembed { max-width: 100%; margin: 12px 0; }
 .media-embed--oembed > a { display: inline-block; max-width: 100%; }

@@ -1,3 +1,5 @@
+import { isDataSaving } from '../lib/dataSaving.js';
+
 window.addEventListener('message', (event) => {
   const resize = (selector) => {
     let payload = event.data;
@@ -113,6 +115,17 @@ function scheduleFacebookHydration(mayHaveFacebook) {
   if (mayHaveFacebook) hydrateFacebook();
 }
 
+// Save mode: the .fb-video div stays in the embed (the SDK needs it for parsing) and the button sits on top
+// until tapped; the tap loads the SDK and parses the container.
+function playFacebookPlaceholder(doc) {
+  const button = doc.createElement('button');
+  button.type = 'button';
+  button.className = 'media-play-button';
+  button.dataset.mediaFacebook = '1';
+  button.textContent = '▶ Nhấn để tải video từ Facebook';
+  return button;
+}
+
 // Flickr serves pictures from these hosts; anything else is dropped.
 const OEMBED_IMAGE_HOSTS = ['live.staticflickr.com', 'staticflickr.com', 'farm1.staticflickr.com', 'farm2.staticflickr.com', 'farm3.staticflickr.com', 'farm4.staticflickr.com', 'farm5.staticflickr.com', 'farm6.staticflickr.com', 'farm8.staticflickr.com', 'farm9.staticflickr.com'];
 
@@ -226,6 +239,63 @@ const DOUYIN_VIDEO_ID = /\/(?:share\/)?video\/(\d{6,25})(?:[/?#]|$)/;
 const DOUYIN_SHORT_CODE = /^\/[\w-]{4,32}\/?$/;
 const DOUYIN_EMBED = (id) => `https://open.douyin.com/player/video?vid=${id}&autoplay=0`;
 const DOUYIN_PAGE = (id) => `https://www.douyin.com/video/${id}`;
+
+// Data-saving placeholder scope: the players that cost megabytes of provider JavaScript. Image/content embeds
+// (imgur, Reddit, Spotify, SoundCloud, Flickr) keep loading — they are often the content itself.
+const VIDEO_SITES = ['youtube', 'vimeo', 'tiktok', 'facebook', 'twitter'];
+const SITE_LABELS = { youtube: 'YouTube', vimeo: 'Vimeo', tiktok: 'TikTok', facebook: 'Facebook', twitter: 'X' };
+
+// One tap handler per placeholder kind, installed once. Each rebuilds the real embed in place, so the lazy
+// iframe (and the provider's JavaScript) only loads when the reader asks for it.
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-media-frame-src]');
+  if (!button) return;
+  event.preventDefault();
+  const embed = button.closest('.media-embed');
+  if (!embed) return;
+  const frame = embed.ownerDocument.createElement('iframe');
+  configureFrame(frame, button.dataset.mediaFrameSrc);
+  frame.className = 'media-frame';
+  embed.replaceChildren(frame);
+  if (button.dataset.mediaHref) {
+    const link = embed.ownerDocument.createElement('a');
+    link.href = button.dataset.mediaHref;
+    link.target = '_blank';
+    link.rel = 'noopener nofollow ugc';
+    link.className = 'media-source';
+    link.textContent = `Mở trên ${SITE_LABELS[button.dataset.mediaSite] || button.dataset.mediaSite || 'nguồn gốc'}`;
+    embed.append(link);
+  }
+});
+
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-media-facebook]');
+  if (!button) return;
+  event.preventDefault();
+  button.disabled = true;
+  button.textContent = 'Đang tải video…';
+  hydrateFacebook().finally(() => button.remove());
+});
+
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-media-douyin]');
+  if (!button) return;
+  event.preventDefault();
+  const embed = button.closest('.media-embed');
+  if (!embed) return;
+  const doc = embed.ownerDocument;
+  const frame = doc.createElement('iframe');
+  configureFrame(frame, DOUYIN_EMBED(button.dataset.mediaDouyin));
+  frame.className = 'media-frame';
+  embed.replaceChildren(frame);
+  const source = doc.createElement('a');
+  source.href = DOUYIN_PAGE(button.dataset.mediaDouyin);
+  source.target = '_blank';
+  source.rel = 'noopener nofollow ugc';
+  source.className = 'media-source';
+  source.textContent = 'Mở trên Douyin';
+  embed.append(source);
+});
 // XenForo wraps a bare link in .bbCodeBlock--unfurl, whose flex layout would squash a 9:16 player into an 80px
 // column, so a link inside one replaces the whole card.
 const DOUYIN_WRAPPER = 'p, .bbCodeBlock--unfurl';
@@ -261,6 +331,7 @@ function markDouyin(embed) {
 
 // Turns one anchor into the player. False when the id is not known yet.
 function embedDouyin(anchor, id) {
+  if (isDataSaving()) return douyinPlaceholder(anchor, id);
   const doc = anchor.ownerDocument;
   const embed = doc.createElement('div');
   markDouyin(embed);
@@ -280,9 +351,27 @@ function embedDouyin(anchor, id) {
   return true;
 }
 
+// Save mode: the Douyin player only loads when the reader taps the placeholder. Short links stay plain anchors
+// entirely — resolving them needs an API round trip before any embed could exist.
+function douyinPlaceholder(anchor, id) {
+  const doc = anchor.ownerDocument;
+  const embed = doc.createElement('div');
+  markDouyin(embed);
+  const button = doc.createElement('button');
+  button.type = 'button';
+  button.className = 'media-play-button';
+  button.dataset.mediaDouyin = id;
+  button.textContent = '▶ Nhấn để tải video từ Douyin';
+  embed.append(button);
+  const target = anchor.closest(DOUYIN_WRAPPER);
+  (target && target.contains(anchor) ? target : anchor).replaceWith(embed);
+  return true;
+}
+
 function hydrateDouyinLinks(root) {
   // Already-embedded posts are skipped here too: restoreMedia runs once per post per render, so a re-render
   // would otherwise stack a second player on every existing one.
+  const saving = isDataSaving();
   const anchors = [...root.querySelectorAll('a[href]')].filter((a) => !a.closest('.media-embed') && (isDouyinLink(a.getAttribute('href')) || douyinVideoId(a.getAttribute('href'))));
   // Grouped by href so a repeated link costs one request and shares the module cache.
   const pending = new Map();
@@ -293,6 +382,7 @@ function hydrateDouyinLinks(root) {
       embedDouyin(anchor, id);
       continue;
     }
+    if (saving) continue; // short-link resolution is an API round trip; the anchor stays a link
     if (!pending.has(href)) pending.set(href, []);
     pending.get(href).push(anchor);
   }
@@ -371,14 +461,27 @@ export function restoreMedia(root) {
       // link is added; the plugin supplies its own.
       pendingFacebook = true;
       sawFacebook = true;
+      if (isDataSaving()) embed.append(playFacebookPlaceholder(root.ownerDocument));
     }
     let frame = embed.querySelector('iframe');
     if (src) {
       embed.replaceChildren();
-      frame = root.ownerDocument.createElement('iframe');
-      configureFrame(frame, src);
-      frame.className = 'media-frame';
-      embed.append(frame);
+      if (isDataSaving() && VIDEO_SITES.includes(site)) {
+        // Data-saving: the provider iframe (megabytes of player JavaScript) only loads when the reader taps.
+        const button = root.ownerDocument.createElement('button');
+        button.type = 'button';
+        button.className = 'media-play-button';
+        button.dataset.mediaFrameSrc = src;
+        if (href) button.dataset.mediaHref = href;
+        button.dataset.mediaSite = site;
+        button.textContent = `▶ Nhấn để tải video từ ${SITE_LABELS[site] || site}`;
+        embed.append(button);
+      } else {
+        frame = root.ownerDocument.createElement('iframe');
+        configureFrame(frame, src);
+        frame.className = 'media-frame';
+        embed.append(frame);
+      }
       const link = root.ownerDocument.createElement('a');
       link.href = href;
       link.target = '_blank';
@@ -399,8 +502,9 @@ export function restoreMedia(root) {
       hydrateOembed(site, key, href);
     } else if (!frame && !pendingFacebook) embed.classList.add('media-embed--fallback');
   }
-  // After the loop: the SDK parses whole containers and must run against the live document.
-  scheduleFacebookHydration(sawFacebook);
+  // After the loop: the SDK parses whole containers and must run against the live document. Save mode skips it
+  // — the Facebook SDK plus the video fetch are exactly what the placeholder defers.
+  if (!isDataSaving()) scheduleFacebookHydration(sawFacebook);
   for (const frame of root.querySelectorAll('iframe.media-frame')) {
     if (!frame.closest('.media-embed')) {
       const wrapper = root.ownerDocument.createElement('div');
