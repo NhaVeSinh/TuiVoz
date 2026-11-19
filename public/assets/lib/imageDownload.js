@@ -2,13 +2,14 @@
 // baseline, like voz.vn's .bbImageWrapper.
 import { getImageDownload } from './settings.js';
 import { toast } from '../ui/feedback.js';
+import { ICON_DOWNLOAD } from '../core/icons.js';
 
 // A sticker is small in both dimensions and in area; a wide banner keeps its button.
 const MIN_EDGE = 96;
 const MIN_AREA = 20_000;
 const WRAPPER_CLASS = 'downloadable-image';
 const BUTTON_CLASS = 'image-download-button';
-const DOWNLOAD_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>';
+const DOWNLOAD_ICON = ICON_DOWNLOAD;
 const CHECK_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4 10-10"/></svg>';
 
 const EXCLUDED_CLASSES = ['smilie', 'bbCodeBlockUnfurl-image', 'bbCodeBlockUnfurl-icon', 'reaction-image'];
