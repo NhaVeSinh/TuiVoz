@@ -4,6 +4,7 @@
 import { state } from '../core/dom.js';
 import { esc } from '../core/utils.js';
 import { userPath } from '../core/paths.js';
+import { isDataSaving } from '../lib/dataSaving.js';
 
 export function reactionBar(post) {
   const counts = post.reaction_counts || {};
@@ -63,12 +64,37 @@ export function reactionSummary(post) {
   const counts = post.reaction_counts || {};
   const total = Object.values(counts).reduce((sum, n) => sum + (Number(n) || 0), 0);
   if (!total) return '';
+  if (isDataSaving()) {
+    // Counts are already in the post payload; the names would cost one full voz.vn HTML page per post, so
+    // save mode shows the icons + total now and loads names only when the reader taps the strip.
+    return `<div class="reactionsBar" data-reaction-list="${post.post_id}" title="Bấm để xem ai đã thả cảm xúc">
+      <span class="reactionsBar-icons">${countIcons(counts)}</span>
+      <span class="reactionsBar-users">${total}</span>
+    </div>`;
+  }
   return `<div class="reactionsBar" data-reaction-list="${post.post_id}">
     <span class="reactionsBar-loading">Đang tải thành viên…</span>
   </div>`;
 }
 
+function countIcons(counts) {
+  const catalogue = state.reactions || [];
+  return catalogue
+    .filter((r) => (Number(counts[String(r.reaction_id)]) || 0) > 0)
+    .map((r) => `<img src="${esc(r.image_url)}" alt="${esc(r.title)}" title="${esc(r.title)}" referrerpolicy="no-referrer" class="reaction-image">`)
+    .join('');
+}
+
+// Save mode only: the counts strip carries no names, so a tap loads the member list on demand.
+document.addEventListener('click', (event) => {
+  const strip = event.target.closest('.reactionsBar[data-reaction-list]');
+  if (!strip || !isDataSaving() || strip.dataset.namesLoaded) return;
+  strip.dataset.namesLoaded = 'true';
+  fillReactionStrip(strip);
+});
+
 export async function hydrateReactionLists(root) {
+  if (isDataSaving()) return; // strips are complete already; names load on tap
   // The member list is a cross-origin scrape per post, so a page of 20 posts would fire 20 requests right after
   // render. Each strip waits until it is near the viewport, keeping the numbers in `reaction_counts` immediate.
   for (const strip of root.querySelectorAll('.reactionsBar[data-reaction-list]')) {
