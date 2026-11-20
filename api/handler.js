@@ -143,7 +143,22 @@ function json(data, init = {}) {
 
 function corsHeaders(request) {
   const origin = request.headers.get('origin') || '';
-  const allowed = origin === SITE || origin.endsWith('.vercel.app') || origin.startsWith('http://localhost');
+  // Portable rule that works on any deployment of this code — production domain, previews, custom domains,
+  // forks — without hardcoding a single project name: the origin may read the API when it IS the host the
+  // request was made to (same-origin fetches never even need these headers, but the userscript on voz.vn and
+  // local dev do), when it is the site itself, or a local dev server. Everything else — every other Vercel
+  // customer's app, lookalike hosts like localhost.evil.com — gets the site as its ACAO and cannot read.
+  let originUrl = null;
+  try {
+    originUrl = origin ? new URL(origin) : null;
+  } catch {
+    originUrl = null;
+  }
+  const sameHost = originUrl !== null
+    && (originUrl.protocol === 'https:' || originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1')
+    && originUrl.host === request.headers.get('host');
+  const allowed = origin === SITE || sameHost
+    || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
   return {
     'Access-Control-Allow-Origin': allowed ? origin : SITE,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
@@ -232,14 +247,18 @@ async function fetchMe(tokens) {
 // page it just posted to.
 function cacheControlFor(method, sub, upstreamHeaders, headers) {
   if (method !== 'GET') return 'private, no-store, max-age=0';
-  // The rewritten path keeps its trailing slash (/api/xf/nodes/ → sub "/nodes/"), so match by prefix.
-  if (sub.startsWith('/nodes')) return 'private, max-age=3600';
-  if (sub.startsWith('/voz/reactions') || sub.startsWith('/voz/smilies')) {
+  if (sub.startsWith('/voz/reactions') || sub.startsWith('/voz/smilies') || sub.startsWith('/voz/app-config')) {
+    // The /voz/* app-support payloads are identical for every user and voz.vn tags them with an ETag + a
+    // max-age — both pass through, but forced private: these responses also carry xf-request-user headers,
+    // and a public CDN-cached copy would hand one visitor's user id to the next within the max-age window.
     const etag = upstreamHeaders.get('etag');
     if (etag) headers.set('ETag', etag);
-    return upstreamHeaders.get('cache-control') || 'private, max-age=3600';
+    const maxAge = /max-age=(\d+)/.exec(upstreamHeaders.get('cache-control') || '')?.[1]
+      || (sub.startsWith('/voz/app-config') ? '60' : '3600');
+    return `private, max-age=${maxAge}`;
   }
-  if (sub.startsWith('/voz/app-config')) return upstreamHeaders.get('cache-control') || 'private, max-age=60';
+  // Everything else — including /nodes, whose freshness the home revalidation depends on — stays no-store:
+  // voz.vn sends no ETags for entities, and cached content pages would render replies and read-state late.
   return 'private, no-store, max-age=0';
 }
 

@@ -1,6 +1,7 @@
 // "Tắt ảnh động ảnh đại diện" — freezes an animated avatar on its first frame. The extension lies
 // (/avatars/l/15/15207.jpg is a 53-frame GIF), so the bytes decide, not the URL.
 import { getStaticAvatars } from './settings.js';
+import { isDataSaving } from './dataSaving.js';
 
 // data.voz.vn sends no CORS headers, so bytes come through the proxy. One entry per URL holding the in-flight
 // promise or its result: Promise -> resolving, string -> data URL, null -> leave it alone.
@@ -185,6 +186,10 @@ function restore(img) {
 // Every avatar renders through `img.avatar-img`. Only avatars that have been on screen are resolved: a list
 // page carries 40+ avatars and almost all are stills.
 function refresh() {
+  // Freezing an avatar costs a 64KB proxy probe (plus a second full fetch for undecided GIFs, and the PNG
+  // re-encode can outsize the source), which is data-negative on mobile — save mode leaves avatars alone
+  // regardless of the static-avatars setting.
+  if (isDataSaving()) return;
   const enabled = getStaticAvatars();
   for (const img of document.querySelectorAll('img.avatar-img')) {
     if (!enabled) {

@@ -8,14 +8,16 @@ import { toast } from '../ui/feedback.js';
 import { openModal } from '../ui/modal.js';
 import {
   loadSettings, addShortcut, updateShortcut, removeShortcut, moveShortcut,
-  exportSettingsJson, importSettingsJson, setInfiniteScroll,
+  exportSettingsJson, importSettingsJson, setInfiniteScroll, setDataSaving,
   SCROLL_MODES, SCROLL_LABELS,
   setTheme, setFont, setFontScale, getFontScale, setImageDownload, setPostScreenshot, setStaticAvatars, setBannedUsers,
   BANNED_USER_MODES, BANNED_USERS_LABELS, BANNED_USERS_HELP,
   setFullNumbers, FULL_NUMBERS_MODES, FULL_NUMBERS_LABELS,
+  DATA_SAVING_MODES, DATA_SAVING_LABELS, DATA_SAVING_HELP,
   THEME_MODES, THEME_LABELS, FONTS, FONT_LABELS,
   FONT_SCALE_MIN, FONT_SCALE_MAX, FONT_SCALE_STEP,
 } from '../lib/settings.js';
+import { isDataSaving } from '../lib/dataSaving.js';
 import {
   getAlbums, addAlbum, renameAlbum, removeAlbums, moveAlbum, setAlbumImages,
   getRecentStickers, addRecentSticker, clearRecentStickers, flushStickerStorage,
@@ -182,7 +184,7 @@ function tabsHtml(active) {
 }
 
 function settingsHtml(active = settingsTabFromHash()) {
-  const { navShortcuts, infiniteScroll, theme, font, postSize, uiSize, imageDownload, postScreenshot, staticAvatars, bannedUsers, fullNumbers } = loadSettings();
+  const { navShortcuts, infiniteScroll, theme, font, postSize, uiSize, imageDownload, postScreenshot, staticAvatars, bannedUsers, fullNumbers, dataSaving } = loadSettings();
   const albums = getAlbums();
   return `<div class="block settings-block">
       <h1 class="block-header">Cài đặt</h1>
@@ -206,6 +208,9 @@ function settingsHtml(active = settingsTabFromHash()) {
       </section>
       <section class="settings-panel" id="panel-system" role="tabpanel" aria-labelledby="tab-system"${active === 'system' ? '' : ' hidden'}>
         <div class="block-body--pad">
+          <h3 class="settings-subhead">Tiết kiệm dữ liệu</h3>
+          <p class="formHint">Giảm dữ liệu tiêu thụ khi đọc: dừng đếm thông báo nền, nhúng video chỉ tải khi bấm (YouTube, TikTok, Facebook, Vimeo, Douyin), danh sách cảm xúc hiện số đếm thay vì tải tên từng người, không kiểm tra ảnh đại diện động, không tự nối trang trước khi cần, không gửi số liệu thống kê.</p>
+          ${optionCards('data-saving', DATA_SAVING_MODES, DATA_SAVING_LABELS, DATA_SAVING_HELP, dataSaving)}
           <h3 class="settings-subhead">Hiện thị số liệu không rút gọn</h3>
           <p class="formHint">voz.vn rút gọn số liệu (13K, 1M) và thời gian tương đối (3 giờ trước). Bật mục này để thấy số đầy đủ và mốc thời gian chính xác.</p>
           ${optionCards('full-numbers', FULL_NUMBERS_MODES, FULL_NUMBERS_LABELS, FULL_NUMBERS_HELP, fullNumbers)}
@@ -887,6 +892,12 @@ export function viewSettings() {
     const enabled = event.currentTarget.checked;
     setStaticAvatars(enabled);
     toast(`Tắt ảnh động ảnh đại diện: ${enabled ? 'Bật' : 'Tắt'}`);
+  });
+  wireOptionGroup('data-saving', (value) => {
+    setDataSaving(value);
+    toast(`Tiết kiệm dữ liệu: ${DATA_SAVING_LABELS[value]}`);
+    // Levers re-check isDataSaving() at their own trigger points; this event lets anything listening re-run.
+    window.dispatchEvent(new CustomEvent('voz:save-mode', { detail: { saving: isDataSaving() } }));
   });
   wireOptionGroup('banned-users', (value) => {
     setBannedUsers(value);

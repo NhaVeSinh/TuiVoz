@@ -1,6 +1,8 @@
 // Inline SVG icons — no icon font, no extra request.
 
 const outline = (paths) => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+// Down arrow onto a tray — the image-download and data-saving load-original buttons.
+export const ICON_DOWNLOAD = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>`;
 export const ICON_BOOKMARK = outline('<path d="M5 3h14v19l-7-5-7 5V3Z"/>');
 export const ICON_SEARCH = outline('<circle cx="10.5" cy="10.5" r="7.5"/><path d="m16 16 6 6"/>');
 export const ICON_MAIL = outline('<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 5 10 8L22 5"/>');
