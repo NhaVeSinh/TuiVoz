@@ -233,8 +233,8 @@ async function memberSearchTabHtml(user, content, page, emptyText, tabKey) {
       }
       const thread = c.Thread || c.thread || {};
       const snippet = bbcodeToPlain(c.message || '').replace(/\s+/g, ' ').slice(0, 240);
-      if (tabKey === PROFILE_TAB_SLUG.activity) return memberActivityRow(c, thread, snippet);
-      return memberPostRow(c, thread, snippet);
+      if (tabKey === PROFILE_TAB_SLUG.activity) return memberActivityRow(c, thread, snippet, res.pagination?.per_page);
+      return memberPostRow(c, thread, snippet, res.pagination?.per_page);
     })
     .join('');
   const qs = (p) => `${memberTabUrl(user, SLUG_TO_TAB[tabKey] || 'wall')}?${new URLSearchParams({ page: String(p) })}`;

@@ -77,6 +77,18 @@
 /* The sticker picker brings its own frame, so the panel supplies only spacing and a card. */
 .editor-panel[data-panel-kind="stickers"] { width: 520px; max-width: calc(100vw - 24px); padding: 10px; border-radius: 6px; background: var(--content-bg); box-shadow: 0 3px 5px -1px rgba(0,0,0,.2), 0 6px 10px 0 rgba(0,0,0,.14), 0 1px 18px 0 rgba(0,0,0,.12); }
 .editor-panel:empty { display: none; }
+/* @mention suggestions, copied from voz.vn's ul.autoCompleteList: a 180px card pinned to the caret, three rows
+   with a 24px avatar and the typed prefix in bold; the selected row is the only highlight. */
+.mention-menu { position: fixed; top: 0; left: 0; z-index: 40; display: block; width: 180px; max-height: 280px; margin: 2px 0 0; padding: 0; overflow: hidden auto; border: 1px solid var(--border); background: var(--content-bg-alt); box-shadow: 0 3px 5px rgba(0, 0, 0, .3); list-style: none; font-size: calc(14px * var(--ui-scale)); line-height: 21px; }
+.mention-menu[hidden] { display: none; }
+.mention-menu li { display: flex; align-items: center; gap: 6px; padding: 6px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.mention-menu li.is-selected { background: var(--surface-tint); }
+/* The name lives in one inline block: as a direct flex child the `<strong>` prefix would become its own flex item
+   and pick up a flex gap mid-word. */
+.mention-menu .mention-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.mention-menu .mention-name strong { font-weight: 700; }
+.mention-menu .mention-icon { display: inline-flex; flex: 0 0 auto; width: 24px; height: 24px; }
+.mention-menu .mention-icon .avatar { width: 24px; height: 24px; font-size: 14px; }
 /* voz.vn's editor popups: a 6px-radius card on --content-bg with a three-layer material shadow, an 8px grip at the
    top and 10px of padding around the body. */
 .editor-popup { position: relative; min-width: 260px; width: 100%; border-radius: 6px; background: var(--content-bg); box-shadow: 0 3px 5px -1px rgba(0,0,0,.2), 0 6px 10px 0 rgba(0,0,0,.14), 0 1px 18px 0 rgba(0,0,0,.12); }

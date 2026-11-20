@@ -1,7 +1,7 @@
 // One row of a XenForo thread list: icon | main | meta | latest | iconEnd.
 
 import { esc, num, timeAgo } from '../core/utils.js';
-import { threadPath, threadUnreadPath, forumPath, userPath, withPage } from '../core/paths.js';
+import { threadPath, threadUnreadPath, forumPath, userPath, withPage, postPath } from '../core/paths.js';
 import { avatarMarkup } from '../lib/avatar.js';
 import { prefixLabel } from '../lib/prefix.js';
 import { bbcodeToPlain } from '../lib/bbcode.js';
@@ -70,11 +70,12 @@ export function wireThreadRowBans(root, users) {
   wireBannedUsernames(root, users);
 }
 
-// Row for post-centric lists (bookmarks, search results).
-export function postRow(post, thread) {
+// Row for post-centric lists (bookmarks, search results). `perPage` is the thread's page size when the caller
+// knows it: the row then links to the post's own page, so a post past page 1 has something to land on.
+export function postRow(post, thread, perPage) {
   const author = post.User || { user_id: post.user_id, username: post.username };
   const title = (thread && thread.title) || `Bài #${post.post_id}`;
-  const href = `${threadPath({ thread_id: post.thread_id, title })}?post=${post.post_id}`;
+  const href = postPath(post, { thread_id: post.thread_id, ...thread }, perPage);
   return `
     <li class="structItem structItem--thread">
       <div class="structItem-cell structItem-cell--icon">
@@ -123,11 +124,11 @@ export function memberContentRow(thread, snippetText) {
     </li>`;
 }
 
-// Post variant: title links to /t/<slug>/post-<id>, minor = user · Post #N · date · Forum.
-export function memberPostRow(post, thread, snippetText) {
+// Post variant: title links to the post's own page and fragment, minor = user · Post #N · date · Forum.
+export function memberPostRow(post, thread, snippetText, perPage) {
   const author = post.User || { user_id: post.user_id, username: post.username };
   const t = thread || {};
-  const postUrl = t.thread_id ? `${threadPath(t)}post-${post.post_id}` : `/p/${post.post_id}/`;
+  const postUrl = t.thread_id ? postPath(post, t, perPage) : `/p/${post.post_id}/`;
   const title = t.title || `Bài #${post.post_id}`;
   const pos = post.position != null ? `Post #${Number(post.position) + 1}` : 'Post';
   const parts = [
@@ -156,10 +157,10 @@ export function memberPostRow(post, thread, snippetText) {
 
 // Latest-activity variant: voz words the title as "<user> replied to the thread <title>."
 // and drops the meta list down to just the timestamp.
-export function memberActivityRow(post, thread, snippetText) {
+export function memberActivityRow(post, thread, snippetText, perPage) {
   const author = post.User || { user_id: post.user_id, username: post.username };
   const t = thread || {};
-  const postUrl = t.thread_id ? `${threadPath(t)}post-${post.post_id}` : `/p/${post.post_id}/`;
+  const postUrl = t.thread_id ? postPath(post, t, perPage) : `/p/${post.post_id}/`;
   const title = t.title || `Bài #${post.post_id}`;
   return `
     <li class="block-row block-row--separated js-inlineModContainer" data-author="${esc(post.username || '')}">

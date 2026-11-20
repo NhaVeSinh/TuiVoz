@@ -71,7 +71,7 @@ async function runSearch(query, page, searchId, member = '') {
             ${results
               .map((item) => {
                 const p = item.result || {};
-                return postRow(p, p.Thread || {});
+                return postRow(p, p.Thread || {}, res.pagination?.per_page);
               })
               .join('')}
           </div>
