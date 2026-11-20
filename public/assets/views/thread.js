@@ -28,6 +28,7 @@ import { openPostNumberPopup } from '../ui/postNumberPopup.js';
 import { jumpToAnchor } from '../lib/jumpToAnchor.js';
 import { signalOpen, signalRead } from '../lib/signals.js';
 import { moderationButtonHtml, moderationMenuHtml, wireModeration, openWarnModal } from '../ui/threadModeration.js';
+import { cachedCatalog } from '../lib/catalogs.js';
 
 // Posts currently on screen, extended as infinite scroll appends, so the delegated click handler can resolve a
 // post from any appended page.
@@ -119,8 +120,7 @@ export async function viewThread(threadId, page, focusPost) {
   try {
     if (!state.reactions) {
       try {
-        const r = await api.reactions();
-        state.reactions = r.reactions || [];
+        state.reactions = await cachedCatalog('reactions', () => api.reactions().then((r) => r.reactions || []));
       } catch {
         state.reactions = [];
       }

@@ -11,6 +11,7 @@ import { pagination, wirePageJump, wireScrollArm } from '../ui/pagination.js';
 import { threadRow, wireThreadRowBans } from '../ui/threadRow.js';
 import { nodeTree, subForumBlock } from '../ui/forumNodes.js';
 import { mountInfiniteScroll } from '../ui/infiniteScroll.js';
+import { cachedCatalog } from '../lib/catalogs.js';
 
 export async function viewHome() {
   setActiveNav('home');
@@ -18,7 +19,7 @@ export async function viewHome() {
   setBreadcrumbs([{ label: 'Diễn đàn' }]);
   loading();
   try {
-    if (!state.nodes) state.nodes = await api.nodes();
+    if (!state.nodes) state.nodes = await cachedCatalog('nodes', () => api.nodes());
     const { nodes, tree_map: treeMap } = state.nodes;
     app.innerHTML = nodeTree(nodes, treeMap);
   } catch (err) {
@@ -35,7 +36,7 @@ export async function viewForum(nodeId, page) {
     const [forumRes, threadsRes, nodesRes] = await Promise.all([
       api.forum(nodeId),
       api.forumThreads(nodeId, page),
-      state.nodes ? Promise.resolve(state.nodes) : api.nodes(),
+      state.nodes ? Promise.resolve(state.nodes) : cachedCatalog('nodes', () => api.nodes()),
     ]);
     if (!state.nodes) state.nodes = nodesRes;
     const forum = forumRes.forum;

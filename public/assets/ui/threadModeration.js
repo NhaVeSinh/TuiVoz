@@ -3,6 +3,7 @@
 // member sees nothing beyond the watch button.
 
 import { api } from '../api.js';
+import { cachedCatalog } from '../lib/catalogs.js';
 import { state } from '../core/dom.js';
 import { esc } from '../core/utils.js';
 import { openModal } from './modal.js';
@@ -119,13 +120,15 @@ function openEditDialog(thread, onChanged) {
 async function openMoveDialog(thread, onChanged) {
   if (!state.nodes) {
     try {
-      state.nodes = (await api.nodes()).nodes || [];
+      // Same response shape as the forum views ({ nodes, tree_map }): state.nodes holds the whole payload
+      // everywhere, so the move dialog and the home view can never disagree about what state.nodes is.
+      state.nodes = await cachedCatalog('nodes', () => api.nodes());
     } catch (error) {
       return toast(error.message || 'Không tải được danh sách diễn đàn', true);
     }
   }
   // Only real forums are valid targets; categories and link forums cannot hold threads.
-  const forums = (state.nodes || [])
+  const forums = ((state.nodes || {}).nodes || [])
     .filter((node) => node.node_type_id === 'Forum' && Number(node.node_id) !== Number(thread.node_id))
     .sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'vi'));
   const options = forums

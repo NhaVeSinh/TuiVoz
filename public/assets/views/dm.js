@@ -10,6 +10,7 @@ import { setTitle } from '../ui/title.js';
 import { loading, errorBox, toast } from '../ui/feedback.js';
 import { pagination, wirePageJump } from '../ui/pagination.js';
 import { requireLogin } from '../ui/session.js';
+import { refreshUnreadCounts } from '../ui/unreadCounts.js';
 import { editorHtml, wireEditor, clearEditorDraft } from '../ui/editor.js';
 import { avatarMarkup } from '../lib/avatar.js';
 import { stripQuotes } from '../lib/bbcode.js';
@@ -93,6 +94,8 @@ export async function viewDm(conversationId, page) {
     // A conversation by nature has two sides; opening it clears its unread state like a thread does.
     if (conv.is_unread && conv.last_message_date) {
       api.markConversationRead(conv.conversation_id, conv.last_message_date).catch(() => {});
+      // The header badge counts unread conversations; the throttled refresh would otherwise lag up to 30s.
+      refreshUnreadCounts(true);
     }
     app.innerHTML = `
       <div class="block block--messages block--conversation">
