@@ -28,6 +28,7 @@ import { openPostNumberPopup } from '../ui/postNumberPopup.js';
 import { jumpToAnchor } from '../lib/jumpToAnchor.js';
 import { signalOpen, signalRead } from '../lib/signals.js';
 import { moderationButtonHtml, moderationMenuHtml, wireModeration, openWarnModal } from '../ui/threadModeration.js';
+import { cachedCatalog } from '../lib/catalogs.js';
 
 // Posts currently on screen, extended as infinite scroll appends, so the delegated click handler can resolve a
 // post from any appended page.
@@ -78,6 +79,15 @@ function quickReplyUserHtml() {
                         </div>`;
 }
 
+// voz.vn web marks a thread read up to the newest post on the page being viewed; without these marks the
+// server's read state stays empty and /t/<id>/unread always resolves to page 1. Marks only ever advance and
+// voz.vn discards cutoffs older than its retention window, so out-of-order or stale pages are harmless no-ops.
+function markReadUpTo(threadId, unread, posts) {
+  const cutoff = posts.reduce((max, post) => Math.max(max, Number(post.post_date) || 0), 0);
+  if (!state.loggedIn || !unread || !cutoff) return;
+  api.markThreadRead(threadId, cutoff).catch(() => {});
+}
+
 function wireSignatureToggles(root) {
   root.querySelectorAll('.message-signature').forEach((signature) => {
     const button = signature.nextElementSibling;
@@ -110,8 +120,7 @@ export async function viewThread(threadId, page, focusPost) {
   try {
     if (!state.reactions) {
       try {
-        const r = await api.reactions();
-        state.reactions = r.reactions || [];
+        state.reactions = await cachedCatalog('reactions', () => api.reactions().then((r) => r.reactions || []));
       } catch {
         state.reactions = [];
       }
@@ -232,7 +241,9 @@ export async function viewThread(threadId, page, focusPost) {
       currentPage: res.pagination?.current_page || 1,
       lastPage: res.pagination?.last_page || 1,
       after: document.getElementById('pager-slot'),
-      fetchPage: (p) => api.thread(threadId, p),
+      // Appending needs only the next page's posts: the full thread payload would re-send the thread metadata
+      // (Forum, permissions, …) on every page for nothing.
+      fetchPage: (p) => api.threadPosts(threadId, p),
       insert: (p, next) => {
         const list = document.getElementById('post-list');
         const more = next.posts || [];
@@ -244,14 +255,13 @@ export async function viewThread(threadId, page, focusPost) {
         hydrateReactionLists(list);
         wireMemberTooltips(list, more.map((post) => post.User));
         for (const post of more) postIndex.set(post.post_id, post);
+        markReadUpTo(threadId, thread.is_unread, more);
         return more.length;
       },
     });
-    // Opening a thread marks it read, clearing the bold title in the forum listing. Only the last page counts
-    // as "read".
-    if (state.loggedIn && thread.is_unread && res.pagination && res.pagination.current_page >= res.pagination.last_page) {
-      api.markThreadRead(threadId, Math.floor(Date.now() / 1000)).catch(() => {});
-    }
+    // Opening a thread page marks it read up to that page's newest post, like voz.vn web — reading the last
+    // page clears the bold title in the forum listing.
+    markReadUpTo(threadId, thread.is_unread, posts);
 
     if (focusPost) {
       // A permalink owns the scroll even when the post is not on this page: falling through to the reset would
@@ -481,8 +491,18 @@ function wireThreadActions(threadId, posts, thread, page = 1) {
         if (!res.ok) throw new ApiError(res.status, payload);
         clearEditorDraft(textarea);
         toast('Đã gửi trả lời');
-        navigate(`${withPage(threadPath(thread), res.pagination ? res.pagination.last_page : 1)}?post=${payload.post.post_id}`);
-        await viewThread(threadId, 'last', payload.post.post_id);
+        // The reply response carries the thread's pagination: one navigation renders the last page with the
+        // focus post. The old code read `pagination` off the fetch Response (always undefined, so it landed on
+        // page 1) and re-rendered again through viewThread('last'), which refetched page 1 to resolve the real
+        // page — three payloads and a wasted render per reply.
+        const lastPage = Number(payload.pagination?.last_page);
+        if (lastPage) {
+          navigate(`${withPage(threadPath(thread), lastPage)}?post=${payload.post.post_id}`);
+        } else {
+          // No pagination in the payload: resolve 'last' through the view like before, without the extra
+          // page-1 navigation render.
+          await viewThread(threadId, 'last', payload.post.post_id);
+        }
       } catch (err) {
         toast(err.message || 'Gửi thất bại', true);
         submit.disabled = false;

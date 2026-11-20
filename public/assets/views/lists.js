@@ -8,6 +8,7 @@ import { setActiveNav, setBreadcrumbs } from '../ui/chrome.js';
 import { setTitle } from '../ui/title.js';
 import { loading, errorBox } from '../ui/feedback.js';
 import { pagination, wirePageJump } from '../ui/pagination.js';
+import { refreshUnreadCounts } from '../ui/unreadCounts.js';
 import { requireLogin } from '../ui/session.js';
 import { threadRow, postRow, wireThreadRowBans } from '../ui/threadRow.js';
 import { avatarMarkup } from '../lib/avatar.js';
@@ -48,6 +49,8 @@ export async function viewAlerts(page) {
       if (!link) return;
       api.markAlertRead(Number(link.dataset.alert)).catch(() => {});
       link.closest('.alert-row')?.classList.remove('is-unread');
+      // The header badge counts unviewed alerts; the throttled refresh would otherwise lag up to 30s.
+      refreshUnreadCounts(true);
     });
   } catch (err) {
     app.innerHTML = errorBox(err);

@@ -68,6 +68,9 @@ export const api = {
   searchForumThreads: (id, page = 1) => xf(`/search-forums/${id}/threads`, { query: { page } }),
   threads: (page = 1, order = 'post_date') => xf('/threads/', { query: { page, order } }),
   thread: (id, page = 1) => xf(`/threads/${id}/`, { query: { with_posts: 'true', page } }),
+  // Thread metadata without the twenty post bodies: enough for is_unread, visitor_read_date, reply_count and
+  // the title used to build URLs.
+  threadMeta: (id) => xf(`/threads/${id}/`),
   threadPosts: (id, page = 1) => xf(`/threads/${id}/posts`, { query: { page } }),
   post: (id) => xf(`/posts/${id}/`),
   createPost: (threadId, message, attachmentKey) =>

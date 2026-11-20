@@ -3,6 +3,7 @@
 
 import { app } from '../core/dom.js';
 import { getInfiniteScroll } from '../lib/settings.js';
+import { isDataSaving } from '../lib/dataSaving.js';
 
 let current = null;
 let stopButton = null;
@@ -107,7 +108,9 @@ export function mountInfiniteScroll(options) {
       if (!entries.some((entry) => entry.isIntersecting)) return;
       loadNext();
     },
-    { rootMargin: '400px 0px' }
+    // Data-saving waits until the sentinel is actually on screen: 400px of lookahead regularly fetched pages
+    // the reader never reached.
+    { rootMargin: isDataSaving() ? '0px 0px' : '400px 0px' }
   );
 
   // Sits after the pager so the status reads as "more below".

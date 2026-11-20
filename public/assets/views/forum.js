@@ -11,18 +11,45 @@ import { pagination, wirePageJump, wireScrollArm } from '../ui/pagination.js';
 import { threadRow, wireThreadRowBans } from '../ui/threadRow.js';
 import { nodeTree, subForumBlock } from '../ui/forumNodes.js';
 import { mountInfiniteScroll } from '../ui/infiniteScroll.js';
+import { cachedCatalog, readCatalog, storeCatalog, catalogAge } from '../lib/catalogs.js';
 
+// How stale the home tree may be before a background revalidation spends bytes. News-type feeds go stale
+// "after a couple of hours" (Verachtert et al. 2023, ScienceDirect) — 15 minutes sits far inside that bound,
+// costs ~2 fetches per half-hour session instead of one per Home visit, and matches the reader's own ask.
+const NODES_REVALIDATE_MS = 15 * 60 * 1000;
+
+// The node tree carries each forum's latest-thread line — the reader's quick news peek — so it paints
+// instantly from the cached copy and then revalidates in the background: when the fresh /nodes/ payload
+// differs, the tree re-renders (only while the reader is still on the home route). A stale-while-revalidate
+// home instead of the old always-fresh fetch: instant paint with no 100KB+ wait, and no hour-old lines.
 export async function viewHome() {
   setActiveNav('home');
   setBrandTitle();
   setBreadcrumbs([{ label: 'Diễn đàn' }]);
-  loading();
+  const cached = readCatalog('nodes');
+  if (!cached) loading();
+  const paint = (nodesRes) => {
+    app.innerHTML = nodeTree(nodesRes.nodes, nodesRes.tree_map);
+  };
   try {
-    if (!state.nodes) state.nodes = await api.nodes();
-    const { nodes, tree_map: treeMap } = state.nodes;
-    app.innerHTML = nodeTree(nodes, treeMap);
+    if (cached) {
+      state.nodes = cached;
+      paint(cached);
+    }
+    // Fresh enough: the painted tree stays as-is and no bytes are spent on this visit.
+    const age = catalogAge('nodes');
+    if (cached && age !== null && age < NODES_REVALIDATE_MS) return;
+    const fresh = await api.nodes().catch(() => null);
+    if (fresh) {
+      const changed = !state.nodes || JSON.stringify(fresh) !== JSON.stringify(state.nodes);
+      storeCatalog('nodes', fresh);
+      state.nodes = fresh;
+      if ((!cached || changed) && location.pathname === '/') paint(fresh);
+    }
+    if (!state.nodes) throw new Error('Không tải được danh sách diễn đàn');
   } catch (err) {
-    app.innerHTML = errorBox(err);
+    // A background failure must not clobber the already-painted cached tree.
+    if (!state.nodes) app.innerHTML = errorBox(err);
   }
 }
 
@@ -35,7 +62,7 @@ export async function viewForum(nodeId, page) {
     const [forumRes, threadsRes, nodesRes] = await Promise.all([
       api.forum(nodeId),
       api.forumThreads(nodeId, page),
-      state.nodes ? Promise.resolve(state.nodes) : api.nodes(),
+      state.nodes ? Promise.resolve(state.nodes) : cachedCatalog('nodes', () => api.nodes()),
     ]);
     if (!state.nodes) state.nodes = nodesRes;
     const forum = forumRes.forum;

@@ -1,4 +1,5 @@
 import { xf } from '../api.js';
+import { cachedCatalog } from './catalogs.js';
 
 let catalog;
 let codes = new Map();
@@ -7,12 +8,17 @@ let pattern;
 export function smilieChoices() { return [...new Set(codes.values())]; }
 
 export async function loadSmilies() {
-  if (!catalog) catalog = xf('/voz/smilies').then(({ smilies }) => {
-    codes = new Map((smilies || []).flatMap((smilie) => (smilie.codes || []).map((code) => [code, smilie])));
-    const escaped = [...codes.keys()].filter(Boolean).sort((a, b) => b.length - a.length).map((code) => code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-    pattern = escaped.length ? new RegExp(escaped.join('|'), 'g') : null;
-  }).catch(() => { catalog = null; });
-  await catalog;
+  if (!catalog) {
+    try {
+      catalog = await cachedCatalog('smilies', () => xf('/voz/smilies').then(({ smilies }) => smilies || []));
+      codes = new Map(catalog.flatMap((smilie) => (smilie.codes || []).map((code) => [code, smilie])));
+      const escaped = [...codes.keys()].filter(Boolean).sort((a, b) => b.length - a.length).map((code) => code.replace(/[.*+?${}()|[\]\\]/g, '\\$&'));
+      pattern = escaped.length ? new RegExp(escaped.join('|'), 'g') : null;
+    } catch {
+      // Not cached: the next thread view retries.
+      catalog = null;
+    }
+  }
 }
 
 export const smiliesReady = () => Boolean(pattern);
