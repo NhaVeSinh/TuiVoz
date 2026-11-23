@@ -244,16 +244,23 @@ function buildSheet(threadName, postNode, width) {
 // The sheet is measured the instant it is built, but inlined images have no layout yet at that moment, so the
 // bitmap would be sized from a shorter box than what is finally drawn — leaving either a clipped tail or a band
 // of empty backdrop. Wait for the images to decode and for layout to settle before anything is measured.
+// An image that is done but broken (complete with no pixels) fires neither load nor error again, so waiting on
+// those events would hang the capture forever. Every wait is also bounded: a stalled proxy fetch must not leave
+// the button spinning.
+const SETTLE_MS = 15000;
+
 function settle(node) {
   const frames = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const bounded = (promise) => Promise.race([promise, new Promise((resolve) => setTimeout(resolve, SETTLE_MS))]);
   const images = [...node.querySelectorAll('img')].map((img) => {
-    if (img.complete && img.naturalWidth) return img.decode?.().catch(() => {}) ?? Promise.resolve();
-    return new Promise((resolve) => {
+    const decode = () => img.decode?.().catch(() => {}) ?? Promise.resolve();
+    if (img.complete) return bounded(decode());
+    return bounded(new Promise((resolve) => {
       img.addEventListener('load', resolve, { once: true });
       img.addEventListener('error', resolve, { once: true });
-    }).then(() => img.decode?.().catch(() => {}));
+    }).then(decode));
   });
-  return Promise.all([...images, frames(), frames()]);
+  return Promise.all([...images.map(bounded), frames(), frames()]);
 }
 
 // The SVG lays the sheet out shorter than the DOM predicts, so the bitmap is allocated taller than what is drawn
@@ -335,8 +342,10 @@ function rasterize(node, fonts = '') {
     `<div xmlns="http://www.w3.org/1999/xhtml"${theme}${themeMode}${font} style="width:${width}px;min-height:${height}px;${scaleVars}background:${sheetBg}">${style}${markup}</div>` +
     '</foreignObject></svg>';
 
-  const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-  const href = URL.createObjectURL(blob);
+  // A blob: URL makes Chrome treat the SVG as cross-origin and taint the canvas on export, while a data: URL
+  // stays same-document. encodeURIComponent keeps the bytes lossless; the string can be a few MB for a long
+  // post, which is well under Chrome's data: URL limit.
+  const href = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => {
@@ -348,17 +357,23 @@ function rasterize(node, fonts = '') {
       context.fillStyle = sheetBg;
       context.fillRect(0, 0, canvas.width, canvas.height);
       context.drawImage(image, 0, 0, outWidth, outHeight);
-      URL.revokeObjectURL(href);
-      // Firefox lays the sheet out shorter inside the SVG than in the DOM, so the bitmap is allocated taller than
-      // what is actually drawn. Trim the uniform tail so the PNG ends at the post instead of on empty backdrop.
-      const trimmed = trimTail(canvas, context, outWidth, sheetBg, scale);
-      const final = trimmed === outHeight ? canvas : crop(canvas, outWidth, trimmed);
-      final.toBlob((png) => (png ? resolve(png) : reject(new Error('Không tạo được ảnh PNG.'))), 'image/png');
+      try {
+        // Firefox lays the sheet out shorter inside the SVG than in the DOM, so the bitmap is allocated taller
+        // than what is actually drawn. Trim the uniform tail so the PNG ends at the post instead of on empty
+        // backdrop. Chrome may throw a SecurityError reading pixels; the untrimmed canvas is still usable.
+        let final = canvas;
+        try {
+          const trimmed = trimTail(canvas, context, outWidth, sheetBg, scale);
+          if (trimmed !== outHeight) final = crop(canvas, outWidth, trimmed);
+        } catch {
+          // Fall through to the untrimmed canvas.
+        }
+        final.toBlob((png) => (png ? resolve(png) : reject(new Error('Không tạo được ảnh PNG.'))), 'image/png');
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error('Không xuất được ảnh bài viết.'));
+      }
     };
-    image.onerror = () => {
-      URL.revokeObjectURL(href);
-      reject(new Error('Không dựng được ảnh bài viết.'));
-    };
+    image.onerror = () => reject(new Error('Không dựng được ảnh bài viết.'));
     image.src = href;
   });
 }
@@ -608,8 +623,13 @@ async function capturePost(article, button) {
   button.disabled = true;
   button.classList.add('is-loading');
   const noun = article.dataset.messageId ? 'tin nhắn' : 'bài viết';
+  toast(`Đang chụp ${noun}…`);
   try {
-    const png = await renderPostPng(article);
+    // Any stalled step (image decode, font load, proxy fetch) must end in a toast, not a spinning button.
+    const png = await Promise.race([
+      renderPostPng(article),
+      new Promise((_, reject) => setTimeout(() => reject(new Error(`Chụp ${noun} quá lâu, thử lại sau.`)), 60_000)),
+    ]);
     flashSaved(button);
     openScreenshotMenu(button, article, png, noun);
   } catch (error) {

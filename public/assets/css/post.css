@@ -258,7 +258,9 @@
 .post-screenshot-button:hover,
 .post-screenshot-button:focus-visible { opacity: 1; color: var(--link); background: var(--surface-raised); }
 .post-screenshot-button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-.post-screenshot-button.is-loading { cursor: wait; opacity: .35; }
+.post-screenshot-button.is-loading { cursor: wait; opacity: .6; color: var(--link); }
+.post-screenshot-button.is-loading svg { animation: post-screenshot-spin 0.9s linear infinite; }
+@keyframes post-screenshot-spin { to { transform: rotate(360deg); } }
 .post-screenshot-button.is-saved { opacity: 1; color: var(--link); }
 /* No hover on touch, so the control must stay findable. */
 @media (hover: none) {
