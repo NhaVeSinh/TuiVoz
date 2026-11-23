@@ -8,7 +8,8 @@ import { bbcodeToPlain } from '../lib/bbcode.js';
 import { threadLastPage } from '../lib/unread.js';
 import { wireBannedUsernames } from '../lib/bannedUsers.js';
 
-export function threadRow(thread, { sticky = false, showForum = false } = {}) {
+// `extraClass`/`extraStyle` are applied to the <li> so the filter engine can colour a row inline.
+export function threadRow(thread, { sticky = false, showForum = false, extraClass = '', extraStyle = '' } = {}) {
   const starter = thread.User || { user_id: thread.user_id, username: thread.username };
   const lastUser = { user_id: thread.last_post_user_id, username: thread.last_post_username };
   const lastPage = threadLastPage(thread);
@@ -32,7 +33,7 @@ export function threadRow(thread, { sticky = false, showForum = false } = {}) {
         ).join('')}</span>`
       : '';
   return `
-    <li class="structItem structItem--thread${thread.is_unread ? ' is-unread' : ''}">
+    <li class="structItem structItem--thread${thread.is_unread ? ' is-unread' : ''}${extraClass ? ` ${extraClass}` : ''}"${extraStyle ? ` style="${extraStyle}"` : ''}>
       <div class="structItem-cell structItem-cell--icon">
         <div class="structItem-iconContainer">
           <a href="${userPath(starter)}" class="avatar avatar--s">${avatarMarkup(starter, 's')}</a>
@@ -72,12 +73,12 @@ export function wireThreadRowBans(root, users) {
 
 // Row for post-centric lists (bookmarks, search results). `perPage` is the thread's page size when the caller
 // knows it: the row then links to the post's own page, so a post past page 1 has something to land on.
-export function postRow(post, thread, perPage) {
+export function postRow(post, thread, perPage, { extraClass = '', extraStyle = '' } = {}) {
   const author = post.User || { user_id: post.user_id, username: post.username };
   const title = (thread && thread.title) || `Bài #${post.post_id}`;
   const href = postPath(post, { thread_id: post.thread_id, ...thread }, perPage);
   return `
-    <li class="structItem structItem--thread">
+    <li class="structItem structItem--thread${extraClass ? ` ${extraClass}` : ''}"${extraStyle ? ` style="${extraStyle}"` : ''}>
       <div class="structItem-cell structItem-cell--icon">
         <div class="structItem-iconContainer">
           <a href="${userPath(author)}" class="avatar avatar--s">${avatarMarkup(author, 's')}</a>

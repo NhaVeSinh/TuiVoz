@@ -25,6 +25,8 @@ import {
 } from '../lib/stickers.js';
 import { importImgurAlbum } from '../lib/imgurImport.js';
 import { ICON_DELETE, ICON_EDIT } from '../core/icons.js';
+import { filterRowsHtml, wireFilterSettings } from '../filters/editor.js';
+import { loadFilters, restoreFilters } from '../filters/filters.js';
 
 const dragIcon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
 const moveUpIcon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 14 6-6 6 6"/></svg>';
@@ -154,6 +156,7 @@ const TABS = [
   { id: 'appearance', label: 'Giao diện' },
   { id: 'system', label: 'Hệ thống' },
   { id: 'shortcuts', label: 'Phím tắt' },
+  { id: 'filters', label: 'Bộ lọc' },
   { id: 'stickers', label: 'Sticker' },
   { id: 'backup', label: 'Sao lưu / phục hồi' },
 ];
@@ -244,6 +247,16 @@ function settingsHtml(active = settingsTabFromHash()) {
           <h3 class="settings-subhead">Cuộn trang liên tục</h3>
           <p class="formHint">Áp dụng cho danh sách chủ đề và trong chủ đề: khi cuộn tới cuối trang, trang kế tiếp được nối thêm vào bên dưới thay vì phải bấm số trang.</p>
           ${optionCards('infinite-scroll', SCROLL_MODES, SCROLL_LABELS, SCROLL_HELP, infiniteScroll)}
+        </div>
+      </section>
+      <section class="settings-panel" id="panel-filters" role="tabpanel" aria-labelledby="tab-filters"${active === 'filters' ? '' : ' hidden'}>
+        <div class="block-body--pad">
+          <p class="settings-count" id="filter-count">${loadFilters().length} bộ lọc</p>
+          <p class="formHint">Bộ lọc chạy theo thứ tự <strong>từ trên xuống dưới</strong> — bộ lọc khớp đầu tiên được áp dụng. Kéo thả hoặc dùng nút ↑/↓ trên mobile để đổi ưu tiên.</p>
+          <ul class="shortcut-list" id="filter-list">${filterRowsHtml()}</ul>
+          <div class="shortcut-form-actions">
+            <button class="button button--primary" type="button" id="filter-add">+ Thêm bộ lọc</button>
+          </div>
         </div>
       </section>
       <section class="settings-panel" id="panel-shortcuts" role="tabpanel" aria-labelledby="tab-shortcuts"${active === 'shortcuts' ? '' : ' hidden'}>
@@ -387,6 +400,11 @@ async function applyImported(result) {
       parts.push(`${getRecentStickers().length} gần đây`);
     }
   }
+  if (result.filters) {
+    const restored = restoreFilters(result.filters, { addOnly: result.addOnly });
+    parts.push(`${restored.length} bộ lọc`);
+    renderFilterExtras();
+  }
   await flushStickerStorage();
   renderStickerExtras();
   return parts;
@@ -396,6 +414,13 @@ async function applyImported(result) {
 function renderStickerExtras() {
   if (typeof window.__stickerRerenderExtras === 'function' && document.getElementById('sticker-album-list')) {
     window.__stickerRerenderExtras();
+  }
+}
+
+// Same hook for the filter list: the backup import can run while the Bộ lọc panel is mounted.
+function renderFilterExtras() {
+  if (typeof window.__filterRerender === 'function' && document.getElementById('filter-list')) {
+    window.__filterRerender();
   }
 }
 
@@ -862,6 +887,7 @@ export function viewSettings() {
   const submitBtn = document.getElementById('shortcut-submit');
   const cancelBtn = document.getElementById('shortcut-cancel');
   const rerenderExtras = wireStickerSettings();
+  wireFilterSettings();
   let editingId = null;
   let draggedId = null;
 
@@ -1023,12 +1049,13 @@ export function viewSettings() {
     jsonError.hidden = !message;
   };
 
-  // Full payload = nav shortcuts + sticker albums + recents, shaped like the userscript backup so either file
-  // restores in full.
+  // Full payload = nav shortcuts + sticker albums + recents + bộ lọc, shaped like the userscript backup so
+  // either file restores in full.
   const buildBackup = () =>
     exportSettingsJson({
       albums: getAlbums(),
       recent: getRecentStickers(),
+      filters: loadFilters(),
     });
 
   document.getElementById('settings-export').addEventListener('click', () => {
@@ -1061,10 +1088,12 @@ export function viewSettings() {
     toast(summary.length ? `Đã phục hồi: ${summary.join(' · ')}` : 'Không có dữ liệu hợp lệ để phục hồi');
   });
   document.getElementById('settings-reset').addEventListener('click', async () => {
-    if (!window.confirm('Xoá toàn bộ thiết lập (gồm cả album sticker) trên trình duyệt này?')) return;
+    if (!window.confirm('Xoá toàn bộ thiết lập (gồm cả album sticker và bộ lọc) trên trình duyệt này?')) return;
     importSettingsJson('{"navShortcuts":[]}');
     for (const album of getAlbums()) removeAlbums([album.id]);
     clearRecentStickers();
+    restoreFilters([]);
+    renderFilterExtras();
     await flushStickerStorage();
     jsonBox.value = buildBackup();
     resetForm();

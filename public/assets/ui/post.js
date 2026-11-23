@@ -64,7 +64,7 @@ export function attachmentsBlockHtml(post) {
 
 // Conversation messages share the post layout; they differ in the permalink (no post number, no bookmark) and
 // the action set (edit, quote, reply). Reactions are dropped: the API answers 403 for a message id.
-function messageHtml(msg, conversation, page) {
+function messageHtml(msg, conversation, page, { id = '', extraClass = '', extraStyle = '' } = {}) {
   const conv = conversation || {};
   const user = msg.User || {};
   const edited = msg.last_edit_date ? `<span class="u-dimmed">· Đã sửa ${timeAgo(msg.last_edit_date, 'thread')}</span>` : '';
@@ -75,7 +75,7 @@ function messageHtml(msg, conversation, page) {
     : '';
 
   return `
-    <article class="message message--post message--conversation" id="conversation-message-${msg.message_id}" data-message-id="${msg.message_id}">
+    <article class="message message--post message--conversation${extraClass ? ` ${extraClass}` : ''}" id="${esc(id || `conversation-message-${msg.message_id}`)}" data-message-id="${msg.message_id}"${extraStyle ? ` style="${extraStyle}"` : ''}>
       <div class="message-inner">
         <div class="message-cell message-cell--user">
           <section class="message-user">
@@ -126,9 +126,10 @@ function messageHtml(msg, conversation, page) {
     </article>`;
 }
 
-// `kind` selects the endpoint family: 'thread' (default) or 'conversation'.
-export function postHtml(post, thread, page, kind = 'thread') {
-  if (kind === 'conversation') return messageHtml(post, thread, page);
+// `kind` selects the endpoint family: 'thread' (default) or 'conversation'. `opts` lets the filter engine
+// rename the id (hidden posts keep the anchor on a wrapper) and attach a class/style for highlighting.
+export function postHtml(post, thread, page, kind = 'thread', { id = '', extraClass = '', extraStyle = '' } = {}) {
+  if (kind === 'conversation') return messageHtml(post, thread, page, { id, extraClass, extraStyle });
   const user = post.User || {};
   const edited = post.last_edit_date ? `<span class="u-dimmed">· Đã sửa ${timeAgo(post.last_edit_date, 'thread')}</span>` : '';
   const ownerActions = [];
@@ -147,7 +148,7 @@ export function postHtml(post, thread, page, kind = 'thread') {
   }
 
   return `
-    <article class="message message--post" id="post-${post.post_id}" data-post-id="${post.post_id}">
+    <article class="message message--post${extraClass ? ` ${extraClass}` : ''}" id="${esc(id || `post-${post.post_id}`)}" data-post-id="${post.post_id}"${extraStyle ? ` style="${extraStyle}"` : ''}>
       <div class="message-inner">
         <div class="message-cell message-cell--user">
           <section class="message-user">

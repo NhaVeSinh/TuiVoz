@@ -11,7 +11,7 @@ import { setActiveNav, setBreadcrumbs } from '../ui/chrome.js';
 import { setThreadTitle } from '../ui/title.js';
 import { loading, errorBox, toast } from '../ui/feedback.js';
 import { pagination, wirePageJump, wireScrollArm } from '../ui/pagination.js';
-import { postHtml } from '../ui/post.js';
+import { postEntriesHtml } from '../filters/apply.js';
 import { wireThreadRowBans } from '../ui/threadRow.js';
 import { hydrateReactionLists, reactionBar, reactionSummary, invalidateReactionUsers } from '../ui/reactions.js';
 import { editorHtml, wireEditor, clearEditorDraft } from '../ui/editor.js';
@@ -188,7 +188,7 @@ export async function viewThread(threadId, page, focusPost) {
           </div>
         </div>
         <div class="block-body" id="post-list">
-          ${posts.map((p) => postHtml(p, thread, res.pagination ? res.pagination.current_page : 1)).join('')}
+          ${postEntriesHtml(posts, { thread, page: res.pagination ? res.pagination.current_page : 1 })}
         </div>
         <div class="block-outer block-outer--bottom" id="pager-slot">
           <div class="block-outer-main">
@@ -249,7 +249,7 @@ export async function viewThread(threadId, page, focusPost) {
         const more = next.posts || [];
         if (!list || !more.length) return 0;
         registerAttachments(more);
-        list.insertAdjacentHTML('beforeend', more.map((post) => postHtml(post, thread, p)).join(''));
+        list.insertAdjacentHTML('beforeend', postEntriesHtml(more, { thread, page: p }));
         wireThreadRowBans(list, more.map((post) => post.User));
         wireSignatureToggles(list);
         hydrateReactionLists(list);

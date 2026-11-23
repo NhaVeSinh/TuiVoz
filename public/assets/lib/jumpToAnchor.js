@@ -6,12 +6,17 @@
 // (scrollbar drag, keyboard, trackpad fling, a programmatic scroll), so the position we last set is remembered
 // and any scroll away from it counts as the reader taking over.
 
+import { revealFilteredBlock } from '../filters/apply.js';
+
 const USER_SCROLL_TOLERANCE = 2;
 const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
 
 export function jumpToAnchor(id, { settleMs = 1200, imageMs = 3000 } = {}) {
   const el = document.getElementById(id);
   if (!el) return false;
+
+  // A permalink targeting a filtered-hidden post lands on its placeholder; reveal it before measuring.
+  revealFilteredBlock(el);
 
   const scrollPadding = () => parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
   // Where the anchor's top should sit, in document coordinates.

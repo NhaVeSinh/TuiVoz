@@ -14,6 +14,7 @@ import { wireStaticAvatars } from './lib/avatarStatic.js';
 import { wirePostScreenshots } from './lib/postScreenshot.js';
 import { wireAllQuoteExpansion } from './lib/quotes.js';
 import { wireLightbox } from './ui/lightbox.js';
+import { wireFilteredReveals, revealFilteredBlock } from './filters/apply.js';
 
 // Applied before the first paint so the page never flashes the wrong scheme; the saved preference is in
 // localStorage, so it is available synchronously.
@@ -36,6 +37,8 @@ document.addEventListener('click', (event) => {
     const target = document.getElementById(url.hash.slice(1));
     if (target) {
       event.preventDefault();
+      // A filtered-hidden post anchors on its placeholder; show the content before landing on it.
+      revealFilteredBlock(target);
       target.scrollIntoView({ block: 'start' });
       // Keep `history.state`: the scroll-position bookkeeping stamps a key into it, and `replaceState({})` wiped
       // that key, so going back to this entry could not find its remembered offset.
@@ -58,6 +61,7 @@ wireStaticAvatars();
 wirePostScreenshots();
 wireAllQuoteExpansion();
 wireLightbox();
+wireFilteredReveals();
 
 // Back/forward restores the scroll position the reader left on that history entry; `scrollRestoration` is
 // manual, so the browser cannot do it.

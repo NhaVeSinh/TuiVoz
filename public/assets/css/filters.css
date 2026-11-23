@@ -1,0 +1,97 @@
+/* Bộ lọc — khối ẩn trong suốt + form editor trong tab Cài đặt. */
+
+/* The translucent placeholder that stands in for a hidden thread/post. */
+.filtered-block { margin-bottom: 8px; list-style: none; }
+.filtered-reveal {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--content-bg) 55%, transparent);
+  color: var(--dimmed);
+  font: inherit;
+  font-size: calc(12px * var(--ui-scale));
+  text-align: left;
+  cursor: pointer;
+}
+.filtered-reveal:hover { border-color: var(--link); color: var(--link); }
+.filtered-reveal svg { flex: 0 0 auto; width: 13px; height: 13px; }
+.filtered-block .filtered-content[hidden] { display: none; }
+/* The inner .message/.structItem supplies its own margin/borders once revealed. */
+.filtered-block > .filtered-content > .message { margin-bottom: 0; }
+/* A permalink to a hidden post still lands on the placeholder — mark it like .message:target. */
+.filtered-block:target > .filtered-reveal { outline: 2px solid var(--nav-active); }
+
+/* Highlighted rows get their look from an inline style (per-filter colour). */
+
+/* Filter settings tab. */
+.filter-row.is-disabled .shortcut-name,
+.filter-row.is-disabled .shortcut-url { opacity: .5; }
+.filter-color-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; vertical-align: -1px; border: 1px solid var(--border); }
+.filter-scope-badge { font-weight: var(--fw-bold); color: var(--text); }
+.filter-enabled { display: inline-flex; flex: 0 0 auto; align-items: center; }
+.filter-enabled input { width: 17px; height: 17px; accent-color: var(--link); }
+
+/* Editor modal. */
+.filter-editor-modal .modal-body { max-height: 70vh; overflow-y: auto; }
+.filter-scope-picks,
+.filter-action-picks { display: flex; flex-wrap: wrap; gap: 10px 16px; }
+.filter-pick { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text); }
+.filter-pick input { accent-color: var(--link); }
+.filter-color-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; }
+.filter-color-pick[hidden] { display: none; }
+.filter-color-label { color: var(--text); }
+.filter-swatches { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.filter-swatch {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--swatch);
+  cursor: pointer;
+}
+.filter-swatch.is-active { outline: 2px solid var(--link); outline-offset: 1px; border-color: var(--link); }
+.filter-color-input { width: 110px; flex: 0 0 auto; font-family: var(--font-mono, monospace); }
+.filter-color-input.is-invalid { border-color: var(--danger-text-strong); }
+
+.filter-cond {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.filter-cond .cond-joiner { flex: 0 0 auto; width: 82px; font-weight: var(--fw-bold); }
+.filter-cond .cond-field { flex: 1 1 170px; }
+.filter-cond .cond-op { flex: 0 0 auto; width: 120px; }
+.filter-cond .cond-mode { flex: 1 1 130px; }
+.filter-cond .cond-value { flex: 2 1 150px; min-width: 120px; }
+.filter-cond .cond-remove { flex: 0 0 auto; }
+#filter-add-cond { margin-top: 2px; }
+
+/* 'Tự chọn' scope: danh sách URL áp dụng — một dòng một mẫu. */
+.filter-custom-urls { margin-top: 8px; }
+.filter-custom-urls[hidden] { display: none; }
+.filter-url-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.filter-url-row .filter-url-mode { flex: 0 0 auto; width: 110px; }
+.filter-url-row .filter-url-input { flex: 1 1 auto; min-width: 0; font-family: var(--font-mono, monospace); }
+.filter-url-row .url-remove { flex: 0 0 auto; }
+#filter-add-url { margin-top: 2px; }
+@media (max-width: 620px) {
+  .filter-url-row { flex-wrap: wrap; }
+  .filter-url-row .filter-url-mode { flex: 0 0 auto; }
+  .filter-url-row .filter-url-input { flex: 1 1 calc(100% - 150px); }
+}
+
+@media (max-width: 620px) {
+  .filter-cond .cond-op { width: 100px; flex: 1 1 90px; }
+  .filter-cond .cond-value { flex: 1 1 100%; }
+}

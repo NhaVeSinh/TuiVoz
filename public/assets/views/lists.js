@@ -10,7 +10,8 @@ import { loading, errorBox } from '../ui/feedback.js';
 import { pagination, wirePageJump } from '../ui/pagination.js';
 import { refreshUnreadCounts } from '../ui/unreadCounts.js';
 import { requireLogin } from '../ui/session.js';
-import { threadRow, postRow, wireThreadRowBans } from '../ui/threadRow.js';
+import { postRow, wireThreadRowBans } from '../ui/threadRow.js';
+import { threadEntriesHtml, postEntriesHtml } from '../filters/apply.js';
 import { avatarMarkup } from '../lib/avatar.js';
 import { alertTextMarkup } from '../ui/alertMarkup.js';
 
@@ -71,9 +72,14 @@ export async function viewBookmarks(page) {
         <div class="block-header">Bài viết đã đánh dấu</div>
         ${
           items.length
-            ? `<div class="structItemContainer"><div class="structItemContainer-group">${items
-                .map((b) => postRow(b.Post || {}, (b.Post && b.Post.Thread) || {}, res.pagination?.per_page))
-                .join('')}</div></div>`
+            ? `<div class="structItemContainer"><div class="structItemContainer-group">${postEntriesHtml(
+                items,
+                {
+                  getPost: (b) => b.Post || {},
+                  getThread: (b) => (b.Post && b.Post.Thread) || {},
+                  renderPost: (b, extra) => postRow(b.Post || {}, (b.Post && b.Post.Thread) || {}, res.pagination?.per_page, extra),
+                }
+              )}</div></div>`
             : '<div class="empty">Chưa đánh dấu bài nào.</div>'
         }
         ${pagination(res.pagination, (p) => withPage('/bookmarks', p))}
@@ -98,9 +104,7 @@ export async function viewWatched(page) {
         <div class="block-header">Chủ đề đang theo dõi</div>
         ${
           threads.length
-            ? `<div class="structItemContainer"><div class="structItemContainer-group">${threads
-                .map((t) => threadRow(t, { showForum: true }))
-                .join('')}</div></div>`
+            ? `<div class="structItemContainer"><div class="structItemContainer-group">${threadEntriesHtml(threads, { showForum: true })}</div></div>`
             : '<div class="empty">Chưa theo dõi chủ đề nào.</div>'
         }
         ${pagination(res.pagination, (p) => withPage('/watched', p))}

@@ -15,7 +15,7 @@ import { editorHtml, wireEditor, clearEditorDraft } from '../ui/editor.js';
 import { avatarMarkup } from '../lib/avatar.js';
 import { stripQuotes } from '../lib/bbcode.js';
 import { registerAttachments } from '../lib/attachments.js';
-import { postHtml } from '../ui/post.js';
+import { postEntriesHtml } from '../filters/apply.js';
 import { openInlineEditWith } from '../ui/inlineEdit.js';
 import { wireMemberTooltips } from '../ui/memberTooltip.js';
 import { jumpToAnchor } from '../lib/jumpToAnchor.js';
@@ -109,7 +109,7 @@ export async function viewDm(conversationId, page) {
           </div>
         </div>
         <div class="block-body" id="message-list">
-          ${messages.map((m) => postHtml(m, conv, currentPage, 'conversation')).join('')}
+          ${postEntriesHtml(messages, { kind: 'conversation', page: currentPage })}
         </div>
         <div class="block-outer block-outer--bottom">
           <div class="block-outer-main">${pagination(res.pagination, (p) => withPage(dmPath(conv), p))}</div>

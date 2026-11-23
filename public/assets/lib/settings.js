@@ -371,7 +371,7 @@ export function getFullNumbers() {
   return FULL_NUMBERS_MODES.includes(mode) ? mode : FULL_NUMBERS_DEFAULT;
 }
 
-export function exportSettingsJson({ albums = [], recent = [] } = {}) {
+export function exportSettingsJson({ albums = [], recent = [], filters = [] } = {}) {
   const settings = loadSettings();
   const payload = {
     app: 'voz-web',
@@ -395,6 +395,9 @@ export function exportSettingsJson({ albums = [], recent = [] } = {}) {
     payload.albums = albums;
     payload.recent = recent;
   }
+  if (filters.length) {
+    payload.filters = filters;
+  }
   return JSON.stringify(payload, null, 2);
 }
 
@@ -411,8 +414,9 @@ export function importSettingsJson(text) {
   }
   // A userscript backup has no navShortcuts — accept it as album-only.
   const albumSource = Array.isArray(source.albums) ? source.albums : null;
-  if (!Array.isArray(source.navShortcuts) && !albumSource) {
-    return { ok: false, error: 'JSON phải có mảng "navShortcuts" hoặc "albums".' };
+  const filterSource = Array.isArray(source.filters) ? source.filters : null;
+  if (!Array.isArray(source.navShortcuts) && !albumSource && !filterSource) {
+    return { ok: false, error: 'JSON phải có mảng "navShortcuts", "albums" hoặc "filters".' };
   }
   const settings = Array.isArray(source.navShortcuts) ? normalizeSettings(source) : null;
   if (settings && source.navShortcuts.length && !settings.navShortcuts.length) {
@@ -425,6 +429,7 @@ export function importSettingsJson(text) {
     settings: settings || loadSettings(),
     albums: albumSource,
     recent: Array.isArray(source.recent) ? source.recent : null,
+    filters: filterSource,
     addOnly: source.addOnly === true,
   };
 }

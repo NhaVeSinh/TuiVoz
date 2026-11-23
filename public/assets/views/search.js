@@ -9,6 +9,7 @@ import { setTitle } from '../ui/title.js';
 import { loading, errorBox } from '../ui/feedback.js';
 import { pagination, wirePageJump } from '../ui/pagination.js';
 import { postRow, wireThreadRowBans } from '../ui/threadRow.js';
+import { postEntriesHtml } from '../filters/apply.js';
 
 export async function viewSearch(query, searchId, page) {
   setActiveNav('search');
@@ -68,12 +69,14 @@ async function runSearch(query, page, searchId, member = '') {
         <div class="block-header">Kết quả cho “${esc(member || query || '')}”<span class="block-header-extra">${num(res.pagination && res.pagination.total)} kết quả</span></div>
         <div class="structItemContainer">
           <div class="structItemContainer-group">
-            ${results
-              .map((item) => {
+            ${postEntriesHtml(results, {
+              getPost: (item) => item.result || {},
+              getThread: (item) => (item.result && item.result.Thread) || {},
+              renderPost: (item, extra) => {
                 const p = item.result || {};
-                return postRow(p, p.Thread || {}, res.pagination?.per_page);
-              })
-              .join('')}
+                return postRow(p, p.Thread || {}, res.pagination?.per_page, extra);
+              },
+            })}
           </div>
         </div>
         ${pagination(res.pagination, resultHref)}

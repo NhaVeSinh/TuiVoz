@@ -8,7 +8,8 @@ import { setActiveNav, setBreadcrumbs } from '../ui/chrome.js';
 import { setTitle, setBrandTitle } from '../ui/title.js';
 import { loading, errorBox } from '../ui/feedback.js';
 import { pagination, wirePageJump, wireScrollArm } from '../ui/pagination.js';
-import { threadRow, wireThreadRowBans } from '../ui/threadRow.js';
+import { wireThreadRowBans } from '../ui/threadRow.js';
+import { threadEntriesHtml } from '../filters/apply.js';
 import { nodeTree, subForumBlock } from '../ui/forumNodes.js';
 import { mountInfiniteScroll } from '../ui/infiniteScroll.js';
 import { cachedCatalog, readCatalog, storeCatalog, catalogAge } from '../lib/catalogs.js';
@@ -87,8 +88,8 @@ export async function viewForum(nodeId, page) {
           <span class="block-header-extra">${num(threadsRes.pagination && threadsRes.pagination.total)} chủ đề</span>
         </div>
         <div class="structItemContainer" id="thread-rows">
-          ${sticky.length ? `<div class="structItemContainer-group structItemContainer-group--sticky">${sticky.map((t) => threadRow(t, { sticky: true })).join('')}</div>` : ''}
-          <div class="structItemContainer-group">${threads.map((t) => threadRow(t)).join('')}</div>
+          ${sticky.length ? `<div class="structItemContainer-group structItemContainer-group--sticky">${threadEntriesHtml(sticky, { sticky: true })}</div>` : ''}
+          <div class="structItemContainer-group">${threadEntriesHtml(threads)}</div>
         </div>
       </div>
       <div class="block-outer" id="pager-slot">${pagination(threadsRes.pagination, (p) => withPage(forumPath(forum), p))}</div>`;
@@ -115,7 +116,7 @@ function appendThreadRows(containerId, threads) {
   if (!container || !threads.length) return 0;
   const group = container.querySelector('.structItemContainer-group:not(.structItemContainer-group--sticky)');
   if (!group) return 0;
-  group.insertAdjacentHTML('beforeend', threads.map((t) => threadRow(t)).join(''));
+  group.insertAdjacentHTML('beforeend', threadEntriesHtml(threads));
   wireThreadRowBans(group, threads);
   return threads.length;
 }
@@ -145,8 +146,8 @@ export async function viewSearchForum(nodeId, page) {
           <span class="block-header-extra">${num(threadsRes.pagination && threadsRes.pagination.total)} chủ đề</span>
         </div>
         <div class="structItemContainer" id="thread-rows">
-          ${sticky.length ? `<div class="structItemContainer-group structItemContainer-group--sticky">${sticky.map((t) => threadRow(t, { sticky: true, showForum: true })).join('')}</div>` : ''}
-          <div class="structItemContainer-group">${normal.map((t) => threadRow(t, { showForum: true })).join('')}</div>
+          ${sticky.length ? `<div class="structItemContainer-group structItemContainer-group--sticky">${threadEntriesHtml(sticky, { sticky: true, showForum: true })}</div>` : ''}
+          <div class="structItemContainer-group">${threadEntriesHtml(normal, { showForum: true })}</div>
         </div>
       </div>
       <div class="block-outer" id="pager-slot">${pagination(threadsRes.pagination, (p) => withPage(searchForumPath(node), p))}</div>`;
@@ -165,7 +166,7 @@ export async function viewSearchForum(nodeId, page) {
         const group = container?.querySelector('.structItemContainer-group:not(.structItemContainer-group--sticky)');
         const rows = (res.threads || []).filter((t) => !t.sticky);
         if (!group || !rows.length) return 0;
-        group.insertAdjacentHTML('beforeend', rows.map((t) => threadRow(t, { showForum: true })).join(''));
+        group.insertAdjacentHTML('beforeend', threadEntriesHtml(rows, { showForum: true }));
         wireThreadRowBans(group, rows);
         return rows.length;
       },
@@ -187,7 +188,7 @@ export async function viewNewThreads(page) {
       <div class="block">
         <div class="block-header">Bài mới<span class="block-header-extra">${num(res.pagination && res.pagination.total)} chủ đề</span></div>
         <div class="structItemContainer">
-          <div class="structItemContainer-group">${threads.map((t) => threadRow(t, { showForum: true })).join('')}</div>
+          <div class="structItemContainer-group">${threadEntriesHtml(threads, { showForum: true })}</div>
         </div>
         ${pagination(res.pagination, (p) => withPage('/new', p))}
       </div>`;
