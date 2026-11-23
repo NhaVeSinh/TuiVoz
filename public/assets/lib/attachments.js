@@ -56,6 +56,23 @@ export function clearAttachments() {
   registry.clear();
 }
 
+// Where a guest can actually load an attachment: direct_urls on the data.voz.vn CDN load fine, but a
+// voz.vn/attachments/<name>.<id>/ route redirects through Cloudflare and answers 403 without a forum cookie,
+// so anything else goes through the edge downloader. `?name=` marks the response Content-Disposition inline
+// so <img> can render it; the plain /?id= form stays an attachment download.
+export function attachmentViewUrl(attachment) {
+  const url = attachment?.direct_url || attachment?.url || '';
+  if (/^https:\/\/data\.voz\.vn\//i.test(url)) return url;
+  const id = attachment?.attachment_id || attachment?.id || '';
+  if (!id) return '';
+  return `/api/attachment-download?id=${encodeURIComponent(id)}&name=${encodeURIComponent(attachment?.filename || 'image')}`;
+}
+
+// Same rule for an id with no registry entry (quotes, conversations that never called registerAttachments).
+export function attachmentViewUrlForId(id) {
+  return `/api/attachment-download?id=${encodeURIComponent(id)}&name=view`;
+}
+
 // Data-saving: attachments render their low-res thumbnail as the preview — recognisable, ~13KB instead of a
 // multi-hundred-KB original — with a download button sized to ~22% of the picture on top, so the softness
 // reads as a deliberate loading state and one tap brings in the sharp original. Non-save rendering is

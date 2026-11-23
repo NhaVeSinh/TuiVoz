@@ -13,6 +13,7 @@ import { wireImageDownloads } from './lib/imageDownload.js';
 import { wireStaticAvatars } from './lib/avatarStatic.js';
 import { wirePostScreenshots } from './lib/postScreenshot.js';
 import { wireAllQuoteExpansion } from './lib/quotes.js';
+import { wireLightbox } from './ui/lightbox.js';
 
 // Applied before the first paint so the page never flashes the wrong scheme; the saved preference is in
 // localStorage, so it is available synchronously.
@@ -56,6 +57,7 @@ wireImageDownloads();
 wireStaticAvatars();
 wirePostScreenshots();
 wireAllQuoteExpansion();
+wireLightbox();
 
 // Back/forward restores the scroll position the reader left on that history entry; `scrollRestoration` is
 // manual, so the browser cannot do it.

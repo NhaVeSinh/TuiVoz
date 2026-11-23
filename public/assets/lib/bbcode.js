@@ -5,6 +5,7 @@ import { restoreMedia } from './media.js';
 import { restoreQuoteLinks } from './quotes.js';
 import { restoreSpoilers } from './spoilers.js';
 import { rewriteVozLinks } from './postLinks.js';
+import { getAttachment, attachmentViewUrl, attachmentViewUrlForId } from './attachments.js';
 
 // message_parsed is server HTML; strip anything executable. The API drops image sizes, so they are re-applied
 // from the raw BBCode.
@@ -31,6 +32,7 @@ export function sanitizeHtml(html, bbcode) {
   rewriteVozLinks(root);
   restoreQuoteLinks(root, bbcode);
   restoreMedia(root);
+  rewriteAttachmentImages(root);
   applyImageSizes(root, bbcode);
   renderSmilies(root);
   return root.innerHTML;
@@ -78,6 +80,23 @@ function parseBbcodeImageSizes(bbcode) {
     if (spec.width || spec.height) sizes.set(normalizeImgSrc(src), spec);
   }
   return sizes;
+}
+
+// Inline [ATTACH] images come back from the API as <img src="https://voz.vn/attachments/<id>/"> — a page route
+// that Cloudflare 403s for guests — so the src (and a wrapping link to the same route) is pointed at the CDN
+// direct_url from the registry, or at the edge downloader when the registry has no entry.
+function rewriteAttachmentImages(root) {
+  for (const img of root.querySelectorAll('img[src*="/attachments/"]')) {
+    const src = img.getAttribute('src') || '';
+    if (/^https:\/\/data\.voz\.vn\//i.test(src)) continue;
+    const id = src.match(/\/attachments\/(?:[^/?#]*\.)?(\d+)/)?.[1];
+    if (!id) continue;
+    const attachment = getAttachment(id);
+    const url = attachment ? attachmentViewUrl(attachment) : attachmentViewUrlForId(id);
+    if (url) img.setAttribute('src', url);
+    const link = img.closest('a[href*="/attachments/"]');
+    if (link) link.setAttribute('href', url || link.getAttribute('href'));
+  }
 }
 
 function applyImageSizes(root, bbcode) {

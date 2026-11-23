@@ -452,6 +452,46 @@ export default async function handler(request) {
     return new Response(upstream.body, { status: 200, headers });
   }
 
+  // Attachment downloads: post.Attachments[] gives a direct_url on voz.vn/attachments/<name>.<id>/, but that
+  // redirect answers Cloudflare-403 to anyone not carrying a forum session cookie — guests included — so the
+  // file has to be fetched server-side and streamed back, with Content-Disposition set from the metadata.
+  if (path === '/api/attachment-download' && request.method === 'GET') {
+    const id = String(url.searchParams.get('id') || '').replace(/\D/g, '');
+    if (!id) return json({ error: 'missing_id' }, { status: 400, headers: corsHeaders(request) });
+    const session = readSession(request);
+    const metaHeaders = { 'User-Agent': UA, Accept: 'application/json' };
+    if (session && session.accessToken) metaHeaders.Authorization = `Bearer ${session.accessToken}`;
+    else metaHeaders['XF-Api-Key'] = GUEST_KEY;
+    const meta = await fetch(`${API_BASE}/attachments/${id}/`, { headers: metaHeaders }).then((r) => r.ok ? r.json() : null).catch(() => null);
+    const attachment = meta?.attachment;
+    const target = attachment?.direct_url || attachment?.url;
+    if (!target || !/^https:\/\//.test(target)) {
+      return json({ error: 'attachment_not_found' }, { status: 404, headers: corsHeaders(request) });
+    }
+    let upstream;
+    for (let tries = 0; tries < 3; tries++) {
+      upstream = await fetch(target, {
+        headers: { 'User-Agent': UA, Accept: '*/*', Referer: `${SITE}/` },
+        redirect: 'follow',
+      }).catch(() => null);
+      if (upstream?.ok) break;
+      if (upstream && upstream.status !== 403 && upstream.status !== 429) break;
+    }
+    if (!upstream?.ok) {
+      return json({ error: 'attachment_download_failed' }, { status: upstream?.status || 502, headers: corsHeaders(request) });
+    }
+    const filename = attachment.filename || `attachment-${id}`;
+    const headers = new Headers(corsHeaders(request));
+    headers.set('Content-Type', upstream.headers.get('content-type') || 'application/octet-stream');
+    if (upstream.headers.get('content-length')) headers.set('Content-Length', upstream.headers.get('content-length'));
+    // `?name=` marks a view link (lightbox <img src>): inline so the browser renders it. The plain /?id= form
+    // used by file rows stays `attachment` so the save dialog opens with the real filename.
+    const disposition = url.searchParams.get('name') ? 'inline' : 'attachment';
+    headers.set('Content-Disposition', `${disposition}; filename="${filename.replace(/"/g, '')}"; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    headers.set('Cache-Control', 'private, max-age=86400');
+    return new Response(upstream.body, { status: 200, headers });
+  }
+
   // pik.vn image host. Its uploader sends no CORS headers, so the page relays here. The multipart body must be
   // forwarded untouched so pik.vn's SHA-256 check still matches.
   if (path === '/api/pik/upload' && request.method === 'POST') {

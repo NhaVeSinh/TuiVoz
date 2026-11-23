@@ -6,9 +6,61 @@ import { avatarMarkup } from '../lib/avatar.js';
 import { sanitizeHtml } from '../lib/bbcode.js';
 import { signatureHtml } from '../lib/signature.js';
 import { userBadges } from '../lib/userBadges.js';
-import { ICON_EDIT, ICON_DELETE, ICON_QUOTE, ICON_REPLY, ICON_REPORT, ICON_BOOKMARK, ICON_WARN } from '../core/icons.js';
+import { ICON_EDIT, ICON_DELETE, ICON_QUOTE, ICON_REPLY, ICON_REPORT, ICON_BOOKMARK, ICON_WARN, ICON_ATTACH, ICON_DOWNLOAD } from '../core/icons.js';
 import { state } from '../core/dom.js';
 import { reactionBar, reactionSummary } from './reactions.js';
+import { attachmentViewUrl } from '../lib/attachments.js';
+
+// post.Attachments[] lists every file on the post, but message_parsed only shows the ones written inline as
+// [ATTACH]id[/ATTACH]; the rest must be drawn as a separate "Tệp đính kèm" block, like voz.vn does.
+const IMAGE_EXT = /\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i;
+const INLINE_ATTACH_RE = /\[attach[^\]]*\]\s*(\d+)\s*\[\/attach\]/gi;
+
+function isImageAttachment(attachment) {
+  if (attachment.is_video || attachment.is_audio) return false;
+  if (attachment.thumbnail_url) return true;
+  const url = attachment.direct_url || attachment.url || '';
+  if (attachment.width > 0 || attachment.height > 0) return true;
+  return IMAGE_EXT.test(attachment.filename || '') || /data\.voz\.vn\//.test(url);
+}
+
+function fileSize(bytes) {
+  const n = Number(bytes) || 0;
+  if (n <= 0) return '';
+  if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${n} B`;
+}
+
+export function attachmentsBlockHtml(post) {
+  const list = Array.isArray(post?.Attachments) ? post.Attachments : [];
+  if (!list.length) return '';
+  const inline = new Set();
+  for (const match of String(post.message || '').matchAll(INLINE_ATTACH_RE)) inline.add(match[1]);
+  const extras = list.filter((a) => !inline.has(String(a.attachment_id)));
+  if (!extras.length) return '';
+  const images = extras.filter(isImageAttachment);
+  const files = extras.filter((a) => !isImageAttachment(a));
+  const thumbs = images.map((a) => {
+    const view = attachmentViewUrl(a);
+    const thumb = a.thumbnail_url || view;
+    return `<a class="attachment-thumb" href="${esc(view)}" data-lightbox-src="${esc(view)}"
+      title="${esc(a.filename)}" aria-label="Xem ảnh ${esc(a.filename)}">
+      <img class="bbImage" src="${esc(thumb)}" alt="${esc(a.filename)}" loading="lazy" decoding="async"></a>`;
+  }).join('');
+  const rows = files.map((a) => {
+    const href = `/api/attachment-download?id=${encodeURIComponent(a.attachment_id)}`;
+    return `<a class="attachment-file" href="${esc(href)}" download>
+      <span class="attachment-file-icon">${ICON_ATTACH}</span>
+      <span class="attachment-file-meta"><span class="attachment-file-name">${esc(a.filename || `attachment-${a.attachment_id}`)}</span>
+      <span class="attachment-file-size">${fileSize(a.file_size)} · ${ICON_DOWNLOAD} Tải xuống</span></span></a>`;
+  }).join('');
+  return `<section class="attachments">
+    <h3 class="attachments-title">Tệp đính kèm</h3>
+    ${images.length ? `<div class="attachment-thumbs">${thumbs}</div>` : ''}
+    ${files.length ? `<ul class="attachment-files">${rows}</ul>` : ''}
+  </section>`;
+}
 
 // Conversation messages share the post layout; they differ in the permalink (no post number, no bookmark) and
 // the action set (edit, quote, reply). Reactions are dropped: the API answers 403 for a message id.
@@ -53,6 +105,7 @@ function messageHtml(msg, conversation, page) {
             <div class="message-content">
               <div class="message-userContent">
                 <article class="message-body bbWrapper">${sanitizeHtml(msg.message_parsed || esc(msg.message), msg.message)}</article>
+                ${attachmentsBlockHtml(msg)}
               </div>
               ${user.signature ? `<div class="message-signature bbWrapper is-collapsed">${sanitizeHtml(signatureHtml(user.signature))}</div><button type="button" class="signature-toggle" hidden aria-expanded="false">Xem thêm</button>` : ''}
               <footer class="message-footer">
@@ -127,6 +180,7 @@ export function postHtml(post, thread, page, kind = 'thread') {
             <div class="message-content">
               <div class="message-userContent">
                 <article class="message-body bbWrapper">${sanitizeHtml(post.message_parsed || esc(post.message), post.message)}</article>
+                ${attachmentsBlockHtml(post)}
               </div>
               ${user.signature ? `<div class="message-signature bbWrapper is-collapsed">${sanitizeHtml(signatureHtml(user.signature))}</div><button type="button" class="signature-toggle" hidden aria-expanded="false">Xem thêm</button>` : ''}
               <footer class="message-footer">
