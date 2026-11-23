@@ -99,7 +99,7 @@ export const FONT_SCALE_STEP = 5;
 export const FONT_SCALE_DEFAULT = 100;
 
 export const IMAGE_DOWNLOAD_DEFAULT = false;
-export const POST_SCREENSHOT_DEFAULT = false;
+export const POST_SCREENSHOT_DEFAULT = true;
 export const STATIC_AVATARS_DEFAULT = false;
 // Strike through members whose account is banned ("KIA"), like voz.vn does for moderators.
 //   off   — never look anybody up (default)
@@ -185,7 +185,8 @@ export function normalizeSettings(raw) {
   out.postSize = normalizeFontScale(raw?.postSize);
   out.uiSize = normalizeFontScale(raw?.uiSize);
   out.imageDownload = raw?.imageDownload === true;
-  out.postScreenshot = raw?.postScreenshot === true;
+  // Default-on: only an explicit `false` opts out; anything unset follows POST_SCREENSHOT_DEFAULT.
+  out.postScreenshot = raw?.postScreenshot === true || (raw?.postScreenshot !== false && POST_SCREENSHOT_DEFAULT);
   out.staticAvatars = raw?.staticAvatars === true;
   // Older builds stored a boolean here; `true` meant "always show".
   out.bannedUsers = raw?.bannedUsers === true

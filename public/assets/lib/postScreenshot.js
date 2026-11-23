@@ -393,34 +393,161 @@ function flashSaved(button) {
   }, 1600);
 }
 
+// Renders the post into a PNG blob without triggering any save; the caller decides what happens to it.
+async function renderPostPng(article) {
+  const source = article.cloneNode(true);
+  source.querySelectorAll(`.${BUTTON_CLASS}`).forEach((n) => n.remove());
+  // The clone is measured off-screen, then rasterised; it never becomes visible.
+  const width = layoutWidth(article);
+  const sheet = buildSheet(threadTitle(), source, width);
+  sheet.style.position = 'fixed';
+  sheet.style.left = '-100000px';
+  sheet.style.top = '0';
+  document.body.append(sheet);
+  try {
+    pruneUnloadedReactionStrips(sheet);
+    const fonts = await embedFonts();
+    await inlineImages(sheet);
+    // Inlining swaps every src, so the layout is only final once those decode.
+    await settle(sheet);
+    return await rasterize(sheet, fonts);
+  } finally {
+    sheet.remove();
+  }
+}
+
+async function copyPng(png) {
+  if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') return false;
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Hands the PNG to the OS share sheet (Android/iOS) via Web Share Level 2. Returns 'shared',
+// 'cancelled' when the sheet is dismissed, or 'unsupported' when the browser can't share files.
+async function sharePng(png, name) {
+  if (!navigator.share || !navigator.canShare) return 'unsupported';
+  const file = new File([png], name, { type: 'image/png' });
+  if (!navigator.canShare({ files: [file] })) return 'unsupported';
+  try {
+    await navigator.share({ files: [file] });
+    return 'shared';
+  } catch (error) {
+    return error?.name === 'AbortError' ? 'cancelled' : 'unsupported';
+  }
+}
+
+// The share menu behind the camera button: same anchored popup the post number uses. It owns its own
+// outside-click/scroll/escape wiring and closes itself after a successful action.
+let menu = null;
+
+function closeScreenshotMenu() {
+  if (!menu) return;
+  menu.root.remove();
+  menu.trigger.setAttribute('aria-expanded', 'false');
+  menu = null;
+  document.removeEventListener('click', onMenuDocumentClick, true);
+  document.removeEventListener('keydown', onMenuKeydown, true);
+  window.removeEventListener('resize', closeScreenshotMenu, true);
+  window.removeEventListener('wheel', closeScreenshotMenu, { capture: true });
+  window.removeEventListener('touchmove', closeScreenshotMenu, { capture: true });
+}
+
+function onMenuDocumentClick(event) {
+  if (!menu) return;
+  if (menu.root.contains(event.target) || menu.trigger.contains(event.target)) return;
+  closeScreenshotMenu();
+}
+
+function onMenuKeydown(event) {
+  if (event.key === 'Escape') {
+    const trigger = menu?.trigger;
+    closeScreenshotMenu();
+    trigger?.focus();
+  }
+}
+
+function placeMenu() {
+  if (!menu) return;
+  const rect = menu.trigger.getBoundingClientRect();
+  const width = menu.root.offsetWidth;
+  const left = Math.min(Math.max(8, rect.right - width), window.innerWidth - width - 8);
+  menu.root.style.left = `${left}px`;
+  menu.root.style.top = `${rect.bottom + 6}px`;
+}
+
+function openScreenshotMenu(trigger, article, png, noun) {
+  closeScreenshotMenu();
+  const name = fileName(article);
+  const actions = [
+    {
+      label: 'Sao chép vào bộ nhớ tạm',
+      async run() {
+        const ok = await copyPng(png);
+        toast(ok ? 'Đã sao chép ảnh.' : 'Trình duyệt không cho sao chép ảnh.', !ok);
+        return ok;
+      },
+    },
+    {
+      label: 'Chia sẻ',
+      async run() {
+        const result = await sharePng(png, name);
+        if (result === 'unsupported') toast('Trình duyệt không hỗ trợ chia sẻ ảnh.', true);
+        return result !== 'unsupported';
+      },
+    },
+    {
+      label: 'Tải xuống',
+      async run() {
+        triggerDownload(png, name);
+        toast(`Đã lưu ảnh ${noun}.`);
+        return true;
+      },
+    },
+  ];
+  const root = document.createElement('div');
+  root.className = 'post-share-popup';
+  root.setAttribute('role', 'menu');
+  root.innerHTML = actions
+    .map((action, index) => `<button type="button" class="post-share-option" role="menuitem" data-index="${index}">${action.label}</button>`)
+    .join('');
+  document.body.append(root);
+  trigger.setAttribute('aria-expanded', 'true');
+  menu = { root, trigger };
+  placeMenu();
+
+  root.addEventListener('click', async (event) => {
+    const option = event.target.closest('.post-share-option');
+    if (!option) return;
+    event.preventDefault();
+    const done = await actions[Number(option.dataset.index)].run();
+    if (done) closeScreenshotMenu();
+  });
+
+  setTimeout(() => {
+    if (!menu || menu.trigger !== trigger) return;
+    document.addEventListener('click', onMenuDocumentClick, true);
+    document.addEventListener('keydown', onMenuKeydown, true);
+    window.addEventListener('resize', closeScreenshotMenu, true);
+    window.addEventListener('wheel', closeScreenshotMenu, { capture: true, passive: true });
+    window.addEventListener('touchmove', closeScreenshotMenu, { capture: true, passive: true });
+  }, 0);
+
+  root.querySelector('.post-share-option')?.focus();
+}
+
 async function capturePost(article, button) {
   if (button.disabled) return;
   button.disabled = true;
   button.classList.add('is-loading');
   const noun = article.dataset.messageId ? 'tin nhắn' : 'bài viết';
   try {
-    const source = article.cloneNode(true);
-    source.querySelectorAll(`.${BUTTON_CLASS}`).forEach((n) => n.remove());
-    // The clone is measured off-screen, then rasterised; it never becomes visible.
-    const width = layoutWidth(article);
-    const sheet = buildSheet(threadTitle(), source, width);
-    sheet.style.position = 'fixed';
-    sheet.style.left = '-100000px';
-    sheet.style.top = '0';
-    document.body.append(sheet);
-    try {
-      pruneUnloadedReactionStrips(sheet);
-      const fonts = await embedFonts();
-      await inlineImages(sheet);
-      // Inlining swaps every src, so the layout is only final once those decode.
-      await settle(sheet);
-      const png = await rasterize(sheet, fonts);
-      triggerDownload(png, fileName(article));
-    } finally {
-      sheet.remove();
-    }
+    const png = await renderPostPng(article);
     flashSaved(button);
-    toast(`Đã lưu ảnh ${noun}.`);
+    openScreenshotMenu(button, article, png, noun);
   } catch (error) {
     toast(error instanceof Error ? error.message : `Không chụp được ${noun}.`, true);
     window.dispatchEvent(new CustomEvent('voz:post-screenshot-error', { detail: error }));
