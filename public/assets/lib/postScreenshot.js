@@ -426,19 +426,18 @@ async function copyPng(png) {
   }
 }
 
-// Hands the PNG to the OS share sheet (Android/iOS) via Web Share Level 2. Returns 'shared',
-// 'cancelled' when the sheet is dismissed, or 'unsupported' when the browser can't share files.
-// `canShare` is optional in some builds (Firefox Android), so a TypeError from `share` also counts
-// as "files not shareable" instead of a hard failure.
+// Hands the PNG to the OS share sheet (Android/iOS) via Web Share Level 2. Returns {status}:
+// 'shared', 'cancelled' when the sheet is dismissed, or 'unsupported' when the browser can't share
+// files — `error` carries the exception name for the diagnostic toast.
 async function sharePng(png, name) {
-  if (!navigator.share) return 'unsupported';
+  if (!navigator.share) return { status: 'unsupported', error: 'no navigator.share' };
   const file = new File([png], name, { type: 'image/png' });
-  if (navigator.canShare && !navigator.canShare({ files: [file] })) return 'unsupported';
+  if (navigator.canShare && !navigator.canShare({ files: [file] })) return { status: 'unsupported', error: 'canShare=false' };
   try {
     await navigator.share({ files: [file] });
-    return 'shared';
+    return { status: 'shared' };
   } catch (error) {
-    return error?.name === 'AbortError' ? 'cancelled' : 'unsupported';
+    return { status: error?.name === 'AbortError' ? 'cancelled' : 'unsupported', error: error?.name || String(error) };
   }
 }
 
@@ -446,19 +445,25 @@ async function sharePng(png, name) {
 // share sheet with the post's voz.vn permalink. Returns 'url' when the sheet opened, 'cancelled',
 // or 'unsupported' when even URL sharing is unavailable.
 async function shareUrl(article) {
-  if (!navigator.share) return 'unsupported';
-  const postId = article.dataset.messageId || article.dataset.postId;
-  const url = postId ? `https://voz.vn/posts/${postId}/` : `https://voz.vn${location.pathname}`;
+  if (!navigator.share) return { status: 'unsupported', error: 'no navigator.share' };
+  const url = shareableUrl(article);
   const title = threadTitle();
   const data = { title, text: title, url };
-  if (navigator.canShare && !navigator.canShare(data)) return 'unsupported';
+  if (navigator.canShare && !navigator.canShare(data)) return { status: 'unsupported', error: 'canShare(url)=false' };
   try {
     await navigator.share(data);
-    return 'url';
+    return { status: 'url' };
   } catch (error) {
-    if (error?.name === 'AbortError') return 'cancelled';
-    return 'unsupported';
+    return { status: error?.name === 'AbortError' ? 'cancelled' : 'unsupported', error: error?.name || String(error) };
   }
+}
+
+// The link offered when the PNG itself cannot be shared. Public posts get their voz.vn permalink;
+// conversation messages have no public URL, so the current page URL is used.
+function shareableUrl(article) {
+  const postId = article.dataset.postId;
+  if (postId) return `https://voz.vn/posts/${postId}/`;
+  return location.href;
 }
 
 async function copyText(text) {
@@ -541,18 +546,20 @@ function openScreenshotMenu(trigger, article, png, noun) {
     {
       label: 'Chia sẻ',
       async run() {
-        let result = await sharePng(png, name);
-        if (result === 'unsupported') result = await shareUrl(article);
-        if (result === 'url') {
+        const fileResult = await sharePng(png, name);
+        if (fileResult.status === 'shared') return true;
+        if (fileResult.status === 'cancelled') return true;
+        const urlResult = await shareUrl(article);
+        if (urlResult.status === 'url') {
           toast('Trình duyệt không chia sẻ được ảnh — đang chia sẻ liên kết bài viết.');
           return true;
         }
-        if (result === 'unsupported') {
-          const postId = article.dataset.messageId || article.dataset.postId;
-          const copied = await copyText(postId ? `https://voz.vn/posts/${postId}/` : location.href);
-          toast(copied ? 'Trình duyệt không hỗ trợ chia sẻ — đã sao chép liên kết bài viết.' : 'Trình duyệt không hỗ trợ chia sẻ ảnh.', !copied);
-          return copied;
-        }
+        if (urlResult.status === 'cancelled') return true;
+        // Nothing shareable: keep the image at least reachable via a download instead of dead-ending.
+        triggerDownload(png, name);
+        const copied = await copyText(shareableUrl(article));
+        const reason = `${fileResult.error || ''}${urlResult.error ? ` / ${urlResult.error}` : ''}`;
+        toast(copied ? `Không chia sẻ được (${reason}) — đã tải ảnh và sao chép liên kết.` : `Không chia sẻ được (${reason}) — đã tải ảnh.`, true);
         return true;
       },
     },
