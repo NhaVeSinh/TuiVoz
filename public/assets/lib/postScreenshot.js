@@ -428,15 +428,62 @@ async function copyPng(png) {
 
 // Hands the PNG to the OS share sheet (Android/iOS) via Web Share Level 2. Returns 'shared',
 // 'cancelled' when the sheet is dismissed, or 'unsupported' when the browser can't share files.
+// `canShare` is optional in some builds (Firefox Android), so a TypeError from `share` also counts
+// as "files not shareable" instead of a hard failure.
 async function sharePng(png, name) {
-  if (!navigator.share || !navigator.canShare) return 'unsupported';
+  if (!navigator.share) return 'unsupported';
   const file = new File([png], name, { type: 'image/png' });
-  if (!navigator.canShare({ files: [file] })) return 'unsupported';
+  if (navigator.canShare && !navigator.canShare({ files: [file] })) return 'unsupported';
   try {
     await navigator.share({ files: [file] });
     return 'shared';
   } catch (error) {
     return error?.name === 'AbortError' ? 'cancelled' : 'unsupported';
+  }
+}
+
+// Fallback when files cannot be shared (e.g. Firefox Android, which only accepts url/text): open the
+// share sheet with the post's voz.vn permalink. Returns 'url' when the sheet opened, 'cancelled',
+// or 'unsupported' when even URL sharing is unavailable.
+async function shareUrl(article) {
+  if (!navigator.share) return 'unsupported';
+  const postId = article.dataset.messageId || article.dataset.postId;
+  const url = postId ? `https://voz.vn/posts/${postId}/` : `https://voz.vn${location.pathname}`;
+  const title = threadTitle();
+  const data = { title, text: title, url };
+  if (navigator.canShare && !navigator.canShare(data)) return 'unsupported';
+  try {
+    await navigator.share(data);
+    return 'url';
+  } catch (error) {
+    if (error?.name === 'AbortError') return 'cancelled';
+    return 'unsupported';
+  }
+}
+
+async function copyText(text) {
+  if (!text) return false;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Falls through to the legacy path: clipboard access needs a secure context.
+  }
+  try {
+    const field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.top = '-1000px';
+    document.body.append(field);
+    field.select();
+    const ok = document.execCommand('copy');
+    field.remove();
+    return ok;
+  } catch {
+    return false;
   }
 }
 
@@ -494,9 +541,19 @@ function openScreenshotMenu(trigger, article, png, noun) {
     {
       label: 'Chia sẻ',
       async run() {
-        const result = await sharePng(png, name);
-        if (result === 'unsupported') toast('Trình duyệt không hỗ trợ chia sẻ ảnh.', true);
-        return result !== 'unsupported';
+        let result = await sharePng(png, name);
+        if (result === 'unsupported') result = await shareUrl(article);
+        if (result === 'url') {
+          toast('Trình duyệt không chia sẻ được ảnh — đang chia sẻ liên kết bài viết.');
+          return true;
+        }
+        if (result === 'unsupported') {
+          const postId = article.dataset.messageId || article.dataset.postId;
+          const copied = await copyText(postId ? `https://voz.vn/posts/${postId}/` : location.href);
+          toast(copied ? 'Trình duyệt không hỗ trợ chia sẻ — đã sao chép liên kết bài viết.' : 'Trình duyệt không hỗ trợ chia sẻ ảnh.', !copied);
+          return copied;
+        }
+        return true;
       },
     },
     {
