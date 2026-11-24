@@ -240,7 +240,7 @@ function settingsHtml(active = settingsTabFromHash()) {
           <label class="settings-toggle" for="reactor-names">
             <span class="settings-toggle-copy">
               <span class="settings-toggle-name">Hiển thị tên người dùng đã thả cảm xúc</span>
-              <span class="option-card-desc">Hiện tên thành viên ngay dưới mỗi bài viết giống voz.vn. Bật tính năng sẽ gửi thêm dữ liệu tới voz.vn làm chậm và tốn thêm data — mặc định tắt, strip chỉ hiện biểu tượng + tổng số, bấm vào vẫn mở danh sách đầy đủ.</span>
+              <span class="option-card-desc">Hiện tên thành viên ngay dưới mỗi bài viết giống voz.vn. Bật tính năng sẽ gửi thêm dữ liệu tới voz.vn làm chậm và tốn thêm data — mặc định tắt. Bấm vào số lượt cảm xúc cạnh nút ưng/gạch để mở danh sách đầy đủ.</span>
             </span>
             <input type="checkbox" id="reactor-names"${reactorNames ? ' checked' : ''}>
           </label>

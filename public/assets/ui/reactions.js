@@ -23,7 +23,7 @@ export function reactionBar(post) {
         title="${esc(r.title)}" ${post.can_react ? '' : 'aria-disabled="true"'}>
         <img src="${esc(r.image_url)}" alt="${esc(r.title)}" referrerpolicy="no-referrer" class="reaction-image">
         <span class="reaction-text">${esc(r.title)}</span>
-        ${count ? `<span class="reaction-count">${count}</span>` : ''}
+        ${count ? `<span class="reaction-count" title="Xem ai đã thả cảm xúc">${count}</span>` : ''}
       </a>`;
     })
     .join('');
@@ -74,42 +74,29 @@ const namesEager = () => !isDataSaving() && getReactorNames();
 export function reactionSummary(post) {
   const counts = post.reaction_counts || {};
   const total = Object.values(counts).reduce((sum, n) => sum + (Number(n) || 0), 0);
-  if (!total) return '';
-  if (!namesEager()) {
-    return `<div class="reactionsBar" data-reaction-list="${post.post_id}" title="Bấm để xem ai đã thả cảm xúc">
-      <span class="reactionsBar-icons">${countIcons(counts)}</span>
-      <span class="reactionsBar-users">${total}</span>
-    </div>`;
-  }
+  if (!total || !namesEager()) return ''; // off: no strip — counts already sit on the reaction buttons
   return `<div class="reactionsBar" data-reaction-list="${post.post_id}">
     <span class="reactionsBar-loading">Đang tải thành viên…</span>
   </div>`;
 }
 
-function countIcons(counts) {
-  const catalogue = state.reactions || [];
-  return catalogue
-    .filter((r) => (Number(counts[String(r.reaction_id)]) || 0) > 0)
-    .map((r) => `<img src="${esc(r.image_url)}" alt="${esc(r.title)}" title="${esc(r.title)}" referrerpolicy="no-referrer" class="reaction-image">`)
-    .join('');
-}
+// With the names strip off, the reactor list opens via the count on the
+// reaction buttons (capture phase — runs before thread.js's react handler).
+document.addEventListener('click', (event) => {
+  const count = event.target.closest('.reaction-count');
+  if (!count) return;
+  const btn = count.closest('[data-react][data-post]');
+  if (!btn) return;
+  event.preventDefault();
+  event.stopPropagation();
+  openReactionUsersModal(btn.dataset.post);
+}, true);
 
 // Tapping the strip (not a name link) opens the full reactor list, like voz.
-// With names-eager on (reactorNames + no data-saving), tap opens the modal;
-// otherwise the first tap fills names, the second opens it.
-document.addEventListener('click', async (event) => {
+document.addEventListener('click', (event) => {
   const strip = event.target.closest('.reactionsBar[data-reaction-list]');
   if (!strip || event.target.closest('a')) return;
-  if (namesEager()) {
-    openReactionUsersModal(strip);
-    return;
-  }
-  if (!strip.dataset.namesLoaded) {
-    strip.dataset.namesLoaded = 'true';
-    await fillReactionStrip(strip);
-    return;
-  }
-  openReactionUsersModal(strip);
+  openReactionUsersModal(strip.dataset.reactionList);
 });
 
 export async function hydrateReactionLists(root) {
@@ -171,8 +158,7 @@ async function fillReactionStrip(strip) {
 }
 
 // Full reactor list modal, mirroring voz.vn's overlay.
-async function openReactionUsersModal(strip) {
-  const postId = strip.dataset.reactionList;
+async function openReactionUsersModal(postId) {
   const { close } = openModal('Người đã bày tỏ cảm xúc', '<p class="reactionsBar-loading">Đang tải thành viên…</p>', '', { className: 'modal--reactors' });
   const users = await loadReactionUsers(postId);
   const body = modalBody();

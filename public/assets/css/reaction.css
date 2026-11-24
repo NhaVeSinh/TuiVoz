@@ -20,5 +20,8 @@
   font-size: calc(12px * var(--ui-scale));
   font-weight: var(--fw-bold);
   color: var(--dimmed);
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
 }
 .reaction.has-reaction .reaction-count { color: var(--accent-text); }
