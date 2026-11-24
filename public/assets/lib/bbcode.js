@@ -6,6 +6,7 @@ import { restoreQuoteLinks } from './quotes.js';
 import { restoreSpoilers } from './spoilers.js';
 import { rewriteVozLinks } from './postLinks.js';
 import { getAttachment, attachmentViewUrl, attachmentViewUrlForId } from './attachments.js';
+import { getProxyImages } from './settings.js';
 
 // Sanitize server HTML; image sizes re-applied from raw BBCode.
 export function sanitizeHtml(html, bbcode) {
@@ -32,8 +33,18 @@ export function sanitizeHtml(html, bbcode) {
   restoreMedia(root);
   rewriteAttachmentImages(root);
   applyImageSizes(root, bbcode);
+  proxyRemoteImages(root);
   renderSmilies(root);
   return root.innerHTML;
+}
+
+// proxyImages on: route remaining remote <img> (embedded hotlinks) through
+// the edge. Attachment images are already /api/* or imgSrc()-wrapped.
+function proxyRemoteImages(root) {
+  if (!getProxyImages()) return;
+  for (const img of root.querySelectorAll('img[src^="http"]')) {
+    img.setAttribute('src', `/api/image-download?url=${encodeURIComponent(img.getAttribute('src'))}`);
+  }
 }
 
 function normalizeImgSrc(src) {

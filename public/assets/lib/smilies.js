@@ -2,6 +2,7 @@
 
 import { xf } from '../api.js';
 import { cachedCatalog } from './catalogs.js';
+import { imgSrc } from './imgProxy.js';
 
 let catalog;
 let codes = new Map();
@@ -68,8 +69,8 @@ export function renderSmilies(root) {
       const { smilie, code } = part;
       const image = root.ownerDocument.createElement('img');
       image.className = 'smilie';
-      image.src = smilie.image_url;
-      if (/^https:\/\/data\.voz\.vn\//.test(smilie.image_url_2x || '')) image.srcset = `${smilie.image_url} 1x, ${smilie.image_url_2x} 2x`;
+      image.src = imgSrc(smilie.image_url);
+      if (/^https:\/\/data\.voz\.vn\//.test(smilie.image_url_2x || '')) image.srcset = `${imgSrc(smilie.image_url)} 1x, ${imgSrc(smilie.image_url_2x)} 2x`;
       image.alt = code;
       image.title = `${smilie.title} ${code}`;
       // Editors read the source code back from data-smilie.

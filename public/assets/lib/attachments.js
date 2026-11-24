@@ -1,6 +1,7 @@
 /** Attachment URLs. */
 
 import { isDataSaving } from './dataSaving.js';
+import { imgSrc } from './imgProxy.js';
 import { ICON_DOWNLOAD } from '../core/icons.js';
 
 const registry = new Map();
@@ -57,7 +58,7 @@ export function clearAttachments() {
 // CDN direct_url loads for guests; other routes 403 and use the edge downloader.
 export function attachmentViewUrl(attachment) {
   const url = attachment?.direct_url || attachment?.url || '';
-  if (/^https:\/\/data\.voz\.vn\//i.test(url)) return url;
+  if (/^https:\/\/data\.voz\.vn\//i.test(url)) return imgSrc(url);
   const id = attachment?.attachment_id || attachment?.id || '';
   if (!id) return '';
   return `/api/attachment-download?id=${encodeURIComponent(id)}&name=${encodeURIComponent(attachment?.filename || 'image')}`;
@@ -82,7 +83,7 @@ export function swapAttachmentThumbnails(root) {
     if (!attachment.thumbnail || attachment.thumbnail === attachment.url) continue;
     img.dataset.saveOriginal = src;
     // Only the 1x thumbnail is guaranteed; the 2x variant 404s on some attachments.
-    img.setAttribute('src', attachment.thumbnail);
+    img.setAttribute('src', imgSrc(attachment.thumbnail));
     img.removeAttribute('srcset');
     // Original width/height attrs would stretch the small thumbnail into a blur.
     img.removeAttribute('width');

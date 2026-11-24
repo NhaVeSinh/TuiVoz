@@ -2,6 +2,7 @@
 import { esc } from '../core/utils.js';
 import { safeEditorUrl } from '../lib/editorCodec.js';
 import { loadSmilies, smilieChoices } from '../lib/smilies.js';
+import { imgSrc } from '../lib/imgProxy.js';
 import { renderStickerPicker } from './stickerPicker.js';
 import { uploadImageFiles, pikBbcode } from '../lib/pikUpload.js';
 
@@ -153,12 +154,12 @@ export function showToolPanel(panel, kind, insert, selectionText) {
       const button = document.createElement('button'); button.type = 'button'; button.title = label; button.setAttribute('aria-label', label);
       if (smilie.image_url && safeEditorUrl(smilie.image_url)) {
         const img = document.createElement('img');
-        img.src = smilie.image_url;
+        img.src = imgSrc(smilie.image_url);
         img.alt = code;
         img.loading = 'lazy';
         // `sizes` pins layout to the 1x size so 2x stays sharp, not bigger.
         if (smilie.image_url_2x && safeEditorUrl(smilie.image_url_2x)) {
-          img.srcset = `${smilie.image_url} 1x, ${smilie.image_url_2x} 2x`;
+          img.srcset = `${imgSrc(smilie.image_url)} 1x, ${imgSrc(smilie.image_url_2x)} 2x`;
           img.sizes = '24px';
         }
         button.append(img);

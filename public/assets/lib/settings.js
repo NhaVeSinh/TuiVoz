@@ -49,6 +49,7 @@ export const emptySettings = () => ({
   vozSupport: VOZ_SUPPORT_DEFAULT,
   pushEnabled: false,
   reactorNames: REACTOR_NAMES_DEFAULT,
+  proxyImages: PROXY_IMAGES_DEFAULT,
 });
 
 // Colour scheme for the content area; chrome stays dark in both modes.
@@ -138,6 +139,11 @@ export const VOZ_SUPPORT_DEFAULT = false;
 // Names under posts cost one page scrape per post; show icons+count by
 // default and let a tap open the full list instead.
 export const REACTOR_NAMES_DEFAULT = false;
+
+// Route every remote image through /api/image-download on the Vercel edge.
+// Lower latency than hitting voz.vn/data.voz.vn directly, but each byte
+// counts against the (free-tier-limited) Vercel bandwidth — off by default.
+export const PROXY_IMAGES_DEFAULT = false;
 export const DATA_SAVING_LABELS = {
   auto: 'Tự động theo thiết bị',
   on: 'Luôn bật',
@@ -199,6 +205,7 @@ export function normalizeSettings(raw) {
   out.vozSupport = raw?.vozSupport === true;
   out.pushEnabled = raw?.pushEnabled === true;
   out.reactorNames = raw?.reactorNames === true;
+  out.proxyImages = raw?.proxyImages === true;
   const list = Array.isArray(raw?.navShortcuts) ? raw.navShortcuts : [];
   const seen = new Set();
   for (const item of list.slice(0, MAX_SHORTCUTS)) {
@@ -299,6 +306,16 @@ export function setReactorNames(enabled) {
 
 export function getReactorNames() {
   return loadSettings().reactorNames === true;
+}
+
+export function setProxyImages(enabled) {
+  const settings = loadSettings();
+  settings.proxyImages = enabled === true;
+  return saveSettings(settings);
+}
+
+export function getProxyImages() {
+  return loadSettings().proxyImages === true;
 }
 
 export function setInfiniteScroll(mode) {
@@ -423,6 +440,7 @@ export function exportSettingsJson({ albums = [], recent = [], filters = [] } = 
     fullNumbers: settings.fullNumbers,
     vozSupport: settings.vozSupport,
     reactorNames: settings.reactorNames,
+    proxyImages: settings.proxyImages,
   };
   // Sticker payload mirrors the userscript backup format for cross-import.
   if (albums.length || recent.length) {

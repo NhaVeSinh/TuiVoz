@@ -10,6 +10,7 @@ import { ICON_EDIT, ICON_DELETE, ICON_QUOTE, ICON_REPLY, ICON_REPORT, ICON_BOOKM
 import { state } from '../core/dom.js';
 import { reactionBar, reactionSummary } from './reactions.js';
 import { attachmentViewUrl } from '../lib/attachments.js';
+import { imgSrc } from '../lib/imgProxy.js';
 
 // Attachments not written inline as [ATTACH]id[/ATTACH] get a separate block, like voz.vn.
 const IMAGE_EXT = /\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i;
@@ -42,7 +43,7 @@ export function attachmentsBlockHtml(post) {
   const files = extras.filter((a) => !isImageAttachment(a));
   const thumbs = images.map((a) => {
     const view = attachmentViewUrl(a);
-    const thumb = a.thumbnail_url || view;
+    const thumb = a.thumbnail_url ? imgSrc(a.thumbnail_url) : view;
     return `<a class="attachment-thumb" href="${esc(view)}" data-lightbox-src="${esc(view)}"
       title="${esc(a.filename)}" aria-label="Xem ảnh ${esc(a.filename)}">
       <img class="bbImage" src="${esc(thumb)}" alt="${esc(a.filename)}" loading="lazy" decoding="async"></a>`;

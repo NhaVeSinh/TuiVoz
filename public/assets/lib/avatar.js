@@ -1,6 +1,7 @@
 /** Avatars. */
 
 import { esc } from '../core/utils.js';
+import { imgSrc } from './imgProxy.js';
 
 // voz.vn buckets avatar files by floor(user_id / 1000).
 export function avatarUrlById(userId, size = 's') {
@@ -35,11 +36,11 @@ export function avatarMarkup(user, size = 's') {
   const retina = known
     ? urls[retinaSize] || urls.o || urls.l || urls.m || ''
     : avatarUrlById(id, retinaSize);
-  const srcset = retina && retina !== src ? ` srcset="${esc(retina)} 2x"` : '';
+  const srcset = retina && retina !== src ? ` srcset="${esc(imgSrc(retina))} 2x"` : '';
   const [bg, fg] = DYNAMIC_AVATAR[id % DYNAMIC_AVATAR.length];
   const initial = esc(((user && user.username) || '?').slice(0, 1).toUpperCase());
   const img = src
-    ? `<img class="avatar-img" src="${esc(src)}"${srcset} alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
+    ? `<img class="avatar-img" src="${esc(imgSrc(src))}"${srcset} alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
     : '';
   return `<span class="avatar-fallback" style="background:${bg};color:${fg}"><span aria-hidden="true">${initial}</span>${img}</span>`;
 }

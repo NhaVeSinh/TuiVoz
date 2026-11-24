@@ -81,7 +81,8 @@ TuiVoz/
 | `postScreenshot.js` | `renderPostPng` (SVG foreignObject, proxy ảnh → dataURI chống taint; `data:` SVG cho Chrome) + popup Sao chép / Chia sẻ / Tải xuống (Web Share L2; Firefox không share file → fallback URL). |
 | `prefix.js` / `userBadges.js` | Màu/nhãn prefix thread; huy hiệu member. |
 | `quotes.js` / `spoilers.js` / `signature.js` | Collapse quote >800px; toggle spoiler; render chữ ký. |
-| `settings.js` | `localStorage['voz-settings:v1']`: theme, font, scale, auto-hide, sticker albums, `vozSupport`, `postScreenshot` (default BẬT), `reactorNames` (default TẮT — không render strip; count trên nút ưng/gạch có gạch chấm, bấm mở modal reactor list; bật mới eager-load tên như voz); import/export JSON. |
+| `settings.js` | `localStorage['voz-settings:v1']`: theme, font, scale, auto-hide, sticker albums, `vozSupport`, `postScreenshot` (default BẬT), `reactorNames` (default TẮT — không render strip; count trên nút ưng/gạch có gạch chấm, bấm mở modal reactor list; bật mới eager-load tên như voz), `proxyImages` (default TẮT — bật: mọi ảnh remote → `/api/image-download` trên edge, giảm latency nhưng tốn băng thông Vercel); import/export JSON. |
+| `imgProxy.js` | `imgSrc(url)` — bọc URL ảnh remote → `/api/image-download` khi `proxyImages` bật (path nội bộ giữ nguyên). Dùng bởi `avatar.js`, `attachments.js` (direct_url + thumbnail), `ui/post.js` (attachment thumb), `ui/lightbox.js` (ảnh full), `bbcode.js` `proxyRemoteImages` (mọi `<img src^=http>` còn lại trong post HTML), `smilies.js` + `editorTools.js` (emoji `data.voz.vn/styles/.../smilies/`), `reactions.js`/`alertMarkup.js` (reaction icons). |
 | `signals.js` | Analytics `/voz/signals`: queue open/read, flush 5s/20 events/pagehide (chỉ logged-in). |
 | `smilies.js` | Danh mục `/voz/smilies` + regex thay emoticon → `<img>`. |
 | `stickers.js` | Sticker IndexedDB (`TuiVozStickerStorage`): album, recent, cache offline. |

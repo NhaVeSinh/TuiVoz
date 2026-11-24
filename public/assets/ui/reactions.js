@@ -7,6 +7,7 @@ import { isDataSaving } from '../lib/dataSaving.js';
 import { getReactorNames } from '../lib/settings.js';
 import { openModal } from './modal.js';
 import { avatarMarkup } from '../lib/avatar.js';
+import { imgSrc } from '../lib/imgProxy.js';
 import { wireMemberTooltips } from './memberTooltip.js';
 
 export function reactionBar(post) {
@@ -21,7 +22,7 @@ export function reactionBar(post) {
       const active = mine === r.reaction_id ? ' has-reaction' : '';
       return `<a href="#" class="reaction reaction--small actionBar-action${active}" data-react="${r.reaction_id}" data-post="${post.post_id}"
         title="${esc(r.title)}" ${post.can_react ? '' : 'aria-disabled="true"'}>
-        <img src="${esc(r.image_url)}" alt="${esc(r.title)}" referrerpolicy="no-referrer" class="reaction-image">
+        <img src="${esc(imgSrc(r.image_url))}" alt="${esc(r.title)}" referrerpolicy="no-referrer" class="reaction-image">
         <span class="reaction-text">${esc(r.title)}</span>
         ${count ? `<span class="reaction-count" title="Xem ai đã thả cảm xúc">${count}</span>` : ''}
       </a>`;
@@ -150,7 +151,7 @@ async function fillReactionStrip(strip) {
     .map((id) => {
       const r = byId.get(id);
       if (!r) return '';
-      return `<img src="${esc(r.image_url)}" alt="${esc(r.title)}" title="${esc(r.title)}" referrerpolicy="no-referrer" class="reaction-image">`;
+      return `<img src="${esc(imgSrc(r.image_url))}" alt="${esc(r.title)}" title="${esc(r.title)}" referrerpolicy="no-referrer" class="reaction-image">`;
     })
     .join('');
   strip.innerHTML = `<span class="reactionsBar-icons">${icons}</span>
@@ -176,7 +177,7 @@ async function openReactionUsersModal(postId) {
   }));
   body.innerHTML = `<ul class="reactor-list">${users.map((u, i) => {
     const r = u.reactionId ? byId.get(u.reactionId) : null;
-    const icon = r ? `<img src="${esc(r.image_url)}" alt="${esc(r.title)}" title="${esc(r.title)}" referrerpolicy="no-referrer" class="reaction-image">` : '';
+    const icon = r ? `<img src="${esc(imgSrc(r.image_url))}" alt="${esc(r.title)}" title="${esc(r.title)}" referrerpolicy="no-referrer" class="reaction-image">` : '';
     return `<li><span class="avatar avatar--xs reactor-list-avatar">${avatarMarkup(stubs[i], 'm')}</span><a class="reactor-list-user" data-member-id="${u.userId}" href="${userPath({ user_id: u.userId, username: u.username })}">${esc(u.username)}</a>${icon}</li>`;
   }).join('')}</ul>`;
   // Hover card on desktop; tap toggles it on mobile (same as elsewhere).

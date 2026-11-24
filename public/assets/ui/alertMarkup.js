@@ -2,6 +2,7 @@
 import { esc } from '../core/utils.js';
 import { api } from '../api.js';
 import { cachedCatalog } from '../lib/catalogs.js';
+import { imgSrc } from '../lib/imgProxy.js';
 import { state } from '../core/dom.js';
 
 // Shared cached catalog, seeded by views/thread.js.
@@ -23,5 +24,5 @@ export async function alertTextMarkup(alert) {
   if (!reaction) return esc(text);
   const suffix = `with ${alert.reaction_title}.`;
   if (!text.endsWith(suffix)) return esc(text);
-  return `${esc(text.slice(0, -suffix.length))}<img src="${esc(reaction.image_url)}" alt="${esc(reaction.title)}" title="${esc(reaction.title)}" class="reaction-image alert-reaction-image" referrerpolicy="no-referrer">`;
+  return `${esc(text.slice(0, -suffix.length))}<img src="${esc(imgSrc(reaction.image_url))}" alt="${esc(reaction.title)}" title="${esc(reaction.title)}" class="reaction-image alert-reaction-image" referrerpolicy="no-referrer">`;
 }

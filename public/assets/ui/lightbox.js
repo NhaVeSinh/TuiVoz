@@ -1,5 +1,7 @@
 /** Lightbox. */
 
+import { imgSrc } from '../lib/imgProxy.js';
+
 const EXCLUDED_IMAGE_CLASSES = ['smilie', 'bbCodeBlockUnfurl-image', 'bbCodeBlockUnfurl-icon', 'reaction-image'];
 const EXCLUDED_ANCESTOR =
   '.media-embed, .sticker-picker, .editor-visual, .editor-preview, .message-signature, .bbCodeBlock--unfurl, .avatar, .member-tooltip, .image-download-button, .save-thumb-load';
@@ -24,7 +26,7 @@ function isExcludedImage(img) {
 // Resolve the full-size source; relative attachment paths go through the proxy.
 function fullSrc(img) {
   const explicit = img.closest('[data-lightbox-src]')?.getAttribute('data-lightbox-src');
-  if (explicit) return explicit;
+  if (explicit) return srcOr(explicit);
   if (img.dataset.saveOriginal) return srcOr(img.dataset.saveOriginal);
   const link = img.closest('a[href]');
   const href = link?.getAttribute('href') || '';
@@ -40,7 +42,7 @@ function srcOr(url) {
     const absolute = raw.startsWith('http') ? raw : `https://voz.vn${raw.startsWith('/') ? '' : '/'}${raw}`;
     return `/api/image-download?url=${encodeURIComponent(absolute)}`;
   }
-  return raw;
+  return imgSrc(raw);
 }
 
 function applyTransform() {

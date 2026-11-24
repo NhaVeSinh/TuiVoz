@@ -10,7 +10,7 @@ import {
   loadSettings, addShortcut, updateShortcut, removeShortcut, moveShortcut,
   exportSettingsJson, importSettingsJson, setInfiniteScroll, setDataSaving,
   SCROLL_MODES, SCROLL_LABELS,
-  setTheme, setFont, setFontScale, getFontScale, setImageDownload, setPostScreenshot, setStaticAvatars, setBannedUsers, setVozSupport, setPushEnabled, setReactorNames,
+  setTheme, setFont, setFontScale, getFontScale, setImageDownload, setPostScreenshot, setStaticAvatars, setBannedUsers, setVozSupport, setPushEnabled, setReactorNames, setProxyImages,
   BANNED_USER_MODES, BANNED_USERS_LABELS, BANNED_USERS_HELP,
   setFullNumbers, FULL_NUMBERS_MODES, FULL_NUMBERS_LABELS,
   DATA_SAVING_MODES, DATA_SAVING_LABELS, DATA_SAVING_HELP,
@@ -184,7 +184,7 @@ function tabsHtml(active) {
 }
 
 function settingsHtml(active = settingsTabFromHash()) {
-  const { navShortcuts, infiniteScroll, theme, font, postSize, uiSize, imageDownload, postScreenshot, staticAvatars, bannedUsers, fullNumbers, dataSaving, vozSupport, pushEnabled, reactorNames } = loadSettings();
+  const { navShortcuts, infiniteScroll, theme, font, postSize, uiSize, imageDownload, postScreenshot, staticAvatars, bannedUsers, fullNumbers, dataSaving, vozSupport, pushEnabled, reactorNames, proxyImages } = loadSettings();
   const albums = getAlbums();
   return `<div class="block settings-block">
       <h1 class="block-header">Cài đặt</h1>
@@ -243,6 +243,13 @@ function settingsHtml(active = settingsTabFromHash()) {
               <span class="option-card-desc">Hiện tên thành viên ngay dưới mỗi bài viết giống voz.vn. Bật tính năng sẽ gửi thêm dữ liệu tới voz.vn làm chậm và tốn thêm data — mặc định tắt. Bấm vào số lượt cảm xúc cạnh nút ưng/gạch để mở danh sách đầy đủ.</span>
             </span>
             <input type="checkbox" id="reactor-names"${reactorNames ? ' checked' : ''}>
+          </label>
+          <label class="settings-toggle" for="proxy-images">
+            <span class="settings-toggle-copy">
+              <span class="settings-toggle-name">Chuyển tiếp toàn bộ dữ liệu ảnh bằng Vercel</span>
+              <span class="option-card-desc">Giảm thiểu độ trễ voz.vn do dùng CDN Vercel, tuy nhiên sẽ tốn nhiều dữ liệu Vercel — gói free của Vercel có thể quá hạn mức. Mặc định tắt.</span>
+            </span>
+            <input type="checkbox" id="proxy-images"${proxyImages ? ' checked' : ''}>
           </label>
           <h3 class="settings-subhead">Thành viên bị ban</h3>
           <p class="formHint">Gạch ngang tên nick đã bị ban.</p>
@@ -998,6 +1005,11 @@ export function viewSettings() {
     const enabled = event.currentTarget.checked;
     setReactorNames(enabled);
     toast(`Hiển thị tên người thả cảm xúc: ${enabled ? 'Bật' : 'Tắt'}`);
+  });
+  document.getElementById('proxy-images')?.addEventListener('change', (event) => {
+    const enabled = event.currentTarget.checked;
+    setProxyImages(enabled);
+    toast(`Chuyển tiếp ảnh qua Vercel: ${enabled ? 'Bật' : 'Tắt'} — áp dụng cho nội dung tải tiếp theo`);
   });
   document.getElementById('voz-support')?.addEventListener('change', (event) => {
     const enabled = event.currentTarget.checked;
