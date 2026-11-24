@@ -1,14 +1,11 @@
-// Links inside post bodies: absolute voz.vn links are rewritten to local paths so the reader stays. Paths this
-// app has no route for (…/ignore, …/report, attachments) stay on voz.vn.
+/** Local voz.vn links. */
 
 export const VOZ_ORIGIN = 'https://voz.vn';
 
 // Path prefixes the local router understands; anything else stays on voz.vn.
-//   /t/ thread  /f/ forum  /s/ search-forum  /u/ member  /p/ post  /search  /new
 const LOCAL_PREFIXES = ['/t/', '/f/', '/s/', '/u/', '/p/', '/search', '/new'];
 
-// Web-only XenForo routes (they need a cookie session and _xfToken, which this app never has). Keep them on
-// voz.vn instead of routing into a 404.
+// Web-only XenForo routes need cookie + _xfToken; keep them on voz.vn, not a 404.
 const VOZ_ONLY_SUFFIXES = ['/ignore', '/unignore', '/report', '/warn', '/follow', '/unfollow'];
 
 export function isVozUrl(value) {
@@ -19,7 +16,7 @@ export function isVozUrl(value) {
   }
 }
 
-// "https://voz.vn/t/a.1/" → "/t/a.1/". Null when the link should stay absolute.
+// "https://voz.vn/t/a.1/" → "/t/a.1/"; null when the link stays absolute.
 export function localPathFor(value) {
   let url;
   try {
@@ -34,14 +31,14 @@ export function localPathFor(value) {
   return `${path}${url.search}${url.hash}`;
 }
 
-// Rewrites every <a href> this app serves. Returns the number of links changed, for tests.
+// Rewrite every <a href>; returns the count changed (used by tests).
 export function rewriteVozLinks(root) {
   let changed = 0;
   for (const anchor of root.querySelectorAll('a[href]')) {
     const local = localPathFor(anchor.getAttribute('href'));
     if (!local) continue;
     anchor.setAttribute('href', local);
-    // In-app navigation: no new tab, keep link--internal styling.
+    // In-app navigation: no new tab.
     anchor.removeAttribute('target');
     anchor.setAttribute('rel', 'nofollow ugc');
     anchor.classList.add('link--internal');

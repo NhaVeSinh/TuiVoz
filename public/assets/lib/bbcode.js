@@ -1,4 +1,4 @@
-// BBCode helpers: sanitising server HTML, restoring image sizes, building quote blocks.
+/** BBCode helpers. */
 
 import { renderSmilies } from './smilies.js';
 import { restoreMedia } from './media.js';
@@ -7,8 +7,7 @@ import { restoreSpoilers } from './spoilers.js';
 import { rewriteVozLinks } from './postLinks.js';
 import { getAttachment, attachmentViewUrl, attachmentViewUrlForId } from './attachments.js';
 
-// message_parsed is server HTML; strip anything executable. The API drops image sizes, so they are re-applied
-// from the raw BBCode.
+// Sanitize server HTML; image sizes re-applied from raw BBCode.
 export function sanitizeHtml(html, bbcode) {
   const doc = new DOMParser().parseFromString(`<div id="root">${html || ''}</div>`, 'text/html');
   const root = doc.getElementById('root');
@@ -27,8 +26,7 @@ export function sanitizeHtml(html, bbcode) {
       el.setAttribute('rel', 'noopener nofollow ugc');
     }
   }
-  // Runs after the target/_blank pass: a link back into this app navigates in place. Voice-only (…/ignore)
-  // links stay absolute.
+  // After the _blank pass: in-app links navigate in place.
   rewriteVozLinks(root);
   restoreQuoteLinks(root, bbcode);
   restoreMedia(root);
@@ -40,7 +38,7 @@ export function sanitizeHtml(html, bbcode) {
 
 function normalizeImgSrc(src) {
   const raw = String(src || '').trim();
-  // Two URL shapes (/attachments/3823398/ and /attachments/<name>.3823398/) key on the id.
+  // Both attachment URL shapes key on the id.
   const attach = raw.match(/\/attachments\/(?:[^/?#]*\.)?(\d+)\/?/i);
   if (attach) return `attach:${attach[1]}`;
   return raw
@@ -49,7 +47,7 @@ function normalizeImgSrc(src) {
     .replace(/\/+$/, '');
 }
 
-// [IMG size="80x80"] → 80x80; [IMG width="150px"] → 150; [ATTACH width="150px"] → 150.
+// Extract size/width/height attrs from [IMG]/[ATTACH] tags.
 function parseBbcodeImageSizes(bbcode) {
   const sizes = new Map();
   const re = /\[(IMG|ATTACH)([^\]]*)\]([\s\S]*?)\[\/\1\]/gi;
@@ -82,9 +80,7 @@ function parseBbcodeImageSizes(bbcode) {
   return sizes;
 }
 
-// Inline [ATTACH] images come back from the API as <img src="https://voz.vn/attachments/<id>/"> — a page route
-// that Cloudflare 403s for guests — so the src (and a wrapping link to the same route) is pointed at the CDN
-// direct_url from the registry, or at the edge downloader when the registry has no entry.
+// voz.vn/attachments/<id>/ 403s for guests; point at CDN/edge URL.
 function rewriteAttachmentImages(root) {
   for (const img of root.querySelectorAll('img[src*="/attachments/"]')) {
     const src = img.getAttribute('src') || '';
@@ -104,8 +100,7 @@ function applyImageSizes(root, bbcode) {
   for (const img of root.querySelectorAll('img')) {
     if (img.closest('.bbCodeBlock--unfurl')) continue;
     img.classList.add('bbImage');
-    // Off-screen photo posts must not pull multi-megabyte originals on render. Lazy only defers: an
-    // in-viewport image still loads immediately, so nothing above the fold changes.
+    // Lazy so off-screen posts don't pull multi-MB originals.
     img.loading = 'lazy';
     img.decoding = 'async';
     if (!sizes.size) continue;
@@ -144,6 +139,6 @@ export function quoteBlock(post) {
   const author = String(post.username || '').replace(/"/g, '');
   const member = post.user_id ? `, member: ${post.user_id}` : '';
   const body = stripQuotes(post.message || '');
-  // The caller adds one trailing blank line; two rendered as three in the reply box.
+  // Caller adds the trailing blank line; two rendered as three.
   return `[QUOTE="${author}, post: ${post.post_id}${member}"]\n${body}\n[/QUOTE]`;
 }

@@ -1,4 +1,4 @@
-// One row of a XenForo thread list: icon | main | meta | latest | iconEnd.
+/** Thread row. */
 
 import { esc, num, timeAgo } from '../core/utils.js';
 import { threadPath, threadUnreadPath, forumPath, userPath, withPage, postPath } from '../core/paths.js';
@@ -8,13 +8,13 @@ import { bbcodeToPlain } from '../lib/bbcode.js';
 import { threadLastPage } from '../lib/unread.js';
 import { wireBannedUsernames } from '../lib/bannedUsers.js';
 
-// `extraClass`/`extraStyle` are applied to the <li> so the filter engine can colour a row inline.
+// `extraClass`/`extraStyle` let the filter engine colour a row.
 export function threadRow(thread, { sticky = false, showForum = false, extraClass = '', extraStyle = '' } = {}) {
   const starter = thread.User || { user_id: thread.user_id, username: thread.username };
   const lastUser = { user_id: thread.last_post_user_id, username: thread.last_post_username };
   const lastPage = threadLastPage(thread);
   const unread = !!thread.is_unread;
-  // An unread thread links to /unread, which resolves to the first unread post.
+  // /unread resolves to the first unread post.
   const titleHref = unread ? threadUnreadPath(thread) : threadPath(thread);
   const statuses = [
     thread.discussion_open === false
@@ -65,14 +65,12 @@ export function threadRow(thread, { sticky = false, showForum = false, extraClas
     </li>`;
 }
 
-// Thread list, post lists and member-content rows all carry data-member-id on their username links, so one
-// scan covers the starter, the latest poster and any attribution. `users` lets visible accounts skip a request.
+// One scan covers every data-member-id link; `users` lets visible accounts skip a request.
 export function wireThreadRowBans(root, users) {
   wireBannedUsernames(root, users);
 }
 
-// Row for post-centric lists (bookmarks, search results). `perPage` is the thread's page size when the caller
-// knows it: the row then links to the post's own page, so a post past page 1 has something to land on.
+// Post-centric row (bookmarks, search). `perPage` links to the post's own page when known.
 export function postRow(post, thread, perPage, { extraClass = '', extraStyle = '' } = {}) {
   const author = post.User || { user_id: post.user_id, username: post.username };
   const title = (thread && thread.title) || `Bài #${post.post_id}`;
@@ -97,8 +95,8 @@ export function postRow(post, thread, perPage, { extraClass = '', extraStyle = '
     </li>`;
 }
 
-// Member recent-content / latest-activity rows — voz renders contentRow, not structItem.
-// Thread variant: prefix+title link, snippet, minor = user · Thread · date · Replies · Forum.
+// Member rows use contentRow, not structItem.
+// Thread variant: prefix+title, snippet, minor = user · Thread · date · Replies · Forum.
 export function memberContentRow(thread, snippetText) {
   const starter = thread.User || { user_id: thread.user_id, username: thread.username };
   const parts = [
@@ -125,7 +123,7 @@ export function memberContentRow(thread, snippetText) {
     </li>`;
 }
 
-// Post variant: title links to the post's own page and fragment, minor = user · Post #N · date · Forum.
+// Post variant: title links to the post, minor = user · Post #N · date · Forum.
 export function memberPostRow(post, thread, snippetText, perPage) {
   const author = post.User || { user_id: post.user_id, username: post.username };
   const t = thread || {};
@@ -156,8 +154,7 @@ export function memberPostRow(post, thread, snippetText, perPage) {
     </li>`;
 }
 
-// Latest-activity variant: voz words the title as "<user> replied to the thread <title>."
-// and drops the meta list down to just the timestamp.
+// Latest-activity variant: "<user> replied to the thread <title>.", meta is just the date.
 export function memberActivityRow(post, thread, snippetText, perPage) {
   const author = post.User || { user_id: post.user_id, username: post.username };
   const t = thread || {};
@@ -180,7 +177,7 @@ export function memberActivityRow(post, thread, snippetText, perPage) {
     </li>`;
 }
 
-// Row for profile-post comments in mixed member-content results.
+// Profile-post comment rows in mixed member content.
 export function profilePostCommentRow(item, ownerName) {
   const c = item.result || item;
   const author = c.User || { user_id: c.user_id, username: c.username };

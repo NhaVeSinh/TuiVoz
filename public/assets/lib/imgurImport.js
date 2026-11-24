@@ -1,10 +1,9 @@
-// imgur album import, ported from the userscript. The userscript used GM_xmlhttpRequest to bypass CORS; from a
-// page the same-origin edge proxy is used instead.
+/** Imgur import. */
 
 import { xf } from '../api.js';
 import { downloadImagesInParallel } from './stickers.js';
 
-// Accepts https://imgur.com/a/<id> and https://imgur.com/a/<slug>-<id>.
+// Accepts /a/<id> and /a/<slug>-<id> album URLs.
 export function extractAlbumId(value) {
   const match = String(value ?? '').match(/imgur\.com\/a\/(.+?)(?:[/?#]|$)/i);
   if (!match) return null;
@@ -20,7 +19,6 @@ export function clearImgurCache() {
   imageCache.clear();
 }
 
-// Returns [{ link }] for every image in the album.
 export async function fetchImgurAlbumImages(albumId, { signal } = {}) {
   if (imageCache.has(albumId)) return imageCache.get(albumId);
   const request = xf(`/imgur/album/${encodeURIComponent(albumId)}/images`, { signal }).then((data) => {
@@ -40,7 +38,7 @@ export async function fetchImgurAlbumImages(albumId, { signal } = {}) {
   }
 }
 
-// Full import: album metadata + base64 of every image (bounded concurrency).
+// Full import: metadata + base64 of every image.
 export async function importImgurAlbum({ name, link, onProgress }) {
   const albumId = extractAlbumId(link);
   if (!albumId) {

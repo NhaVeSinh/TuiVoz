@@ -1,17 +1,16 @@
-/* Appearance rules that are not plain token swaps. The palettes live in base.css; this file
-   reacts to the resolved theme and to the data-font attribute. */
+/* Theme rules. */
 
-/* Native widgets (controls, scrollbars, canvas). JS also sets color-scheme; this is the no-JS fallback. */
+/* no-JS fallback; JS sets color-scheme too */
 :root { color-scheme: light; }
 :root[data-theme="dark"] { color-scheme: dark; }
 
-/* Slightly dim media on the dark surface — never invert. Kept mild to keep colour accuracy. */
+/* dim media in dark mode, never invert */
 :root[data-theme="dark"] img,
 :root[data-theme="dark"] video,
 :root[data-theme="dark"] iframe {
   filter: brightness(.92);
 }
-/* Do not dim UI affordances or anything on the chrome. */
+/* do not dim UI chrome or avatars */
 :root[data-theme="dark"] .p-header img,
 :root[data-theme="dark"] .p-nav img,
 :root[data-theme="dark"] .p-footer img,
@@ -25,13 +24,12 @@
   filter: none;
 }
 
-/* Vendored fonts load lazily; the fallback stack keeps the swap quiet. */
+/* fallback stack keeps lazy font swap quiet */
 :root[data-font="roboto"] { font-family: var(--font); }
 :root[data-font="be-vietnam-pro"] { font-family: var(--font); }
 :root[data-font="be-vietnam"] { font-family: var(--font); }
 
-/* Bold grade per family. fonts.css puts each family's heaviest cut in the 600 slot, which
-   reads heavier than voz.vn, so these four drop to 500. --fw-bold is the single knob. */
+/* drop bold to 500: vendored 600 cuts read heavier than voz */
 :root[data-font="roboto"],
 :root[data-font="be-vietnam-pro"],
 :root[data-font="sf-pro-display"],
@@ -39,12 +37,11 @@
   --fw-bold: 500;
 }
 
-/* Selection colour follows the accent in both themes. */
+/* selection follows the accent */
 :root[data-theme="dark"] ::selection { background: #414849; color: var(--text); }
 :root[data-theme-mode="catppuccin-mocha"] ::selection { background: #45475a; }
 
-/* Prefix labels are hardcoded voz colours in avatar.css; Catppuccin re-tints them with its own
-   accents — coloured text on a soft tint of the same hue. */
+/* Mocha re-tints the hardcoded voz label colours */
 :root[data-theme-mode="catppuccin-mocha"] .label--red { color: #f38ba8; background: rgba(243, 139, 168, .15); border-color: rgba(243, 139, 168, .45); }
 :root[data-theme-mode="catppuccin-mocha"] .label--green { color: #a6e3a1; background: rgba(166, 227, 161, .15); border-color: rgba(166, 227, 161, .45); }
 :root[data-theme-mode="catppuccin-mocha"] .label--royalBlue { color: #89b4fa; background: rgba(137, 180, 250, .15); border-color: rgba(137, 180, 250, .45); }
@@ -53,16 +50,14 @@
 :root[data-theme-mode="catppuccin-mocha"] .label--olive { color: #f9e2af; background: rgba(249, 226, 175, .15); border-color: rgba(249, 226, 175, .45); }
 :root[data-theme-mode="catppuccin-mocha"] .label--gray { color: #a6adc8; background: rgba(166, 173, 200, .15); border-color: rgba(166, 173, 200, .45); }
 
-/* Sticky thread titles use a hardcoded orange in dark mode; Mocha gets its peach. */
+/* Mocha peach replaces the hardcoded sticky-title orange */
 :root[data-theme-mode="catppuccin-mocha"] .structItemContainer-group--sticky .structItem-title a { color: #fab387; }
 
-/* The thread-title header (post.css) and the screenshot band that mirrors it draw their text straight
-   on the page — no blue fill — so they keep Mocha's light text instead of the dark header fg. */
+/* thread-title header + screenshot band draw on the page, keep Mocha text */
 :root[data-theme-mode="catppuccin-mocha"] .block--messages > .block-header,
 :root[data-theme-mode="catppuccin-mocha"] .screenshot-title { color: var(--text); }
 
-/* Chips that fill with the header blue but paint their glyph with --on-dark (white, frozen for the
-   dark chrome) need the dark-on-accent pair instead, like the editor submit button. */
+/* blue-filled chips need dark --on-accent glyph, not frozen white */
 :root[data-theme-mode="catppuccin-mocha"] .node-icon,
 :root[data-theme-mode="catppuccin-mocha"] .pageNav span.current,
 :root[data-theme-mode="catppuccin-mocha"] .pageNav-scrollBtn.is-active,

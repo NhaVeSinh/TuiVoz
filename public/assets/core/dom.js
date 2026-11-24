@@ -1,4 +1,4 @@
-// Shared DOM handles and app-wide mutable state.
+/** DOM handles + global state. */
 
 export const app = document.getElementById('app');
 export const breadcrumbsEl = document.getElementById('breadcrumbs');

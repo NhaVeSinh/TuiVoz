@@ -1,10 +1,10 @@
+/** Alert markup. */
 import { esc } from '../core/utils.js';
 import { api } from '../api.js';
 import { cachedCatalog } from '../lib/catalogs.js';
 import { state } from '../core/dom.js';
 
-// views/thread.js seeds `state.reactions` on the first thread view; both surfaces share it (and the
-// localStorage catalog behind it) so the catalogue is fetched once no matter which one needs it first.
+// Shared cached catalog, seeded by views/thread.js.
 async function reactionsCatalog() {
   if (state.reactions) return state.reactions;
   try {

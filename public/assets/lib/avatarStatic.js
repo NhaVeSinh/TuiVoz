@@ -1,17 +1,14 @@
-// "Tắt ảnh động ảnh đại diện" — freezes an animated avatar on its first frame. The extension lies
-// (/avatars/l/15/15207.jpg is a 53-frame GIF), so the bytes decide, not the URL.
+/** Static avatars. */
 import { getStaticAvatars } from './settings.js';
 import { isDataSaving } from './dataSaving.js';
 
-// data.voz.vn sends no CORS headers, so bytes come through the proxy. One entry per URL holding the in-flight
-// promise or its result: Promise -> resolving, string -> data URL, null -> leave it alone.
+// Proxy (no CORS on data.voz.vn); value: promise, data URL, or null.
 const stills = new Map();
 
-// Avatars already handed to freeze(). A WeakSet so a re-render does not leak.
+// Frozen avatars; WeakSet so re-renders don't leak.
 const seen = new WeakSet();
 
-// Enough bytes to decide a format before downloading the whole file: GIF block structure and WebP/PNG headers
-// all sit at the front.
+// GIF/WebP/PNG headers sit at the front; 64KB suffices.
 const SNIFF_BYTES = 65_536;
 
 function proxyUrl(url, limit = 0) {
@@ -19,8 +16,8 @@ function proxyUrl(url, limit = 0) {
   return limit ? `${query}&limit=${limit}` : query;
 }
 
-// --- format sniffing -------------------------------------------------------
-// Raw bytes, before any decoding, so a still avatar costs no canvas round trip.
+// format sniffing
+// Raw-byte sniffing avoids a canvas decode for still avatars.
 
 function readAscii(bytes, start, length) {
   let text = '';
@@ -28,7 +25,7 @@ function readAscii(bytes, start, length) {
   return text;
 }
 
-// Walks the GIF block structure: 0x2C also appears inside LZW data, so a byte scan lies.
+// Walk GIF blocks; a byte-scan lies (0x2C inside LZW data).
 export function gifFrameCount(bytes) {
   if (readAscii(bytes, 0, 3) !== 'GIF') return 0;
   let i = 6;
@@ -66,7 +63,7 @@ export function gifFrameCount(bytes) {
 
 export function isAnimatedWebp(bytes) {
   if (readAscii(bytes, 0, 4) !== 'RIFF' || readAscii(bytes, 8, 4) !== 'WEBP') return false;
-  // ANIM/ANMF sit in the container header, ahead of the frame payload.
+  // ANIM/ANMF precede the frame payload.
   const header = readAscii(bytes, 12, Math.min(65_536, bytes.length - 12));
   return header.includes('ANIM') && header.includes('ANMF');
 }
@@ -80,14 +77,13 @@ export function isApng(bytes) {
   return control >= 0 && (data < 0 || control < data);
 }
 
-// True when the bytes describe more than one frame.
 export function isAnimated(bytes) {
   if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) return gifFrameCount(bytes) > 1;
   if (isAnimatedWebp(bytes)) return true;
   return isApng(bytes);
 }
 
-// --- freezing --------------------------------------------------------------
+// freezing
 
 function toDataUrl(frame) {
   const width = frame.width || frame.naturalWidth;
@@ -103,14 +99,13 @@ function toDataUrl(frame) {
   return canvas.toDataURL('image/png');
 }
 
-// Decoding the blob yields frame 1. Without createImageBitmap the live element is drawn instead: not
-// necessarily the first frame, but still a still.
+// Decode frame 1; fall back to the live element.
 async function firstFrame(blob, img) {
   if (typeof createImageBitmap === 'function') {
     try {
       return await createImageBitmap(blob);
     } catch {
-      // Fall through to the element.
+      // Fall back to the element.
     }
   }
   return img;
@@ -122,43 +117,40 @@ async function readBytes(source, limit) {
   return { bytes: new Uint8Array(await response.arrayBuffer()), headers: response.headers };
 }
 
-// Resolves one avatar URL to a still data URL, or null when it must be left alone. Two phases: the prefix
-// answers "not animated" for most avatars, the full file only for the rest.
+// Prefix sniff first; full file only for undecided GIFs.
 async function resolveStill(source, img) {
   const head = await readBytes(source, SNIFF_BYTES);
   const total = Number(head.headers.get('X-Image-Total')) || 0;
   const truncated = total > head.bytes.length;
-  // A prefix holds no GIF trailer, so a count of 1 only means "no second frame yet". WebP and PNG declare
-  // themselves in the header, so a prefix is conclusive for those.
+  // A truncated GIF is undecided; WebP/PNG declare in the header.
   const undecided = truncated && readAscii(head.bytes, 0, 3) === 'GIF';
   if (!isAnimated(head.bytes) && !undecided) return null;
 
-  // Frame 1 has to be decoded, so the whole file is needed.
+  // Frame 1 decode needs the whole file.
   const full = await readBytes(source, 0);
   if (!isAnimated(full.bytes)) return null;
   const type = full.headers.get('Content-Type') || '';
   return toDataUrl(await firstFrame(new Blob([full.bytes], { type }), img)) || null;
 }
 
-// The bytes to freeze are the ones the browser actually paints: with a `srcset` at DPR > 1 that is the 2x
-// candidate, not `src`. Null until a lazy avatar has loaded — its load event re-schedules the pass.
+// Freeze painted bytes: at DPR>1 that's the srcset candidate, not src.
 function paintedSource(img) {
   const current = img.currentSrc || '';
   return current && !current.startsWith('data:') ? current : null;
 }
 
 async function freeze(img) {
-  // Already frozen, or already proven single-frame: re-checking would refetch on every observer tick.
+  // Skip already-frozen/proven-static images or every tick refetches.
   if (img.dataset.avatarFreeze) return true;
   const source = paintedSource(img);
   if (!source) return false;
   img.dataset.avatarSource = img.getAttribute('src') || source;
-  // `srcset` outranks `src` at any DPR ≥ 1, so the still below would never be painted while it is set.
+  // srcset outranks src; stash it for restore.
   if (img.hasAttribute('srcset')) img.dataset.avatarSrcset = img.getAttribute('srcset');
   if (!stills.has(source)) stills.set(source, resolveStill(source, img).catch(() => null));
   img.dataset.avatarFreeze = 'pending';
   const still = await stills.get(source);
-  // The view may have re-rendered while the proxy was in flight.
+  // The view may have re-rendered during the fetch.
   if (!img.isConnected) return true;
   if (still) {
     img.removeAttribute('srcset');
@@ -171,7 +163,7 @@ async function freeze(img) {
   return true;
 }
 
-// Turning the setting off restores the original URL and 2x candidate, still on the element.
+// Restore original URL and srcset stashed on the element.
 function restore(img) {
   const source = img.dataset.avatarSource;
   if (!source || !(img.getAttribute('src') || '').startsWith('data:')) return;
@@ -179,16 +171,13 @@ function restore(img) {
   if (img.dataset.avatarSrcset) img.setAttribute('srcset', img.dataset.avatarSrcset);
   delete img.dataset.avatarSrcset;
   delete img.dataset.avatarFreeze;
-  // Re-enabling must be able to freeze this avatar again.
+  // Re-enabling must be able to re-freeze this avatar.
   seen.delete(img);
 }
 
-// Every avatar renders through `img.avatar-img`. Only avatars that have been on screen are resolved: a list
-// page carries 40+ avatars and almost all are stills.
+// Only freeze avatars that were on screen; a list page carries 40+.
 function refresh() {
-  // Freezing an avatar costs a 64KB proxy probe (plus a second full fetch for undecided GIFs, and the PNG
-  // re-encode can outsize the source), which is data-negative on mobile — save mode leaves avatars alone
-  // regardless of the static-avatars setting.
+  // Freezing costs a proxy probe plus a PNG re-encode — skip in save mode.
   if (isDataSaving()) return;
   const enabled = getStaticAvatars();
   for (const img of document.querySelectorAll('img.avatar-img')) {
@@ -199,7 +188,7 @@ function refresh() {
     if (seen.has(img)) continue;
     if (!isOnScreen(img)) continue;
     seen.add(img);
-    // A lazy avatar has no painted bytes yet; its load event re-schedules, so let it be picked up again.
+    // Unloaded lazy avatar: load event re-queues it.
     freeze(img).then((handled) => { if (!handled) seen.delete(img); });
   }
 }
@@ -222,13 +211,13 @@ function schedule() {
 
 export function wireStaticAvatars() {
   refresh();
-  // One observer on the body covers both re-renders and appended pages.
+  // One body observer covers re-renders and appended pages.
   new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
-  // Avatars are lazy-loaded, so a fresh one only has a src after its load event.
+  // Lazy avatars only get a src after their load event.
   document.addEventListener('load', (event) => {
     if (event.target instanceof HTMLImageElement && event.target.classList.contains('avatar-img')) schedule();
   }, true);
-  // Scrolling brings skipped avatars into range.
+  // Scrolling brings skipped avatars into view.
   window.addEventListener('scroll', schedule, { passive: true });
   window.addEventListener('resize', schedule, { passive: true });
   window.addEventListener('voz:settings', schedule);

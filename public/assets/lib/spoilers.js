@@ -1,3 +1,5 @@
+/** Spoilers. */
+
 function argument(value) {
   return value.trim().replace(/^=\s*/, '').replace(/^(["'])([\s\S]*)\1$/, '$2');
 }

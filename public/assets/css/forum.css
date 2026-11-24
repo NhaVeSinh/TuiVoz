@@ -1,6 +1,6 @@
-/* Forum index, thread list (XenForo structItem table) and pagination. */
+/* Forum lists. */
 
-/* ---------- node / forum list ---------- */
+/* node / forum list */
 .node-list { list-style: none; margin: 0; padding: 0; }
 .node-row {
   display: flex;
@@ -44,7 +44,7 @@
 }
 .node-children li { padding: 4px 0 4px 10px; font-size: calc(15px * var(--ui-scale)); }
 
-/* ---------- thread list (XenForo structItem table) ---------- */
+/* thread list (XenForo structItem) */
 .structItemContainer { list-style: none; margin: 0; padding: 0; width: 100%; }
 .structItemContainer-group { display: block; }
 .structItem {
@@ -73,8 +73,7 @@
 :root[data-theme="dark"] .structItem-cell--latest a { color: var(--text); }
 .structItem-cell--latest a:hover { color: var(--link-hover); }
 .structItem-iconContainer { position: relative; }
-/* voz sizes thread-list avatars by column, not by the generic avatar--* scale: 36px at the start of the row and
-   24px for the latest-poster thumbnail. The .avatar.avatar--* pairs outrank `avatar.css`'s size classes. */
+/* voz sizes avatars per column; the pairs outrank avatar.css */
 .structItem-iconContainer .avatar.avatar--s,
 .structItem-iconContainer .avatar { display: block; width: 36px; height: 36px; }
 .structItem-iconContainer .avatar.avatar--xxs { width: 24px; height: 24px; }
@@ -84,7 +83,7 @@
 .structItem-title a { color: var(--link); }
 :root[data-theme="dark"] .structItem-title a { color: var(--text); }
 .structItem-title a:hover { color: var(--link-hover); }
-/* Unread threads are bold; reading the thread clears it (API is_unread). */
+/* unread threads bold; cleared by is_unread */
 .structItem--thread.is-unread .structItem-title,
 .structItem--thread.is-unread .structItem-title a { font-weight: var(--fw-bold); }
 .structItem--thread.is-unread .structItem-title .label { font-weight: 400; }
@@ -145,7 +144,7 @@
   -webkit-box-orient: vertical;
 }
 
-/* XenForo "pairs" — label left, value right. */
+/* XenForo "pairs" — label left, value right */
 .pairs { padding: 0; margin: 0; overflow: hidden; }
 .pairs--spaced + .pairs { margin-top: 6px; }
 .pairs > dt { padding: 0; margin: 0; color: var(--dimmed); }
@@ -157,7 +156,7 @@
 .pairs--justified > dt { float: left; max-width: 100%; margin-right: 6px; }
 .pairs--justified > dd { float: right; text-align: right; max-width: 100%; }
 
-/* ---------- pagination ---------- */
+/* pagination */
 .pageNav {
   display: flex;
   flex-wrap: wrap;
@@ -218,7 +217,7 @@
 }
 .pageNav-extra { margin-left: auto; display: inline-flex; align-items: center; }
 
-/* "Cuộn liên tục" opt-in button, manual mode only. Icon-only, pager colours. */
+/* continuous-scroll opt-in, manual mode only */
 .pageNav-scrollBtn {
   flex: 0 0 auto;
   display: inline-flex;
@@ -248,7 +247,7 @@
   .pageNav-scrollBtn.is-active .pageNav-scrollIcon { animation: none; }
 }
 
-/* Sentinel for continuous scrolling: shows the next-page status and is what the observer watches. */
+/* sentinel the scroll observer watches */
 .infinite-sentinel { display: flex; justify-content: center; padding: 10px 12px; font-size: calc(12px * var(--ui-scale)); color: var(--chrome-dimmed); }
 .infinite-sentinel[data-state="busy"] .infinite-status::before {
   content: "";
@@ -268,7 +267,7 @@
   .infinite-sentinel[data-state="busy"] .infinite-status::before { animation: none; }
 }
 
-/* Floating "stop continuous scroll" button, pinned right and lifted off the bottom. Only while armed. */
+/* floating stop button, only while armed */
 .infinite-stop {
   position: fixed;
   right: 16px;
@@ -291,7 +290,7 @@
   box-shadow: var(--shadow-fab);
   transition: background-color .15s ease, transform .15s ease, opacity .2s ease;
 }
-/* Hidden while scrolling down but still focusable, so a scroll never removes it from assistive tech. */
+/* hidden but focusable; never removed from assistive tech */
 .infinite-stop.is-hidden {
   opacity: 0;
   transform: translateY(8px) scale(.9);
@@ -306,11 +305,11 @@
   .infinite-stop:active { transform: none; }
   .infinite-stop.is-hidden { transform: none; }
 }
-/* Narrow screens: keep it clear of the pager and thumb reach. */
+/* narrow screens: clear of pager and thumb */
 @media (max-width: 620px) {
   .infinite-stop { right: 12px; bottom: calc(72px + env(safe-area-inset-bottom, 0px)); width: 38px; height: 38px; }
 }
-/* Narrow screens: tighten the pager cells so ‹ Trước / numbers / Sau › / button still fit. */
+/* tighten cells so prev / numbers / next still fit */
 @media (max-width: 620px) {
   .pageNav { padding: 8px 6px; gap: 3px; }
   .pageNav a,
@@ -320,7 +319,7 @@
   .pageNav-scrollBtn { min-width: 26px; min-height: 26px; padding: 4px 6px; font-size: calc(13px * var(--ui-scale)); }
   .pageNav-main { gap: 1px; }
 }
-/* Very narrow: drop the pages two steps out; the first, last, neighbours and "…" stay. */
+/* very narrow: drop the pages two steps out */
 @media (max-width: 400px) {
   .pageNav-page--far { display: none; }
 }
@@ -338,7 +337,7 @@
 .pageNav a.pageNav-author:hover { background: none; color: var(--on-dark); }
 .pageNav-author svg { flex: 0 0 auto; opacity: .8; }
 
-/* ---- contentRow: voz search / member-content list rows (block-row wrapper) ---- */
+/* contentRow: voz search / member-content rows */
 .block-row { margin: 0; padding: 6px 10px; }
 .block-row::before, .block-row::after { content: " "; display: table; }
 .block-row::after { clear: both; }
@@ -368,7 +367,7 @@ ul.block-body, ol.block-body { list-style: none; margin: 0; padding: 0; }
 .contentRow-suffix { padding-left: 6px; white-space: nowrap; }
 .contentRow-extra { float: right; padding-left: 6px; font-size: calc(12px * var(--ui-scale)); }
 
-/* Inline meta list inside a contentRow — overrides the flex .listInline used by message attribution. */
+/* meta list; overrides the flex .listInline in attribution */
 .contentRow-minor .listInline { display: block; list-style: none; margin: 0; padding: 0; }
 .contentRow-minor .listInline > li { display: inline; margin: 0; padding: 0; }
 .contentRow-minor .listInline.listInline--bullet > li + li::before { content: "· "; margin: 0; color: inherit; }

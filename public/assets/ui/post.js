@@ -1,4 +1,4 @@
-// A single post (.message) — XenForo markup with the voz.vn metrics.
+/** Post markup. */
 
 import { esc, num, postNumber, timeAgo, fullDate, postDate, joinDate } from '../core/utils.js';
 import { threadPath, userPath, withPage, dmPath } from '../core/paths.js';
@@ -11,8 +11,7 @@ import { state } from '../core/dom.js';
 import { reactionBar, reactionSummary } from './reactions.js';
 import { attachmentViewUrl } from '../lib/attachments.js';
 
-// post.Attachments[] lists every file on the post, but message_parsed only shows the ones written inline as
-// [ATTACH]id[/ATTACH]; the rest must be drawn as a separate "Tệp đính kèm" block, like voz.vn does.
+// Attachments not written inline as [ATTACH]id[/ATTACH] get a separate block, like voz.vn.
 const IMAGE_EXT = /\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i;
 const INLINE_ATTACH_RE = /\[attach[^\]]*\]\s*(\d+)\s*\[\/attach\]/gi;
 
@@ -62,8 +61,7 @@ export function attachmentsBlockHtml(post) {
   </section>`;
 }
 
-// Conversation messages share the post layout; they differ in the permalink (no post number, no bookmark) and
-// the action set (edit, quote, reply). Reactions are dropped: the API answers 403 for a message id.
+// Conversation messages share the post layout but lack bookmark/reactions (API answers 403).
 function messageHtml(msg, conversation, page, { id = '', extraClass = '', extraStyle = '' } = {}) {
   const conv = conversation || {};
   const user = msg.User || {};
@@ -126,8 +124,7 @@ function messageHtml(msg, conversation, page, { id = '', extraClass = '', extraS
     </article>`;
 }
 
-// `kind` selects the endpoint family: 'thread' (default) or 'conversation'. `opts` lets the filter engine
-// rename the id (hidden posts keep the anchor on a wrapper) and attach a class/style for highlighting.
+// `kind`: 'thread'|'conversation'; `opts` = id/class/style overrides for filters.
 export function postHtml(post, thread, page, kind = 'thread', { id = '', extraClass = '', extraStyle = '' } = {}) {
   if (kind === 'conversation') return messageHtml(post, thread, page, { id, extraClass, extraStyle });
   const user = post.User || {};
@@ -141,7 +138,7 @@ export function postHtml(post, thread, page, kind = 'thread', { id = '', extraCl
     ownerActions.push(`<a href="#" class="actionBar-action actionBar-action--icon actionBar-action--danger" data-delete="${post.post_id}"
       title="Xoá bài viết" aria-label="Xoá bài viết">${ICON_DELETE}</a>`);
   }
-  // Warn is a moderator action: the me payload gates it, the post itself only carries author-side flags.
+  // Warn gate lives on the me payload, not the post.
   if (state.me?.can_warn && Number(post.user_id) !== Number(state.me.user_id)) {
     ownerActions.push(`<a href="#" class="actionBar-action actionBar-action--icon" data-warn="${post.post_id}"
       title="Cảnh cáo bài viết" aria-label="Cảnh cáo bài viết">${ICON_WARN}</a>`);

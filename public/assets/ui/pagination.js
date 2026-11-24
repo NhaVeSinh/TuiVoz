@@ -1,4 +1,4 @@
-// Page navigator (‹ Trước / numbers / Sau ›) with the "…" jump-to-page input.
+/** Pagination. */
 
 import { app } from '../core/dom.js';
 import { esc } from '../core/utils.js';
@@ -19,8 +19,7 @@ export function pagination(p, makeHref, extraHtml = '', { scrollArm = true } = {
     if (prev && n - prev > 1) {
       items += `<li class="pageNav-skip"><button type="button" class="pageNav-jumpBtn" data-last="${last}" title="Đi tới trang">…</button></li>`;
     }
-    // `--edge` marks the first and last page, `--far` the pages two steps out. Narrow screens drop `--far` so
-    // the first, last and neighbouring pages stay reachable.
+    // `--edge`: first/last page; `--far`: 2+ steps out (dropped on narrow screens).
     const classes = ['pageNav-page'];
     if (n === current) classes.push('is-current');
     if (n === 1 || n === last) classes.push('pageNav-page--edge');
@@ -33,8 +32,7 @@ export function pagination(p, makeHref, extraHtml = '', { scrollArm = true } = {
     prev = n;
   }
 
-  // "Kích hoạt theo người dùng yêu cầu": a one-click opt-in for this page. A thread renders two pagers, so only
-  // the bottom one carries the control.
+  // Per-page opt-in for continuous scroll; only the bottom pager carries it.
   const scrollBtn =
     scrollArm && current < last && getInfiniteScroll() === 'manual'
       ? `<button type="button" class="pageNav-scrollBtn" data-scroll-arm title="Bật cuộn liên tục cho trang này" aria-label="Bật cuộn liên tục cho trang này"><span class="pageNav-scrollIcon" aria-hidden="true">⇣</span></button>`
@@ -49,7 +47,7 @@ export function pagination(p, makeHref, extraHtml = '', { scrollArm = true } = {
   </div>`;
 }
 
-// Arms infinite scrolling for the current page from the pager button.
+// Arms infinite scrolling for this page.
 export function wireScrollArm() {
   for (const btn of app.querySelectorAll('[data-scroll-arm]')) {
     if (btn.dataset.wired) continue;
@@ -66,7 +64,7 @@ export function wireScrollArm() {
   }
 }
 
-// Clicking "…" swaps it for a number input so any page can be jumped to.
+// Clicking "…" swaps it for a page-number input.
 export function wirePageJump(makeHref) {
   for (const btn of app.querySelectorAll('.pageNav-jumpBtn')) {
     btn.addEventListener('click', (event) => {

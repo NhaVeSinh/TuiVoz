@@ -1,5 +1,4 @@
-// Entry point: wires global listeners and boots the router. All data comes from /api/xf/* (edge proxy), so the
-// guest key and the OAuth bearer token never reach the browser.
+/** App entry point. */
 
 import { navigate, restoreScroll } from './core/nav.js';
 import { route } from './core/router.js';
@@ -16,11 +15,10 @@ import { wireAllQuoteExpansion } from './lib/quotes.js';
 import { wireLightbox } from './ui/lightbox.js';
 import { wireFilteredReveals, revealFilteredBlock } from './filters/apply.js';
 
-// Applied before the first paint so the page never flashes the wrong scheme; the saved preference is in
-// localStorage, so it is available synchronously.
+// Pre-paint theme application; the localStorage preference is synchronous.
 wireTheme();
 
-// Intercept same-origin link clicks so navigation never reloads the page.
+// SPA navigation: intercept same-origin link clicks.
 document.addEventListener('click', (event) => {
   if (event.defaultPrevented || event.button !== 0) return;
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -31,17 +29,15 @@ document.addEventListener('click', (event) => {
   const url = new URL(link.href, location.origin);
   if (url.origin !== location.origin) return;
   if (/^\/(api|assets|userscript)\//.test(url.pathname)) return;
-  // Same page, only a #post-… fragment: scroll in place, no re-render. Anchored at the post's top: a voice
-  // post can be several screens tall, and `center` dropped the reader into its middle.
+  // Same-page #post links scroll in place; align top, not center.
   if (url.pathname === location.pathname && url.search === location.search && url.hash) {
     const target = document.getElementById(url.hash.slice(1));
     if (target) {
       event.preventDefault();
-      // A filtered-hidden post anchors on its placeholder; show the content before landing on it.
+      // Reveal filtered content before landing on its placeholder.
       revealFilteredBlock(target);
       target.scrollIntoView({ block: 'start' });
-      // Keep `history.state`: the scroll-position bookkeeping stamps a key into it, and `replaceState({})` wiped
-      // that key, so going back to this entry could not find its remembered offset.
+      // Keep history.state: replaceState({}) wipes the scroll key.
       history.replaceState({ ...(history.state || {}) }, '', url.pathname + url.search + url.hash);
     }
     return;
@@ -53,8 +49,7 @@ document.addEventListener('click', (event) => {
 wireHeaderMenus();
 wireNavShortcuts();
 wireChromeAutoHide();
-// voz.vn's markup carries data-onerror="hide-parent" on unfurl favicons; without a listener a dead favicon
-// keeps its box and alt text.
+// voz.vn unfurl favicons use data-onerror="hide-parent" for dead images.
 wireImageFallbacks();
 wireImageDownloads();
 wireStaticAvatars();
@@ -63,15 +58,13 @@ wireAllQuoteExpansion();
 wireLightbox();
 wireFilteredReveals();
 
-// Back/forward restores the scroll position the reader left on that history entry; `scrollRestoration` is
-// manual, so the browser cannot do it.
+// Back/forward restores remembered scroll; scrollRestoration is manual.
 window.addEventListener('popstate', async () => {
   await route();
   restoreScroll();
 });
 
-// "Hiện thị số liệu không rút gọn" changes how numbers and dates are formatted, and those strings are baked
-// into the markup, so the current route is re-run in place.
+// Full-numbers setting re-renders in place (strings are baked into markup).
 window.addEventListener('voz:format-change', async () => {
   if (location.pathname.startsWith('/cai-dat-tuivoz')) return;
   const top = window.scrollY;
@@ -79,10 +72,7 @@ window.addEventListener('voz:format-change', async () => {
   window.scrollTo({ top });
 });
 
-// "Hiển thị thành viên bị ban" is decided while rendering. Turning it on (or switching between smart/all)
-// needs a redraw so the wiring runs again; turning it off only has to drop the strikethroughs already on screen.
-// The import path must be absolute: a relative specifier inside a listener resolves against the current page URL,
-// and `window` is the dispatch target because CustomEvent does not bubble from `document`.
+// on = re-render, off = drop strikethroughs; import must be absolute.
 window.addEventListener('voz:banned-users-change', async (event) => {
   const { clearBannedMarks } = await import('/assets/lib/bannedUsers.js');
   const mode = event.detail && event.detail.mode;
@@ -97,11 +87,11 @@ window.addEventListener('voz:banned-users-change', async (event) => {
 });
 
 (async function boot() {
-  // Legacy hash URLs (#/t/123) are rewritten to the path form.
+  // Legacy #/t/123 hash URLs rewrite to the path form.
   if (location.hash.startsWith('#/')) {
     history.replaceState({ ...(history.state || {}) }, '', location.hash.slice(1));
   }
-  // /voz/app-config advertises a maintenance gate; a 404 means the custom router is not deployed — tolerate it.
+  // Maintenance gate; a 404 means the custom router isn't deployed — tolerate.
   try {
     const { api } = await import('./api.js');
     const cfg = await api.appConfig();

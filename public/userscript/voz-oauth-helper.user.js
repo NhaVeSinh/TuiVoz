@@ -10,6 +10,7 @@
 // @run-at       document-start
 // @noframes
 // ==/UserScript==
+/** voz.vn OAuth helper. */
 
 (function () {
   'use strict';
@@ -17,7 +18,7 @@
   const PANEL_ID = 'voz-oauth-helper-panel';
   const STORE_KEY = 'voz_oauth_last_code';
 
-  /* ------------------------------------------------------------ utilities */
+  /* utilities */
 
   function log(...args) {
     console.log('%c[voz-oauth]', 'color:#ff6600;font-weight:700', ...args);
@@ -63,7 +64,7 @@
     }
   }
 
-  /* --------------------------------------------------------------- panel UI */
+  /* panel UI */
 
   function buildPanel(code, state) {
     const old = document.getElementById(PANEL_ID);
@@ -155,7 +156,7 @@
     (document.body || document.documentElement).appendChild(panel);
   }
 
-  /* ------------------------------------------------------- code extraction */
+  /* code extraction */
 
   function extractCode(text) {
     if (!text) return null;
@@ -178,7 +179,7 @@
     else document.addEventListener('DOMContentLoaded', show, { once: true });
   }
 
-  /* --------------------------------------------------------- interception */
+  /* interception */
 
   const originalAssign = window.location.assign.bind(window.location);
   const originalReplace = window.location.replace.bind(window.location);

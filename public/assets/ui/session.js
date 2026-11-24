@@ -1,4 +1,4 @@
-// Session bootstrap and the login gate.
+/** Session bootstrap. */
 
 import { app, state } from '../core/dom.js';
 import { auth } from '../api.js';

@@ -1,4 +1,4 @@
-// Header account widget, breadcrumbs and nav highlighting.
+/** Header + nav chrome. */
 
 import { accountEl, breadcrumbsEl, navEl, state } from '../core/dom.js';
 import { esc } from '../core/utils.js';
@@ -13,7 +13,7 @@ import { ICON_SEARCH, ICON_MAIL, ICON_BELL, ICON_POWER, ICON_EDIT } from '../cor
 
 const menuButton = (kind, label, icon, content) => `<div class="header-menu-wrap"><button class="header-icon" type="button" data-header-menu="${kind}" aria-label="${label}" title="${label}" aria-expanded="false" aria-controls="header-menu-${kind}">${icon}</button><section class="header-menu" id="header-menu-${kind}" aria-label="${label}" hidden><h2>${label}</h2>${content}</section></div>`;
 
-// User shortcuts live in the nav bar next to "Bài mới", in saved order.
+// Shortcuts render next to "Bài mới" in saved order.
 export function renderNavShortcuts() {
   if (!navEl) return;
   for (const item of navEl.querySelectorAll('[data-shortcut-id]')) item.remove();
@@ -32,7 +32,7 @@ export function renderNavShortcuts() {
   navEl.append(fragment);
 }
 
-// Called once at boot so settings changed in another tab show up immediately.
+// Wired once at boot so cross-tab settings changes apply immediately.
 export function wireNavShortcuts() {
   renderNavShortcuts();
   window.addEventListener('voz:settings', renderNavShortcuts);

@@ -1,11 +1,11 @@
+/** Editor toolbar. */
 import { esc } from '../core/utils.js';
 import { safeEditorUrl } from '../lib/editorCodec.js';
 import { loadSmilies, smilieChoices } from '../lib/smilies.js';
 import { renderStickerPicker } from './stickerPicker.js';
 import { uploadImageFiles, pikBbcode } from '../lib/pikUpload.js';
 
-// Font Awesome 5 Pro regular artwork, the same glyphs and viewBoxes voz.vn paints at 24x16 with `fill`.
-// Filled, not stroked: the toolbar look depends on the solid shapes.
+// FA5 Pro glyphs as voz.vn paints them, filled not stroked.
 const paths = {
   bold: ['0 0 384 512', 'M314.52 238.78A119.76 119.76 0 0 0 232 32H48a16 16 0 0 0-16 16v16a16 16 0 0 0 16 16h16v352H48a16 16 0 0 0-16 16v16a16 16 0 0 0 16 16h208a128 128 0 0 0 128-128c0-49.49-28.38-91.92-69.48-113.22zM128 80h88a72 72 0 0 1 0 144h-88zm112 352H128V272h112a80 80 0 0 1 0 160z'],
   italic: ['0 0 320 512', 'M320 48v16a16 16 0 0 1-16 16h-67l-88 352h59a16 16 0 0 1 16 16v16a16 16 0 0 1-16 16H16a16 16 0 0 1-16-16v-16a16 16 0 0 1 16-16h67l88-352h-59a16 16 0 0 1-16-16V48a16 16 0 0 1 16-16h192a16 16 0 0 1 16 16z'],
@@ -22,8 +22,7 @@ const paths = {
   code: ['0 0 576 512', 'M234.8 511.7L196 500.4c-4.2-1.2-6.7-5.7-5.5-9.9L331.3 5.8c1.2-4.2 5.7-6.7 9.9-5.5L380 11.6c4.2 1.2 6.7 5.7 5.5 9.9L244.7 506.2c-1.2 4.3-5.6 6.7-9.9 5.5zm-83.2-121.1l27.2-29c3.1-3.3 2.8-8.5-.5-11.5L72.2 256l106.1-94.1c3.4-3 3.6-8.2.5-11.5l-27.2-29c-3-3.2-8.1-3.4-11.3-.4L2.5 250.2c-3.4 3.2-3.4 8.5 0 11.7L140.3 391c3.2 3 8.2 2.8 11.3-.4zm284.1.4l137.7-129.1c3.4-3.2 3.4-8.5 0-11.7L435.7 121c-3.2-3-8.3-2.9-11.3.4l-27.2 29c-3.1 3.3-2.8 8.5.5 11.5L503.8 256l-106.1 94.1c-3.4 3-3.6 8.2-.5 11.5l27.2 29c3.1 3.2 8.1 3.4 11.3.4z'],
   icode: ['0 0 640 512', 'M41.678 38.101l209.414 209.414c4.686 4.686 4.686 12.284 0 16.971L41.678 473.899c-4.686 4.686-12.284 4.686-16.971 0L4.908 454.101c-4.686-4.686-4.686-12.284 0-16.971L185.607 256 4.908 74.87c-4.686-4.686-4.686-12.284 0-16.971L24.707 38.1c4.686-4.686 12.284-4.686 16.971.001zM640 468v-28c0-6.627-5.373-12-12-12H300c-6.627 0-12 5.373-12 12v28c0 6.627 5.373 12 12 12h328c6.627 0 12-5.373 12-12z'],
   smilies: ['0 0 496 512', 'M248 8C111 8 0 119 0 256s111 248 248 248 248-111 248-248S385 8 248 8zm0 448c-110.3 0-200-89.7-200-200S137.7 56 248 56s200 89.7 200 200-89.7 200-200 200zm-80-216c17.7 0 32-14.3 32-32s-14.3-32-32-32-32 14.3-32 32 14.3 32 32 32zm160 0c17.7 0 32-14.3 32-32s-14.3-32-32-32-32 14.3-32 32 14.3 32 32 32zm4 72.6c-20.8 25-51.5 39.4-84 39.4s-63.2-14.3-84-39.4c-8.5-10.2-23.7-11.5-33.8-3.1-10.2 8.5-11.5 23.6-3.1 33.8 30 36 74.1 56.6 120.9 56.6s90.9-20.6 120.9-56.6c8.5-10.2 7.1-25.3-3.1-33.8-10.1-8.4-25.3-7.1-33.8 3.1z'],
-  // Fluent UI "sticker" (regular): a square with a peeled corner and two eyes — reads as a sticker, not a photo.
-  // Stroked as well as filled: its 1px hairlines are too thin beside the solid FA glyphs.
+  // Fluent "sticker" glyph; stroked too since its hairlines sit beside solid FA icons.
   stickers: ['0 0 20 20', 'M15.1111 2C16.6516 2 17.9104 3.20574 17.9954 4.72496L18 4.88889V10.9303C18 11.4607 17.8104 11.9716 17.4686 12.3723L17.3491 12.5016L12.5016 17.3491C12.1266 17.7242 11.6312 17.9513 11.1062 17.993L10.9303 18H4.88889C3.34842 18 2.08956 16.7943 2.00457 15.275L2 15.1111V4.88889C2 3.34842 3.20574 2.08956 4.72496 2.00457L4.88889 2H15.1111ZM15.0312 3H4.96875C3.92674 3 3.07381 3.80952 3.00454 4.83396L3 4.96875V15.0312C3 16.0733 3.80952 16.9262 4.83396 16.9955L4.96875 17H10.9975L10.9978 13.9081C9.29 14.2258 7.45995 13.7199 6.1449 12.3932C5.95049 12.1971 5.95189 11.8805 6.148 11.6861C6.34412 11.4917 6.6607 11.4931 6.8551 11.6892C7.98504 12.8291 9.58103 13.2262 11.0356 12.8779C11.0412 12.8195 11.0478 12.7692 11.055 12.7237C11.4394 11.6918 12.4071 11.0688 13.5574 11.0045L13.7188 11H17V4.96875C17 3.92674 16.1905 3.07381 15.166 3.00454L15.0312 3ZM16.5846 12.0003L13.8232 12C12.8582 12 12.0684 12.7497 12.0042 13.6984L12 13.8232V16.584L12.0869 16.506L16.506 12.0869C16.5337 12.0592 16.5599 12.0303 16.5846 12.0003ZM7 7C7.55228 7 8 7.44772 8 8C8 8.55228 7.55228 9 7 9C6.44772 9 6 8.55228 6 8C6 7.44772 6.44772 7 7 7ZM13 7C13.5523 7 14 7.44772 14 8C14 8.55228 13.5523 9 13 9C12.4477 9 12 8.55228 12 8C12 7.44772 12.4477 7 13 7Z', '1.1'],
   table: ['0 0 512 512', 'M464 32H48C21.49 32 0 53.49 0 80v352c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49 48-48V80c0-26.51-21.49-48-48-48zM232 432H54a6 6 0 0 1-6-6V296h184v136zm0-184H48V112h184v136zm226 184H280V296h184v130a6 6 0 0 1-6 6zm6-184H280V112h184v136z'],
   hr: ['0 0 640 512', 'M640 247.5v17a16 16 0 0 1-16 16H16a16 16 0 0 1-16-16v-17a16 16 0 0 1 16-16h608a16 16 0 0 1 16 16z'],
@@ -39,8 +38,7 @@ const paths = {
   align: ['0 0 448 512', 'M12.83 344h262.34A12.82 12.82 0 0 0 288 331.17v-22.34A12.82 12.82 0 0 0 275.17 296H12.83A12.82 12.82 0 0 0 0 308.83v22.34A12.82 12.82 0 0 0 12.83 344zm0-256h262.34A12.82 12.82 0 0 0 288 75.17V52.83A12.82 12.82 0 0 0 275.17 40H12.83A12.82 12.82 0 0 0 0 52.83v22.34A12.82 12.82 0 0 0 12.83 88zM432 168H16a16 16 0 0 0-16 16v16a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16v-16a16 16 0 0 0-16-16zm0 256H16a16 16 0 0 0-16 16v16a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16v-16a16 16 0 0 0-16-16z'],
   paragraph: ['0 0 448 512', 'M415 32H191a160 160 0 0 0 0 320h48v112a16 16 0 0 0 16 16h16a16 16 0 0 0 16-16V80h48v384a16 16 0 0 0 16 16h16a16 16 0 0 0 16-16V80h32a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM239 304h-48a112 112 0 0 1 0-224h48z'],
 };
-// voz.vn renders the sprite in a 24x16 box: the symbol's own viewBox is scaled into it, so a 384x512
-// glyph ends up ~11px wide. A third tuple entry adds a stroke so thin artwork can match the solid glyphs.
+// Third tuple entry adds a stroke so thin glyphs match the solid ones.
 export const editorIcon = (name) => {
   const [viewBox, d, strokeWidth] = paths[name] || paths.more;
   const stroke = strokeWidth
@@ -78,8 +76,7 @@ export function editorToolbar(id) {
   </div>`;
 }
 
-// Compact pik.vn upload strip inside the shared image panel. Uploads files and inserts them as [IMG]; the panel
-// stays open after a batch, like the sticker picker.
+// pik.vn upload strip; panel stays open after a batch.
 function renderUploadStrip(container, insert) {
   container.innerHTML = `
     <div class="editor-upload">
@@ -111,8 +108,7 @@ function renderUploadStrip(container, insert) {
     list.replaceChildren();
     status.textContent = 'Đang tải ảnh lên…';
     try {
-      // The image panel is a pik.vn front end: it posts [IMG] and never touches the attachment API. Attaching
-      // arbitrary files is the separate "Đính kèm tệp" button.
+      // Image panel posts [IMG] via pik.vn, never the attachment API.
       const { results, skipped } = await uploadImageFiles(files, (done, total) => {
         status.textContent = `Đang tải ảnh lên… ${done}/${total}`;
       });
@@ -139,7 +135,7 @@ function renderUploadStrip(container, insert) {
 
 export function showToolPanel(panel, kind, insert, selectionText) {
   panel.hidden = false;
-  // Not data-tool: the panel would then match the editor's toolbar button lookup.
+  // Not data-tool, or the toolbar button lookup would match it.
   panel.dataset.panelKind = kind;
   panel.dataset.panelFor = panel.closest('.rich-editor')?.dataset.editorId || 'ed';
   const close = () => panel.dispatchEvent(new Event('editor:panel-close'));
@@ -149,7 +145,7 @@ export function showToolPanel(panel, kind, insert, selectionText) {
     return;
   }
   if (kind === 'smilies') {
-    // Floating emoji popup under the toolbar, like voz.vn's emoji menu.
+    // Floating emoji popup under the toolbar.
     panel.innerHTML = `<div class="editor-popup editor-popup--emoji"><div class="editor-popup-body"><div class="editor-smilies"></div></div></div>`;
     const grid = panel.querySelector('.editor-smilies');
     const choice = (smilie, code) => {
@@ -160,16 +156,14 @@ export function showToolPanel(panel, kind, insert, selectionText) {
         img.src = smilie.image_url;
         img.alt = code;
         img.loading = 'lazy';
-        // Pair the 2x file with the 1x one so hi-dpi screens get a sharp source. `sizes` pins the layout width to
-        // the 1x natural size (24px for the small set, 48px for the large one), which keeps voz's two-tier look
-        // instead of letting the 2x variant change the rendered size.
+        // `sizes` pins layout to the 1x size so 2x stays sharp, not bigger.
         if (smilie.image_url_2x && safeEditorUrl(smilie.image_url_2x)) {
           img.srcset = `${smilie.image_url} 1x, ${smilie.image_url_2x} 2x`;
           img.sizes = '24px';
         }
         button.append(img);
       } else button.textContent = code;
-      // Keep the picker open so several emoji can be inserted in a row.
+      // Picker stays open for repeated picks.
       button.onclick = () => insert(code);
       grid.append(button);
     };
@@ -182,14 +176,14 @@ export function showToolPanel(panel, kind, insert, selectionText) {
     return;
   }
   const urlTool = ['url', 'img', 'media'].includes(kind);
-    // Floating-label fields, like voz.vn's link popup: the label sits inside the field and shrinks on top of it.
+    // Floating-label fields like voz.vn's link popup.
     const field = (key, label, attrs = '') => `<div class="editor-field"><input data-field="${key}" id="${esc(panel.dataset.panelFor || 'ed')}-${key}" ${attrs}><label for="${esc(panel.dataset.panelFor || 'ed')}-${key}">${label}</label></div>`;
     const fields = urlTool
       ? field('url', 'URL', `type="url" placeholder=" " value="${esc(/^https?:\/\//i.test(selectionText) ? selectionText : '')}"`) + (kind === 'url' ? field('label', 'Văn bản', `placeholder=" " value="${esc(selectionText)}"`) : '')
       : kind === 'table'
         ? field('rows', 'Hàng', 'type="number" min="1" max="20" value="2"') + field('cols', 'Cột', 'type="number" min="1" max="10" value="2"')
         : field('label', kind === 'spoiler' ? 'Tiêu đề' : 'Tác giả', 'placeholder=" "');
-    // "Ảnh từ URL" also accepts files, so the upload strip shares the popup.
+    // "Ảnh từ URL" also accepts files.
   const upload = kind === 'img' ? '<div class="editor-upload-slot"></div>' : '';
     panel.innerHTML = `<div class="editor-popup"><div class="editor-popup-body">${fields}${upload}<div class="editor-popup-actions"><button type="button" class="editor-popup-submit" data-insert>Chèn</button></div><span class="editor-popup-alert" role="alert"></span></div></div>`;
     panel.querySelector('[data-dismiss]')?.remove();

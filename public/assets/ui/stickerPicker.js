@@ -1,5 +1,4 @@
-// Sticker picker, ported from the userscript. It opens the same popup panel the emoji picker uses. Insertion
-// format matches voz.vn: [IMG size="80x80"]<url>[/IMG].
+/** Sticker picker. */
 
 import {
   getAlbums, getRecentStickers, addRecentSticker, removeRecentSticker, clearRecentStickers,
@@ -43,8 +42,7 @@ function stickerButton(img, { onPick, onRemove, title }) {
   return wrapper;
 }
 
-// Renders the picker into `panel`. `insert(code)` injects BBCode at the caret; the panel stays open so several
-// stickers can be inserted in a row.
+// `insert(code)` injects BBCode at the caret; the panel stays open for repeat picks.
 export function renderStickerPicker(panel, insert) {
   panel.innerHTML = `
     <div class="sticker-picker">
@@ -92,7 +90,7 @@ export function renderStickerPicker(panel, insert) {
     }
     insert(STICKER_BBCODE(img.url));
     status.textContent = 'Đã chèn sticker.';
-    // Refresh the recents tab so the picked sticker moves to the front.
+    // Recents tab: the picked sticker moves to the front.
     if (activeKey === 'recent') render('recent');
     renderTabs();
   };
@@ -122,7 +120,7 @@ export function renderStickerPicker(panel, insert) {
       const clear = document.createElement('button');
       clear.type = 'button';
       clear.className = 'sticker-clear-all';
-      // Icon only, like the per-sticker remove badge; the tooltip explains it.
+      // Icon only, like the per-sticker remove badge.
       clear.textContent = '🗑️';
       clear.title = 'Xoá hết gần đây';
       clear.setAttribute('aria-label', 'Xoá hết sticker gần đây');

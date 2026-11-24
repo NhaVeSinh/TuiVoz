@@ -1,3 +1,5 @@
+/* Home page. */
+
 .node-row { align-items: center; gap: 0; padding: 10px; min-height: 64px; }
 .node-icon { flex: 0 0 46px; width: 46px; height: auto; background: none; color: var(--node-icon); justify-content: flex-start; border-radius: 0; }
 .node-icon svg { width: 36px; height: 36px; }

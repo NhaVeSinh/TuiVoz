@@ -1,3 +1,4 @@
+/** Header menus. */
 import { state } from '../core/dom.js';
 import { esc, timeAgo } from '../core/utils.js';
 import { dmPath, userPath } from '../core/paths.js';

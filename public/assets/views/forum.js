@@ -1,4 +1,4 @@
-// Forum index (node tree) and the thread list of one forum.
+/** Forum views. */
 
 import { app, state } from '../core/dom.js';
 import { esc, num } from '../core/utils.js';
@@ -14,15 +14,10 @@ import { nodeTree, subForumBlock } from '../ui/forumNodes.js';
 import { mountInfiniteScroll } from '../ui/infiniteScroll.js';
 import { cachedCatalog, readCatalog, storeCatalog, catalogAge } from '../lib/catalogs.js';
 
-// How stale the home tree may be before a background revalidation spends bytes. News-type feeds go stale
-// "after a couple of hours" (Verachtert et al. 2023, ScienceDirect) — 15 minutes sits far inside that bound,
-// costs ~2 fetches per half-hour session instead of one per Home visit, and matches the reader's own ask.
+// Home tree staleness bound: 15 min, well inside typical feed freshness.
 const NODES_REVALIDATE_MS = 15 * 60 * 1000;
 
-// The node tree carries each forum's latest-thread line — the reader's quick news peek — so it paints
-// instantly from the cached copy and then revalidates in the background: when the fresh /nodes/ payload
-// differs, the tree re-renders (only while the reader is still on the home route). A stale-while-revalidate
-// home instead of the old always-fresh fetch: instant paint with no 100KB+ wait, and no hour-old lines.
+// Stale-while-revalidate home: paint cached tree instantly, refresh in background.
 export async function viewHome() {
   setActiveNav('home');
   setBrandTitle();
@@ -37,7 +32,7 @@ export async function viewHome() {
       state.nodes = cached;
       paint(cached);
     }
-    // Fresh enough: the painted tree stays as-is and no bytes are spent on this visit.
+    // Skip refetch when cache is fresh.
     const age = catalogAge('nodes');
     if (cached && age !== null && age < NODES_REVALIDATE_MS) return;
     const fresh = await api.nodes().catch(() => null);
@@ -49,7 +44,7 @@ export async function viewHome() {
     }
     if (!state.nodes) throw new Error('Không tải được danh sách diễn đàn');
   } catch (err) {
-    // A background failure must not clobber the already-painted cached tree.
+    // Don't clobber the painted cached tree on background failure.
     if (!state.nodes) app.innerHTML = errorBox(err);
   }
 }
@@ -58,8 +53,7 @@ export async function viewForum(nodeId, page) {
   setActiveNav('home');
   loading();
   try {
-    // /forums/{id} has no child nodes, so the node tree supplies the sub-forum block. Both calls run in
-    // parallel; the node tree is cached after the first fetch.
+    // Sub-forum block comes from the (cached) node tree, not /forums/{id}.
     const [forumRes, threadsRes, nodesRes] = await Promise.all([
       api.forum(nodeId),
       api.forumThreads(nodeId, page),
@@ -110,7 +104,7 @@ export async function viewForum(nodeId, page) {
   }
 }
 
-// Appends one more page of rows; sticky rows only appear on page 1.
+// Sticky rows appear on page 1 only.
 function appendThreadRows(containerId, threads) {
   const container = document.getElementById(containerId);
   if (!container || !threads.length) return 0;
@@ -121,8 +115,7 @@ function appendThreadRows(containerId, threads) {
   return threads.length;
 }
 
-// Aggregated node: threads come from many forums, so the forum name belongs in each row's meta, like voz.vn's
-// /s/<slug>.<id>/page-<n>.
+// Aggregated node: rows show forum names, like voz.vn's /s/… page.
 export async function viewSearchForum(nodeId, page) {
   setActiveNav('home');
   loading();

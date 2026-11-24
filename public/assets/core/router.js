@@ -1,4 +1,4 @@
-// History-API router. The page number lives in the path (/t/slug.123/page-2).
+/** Router. */
 
 import { app } from './dom.js';
 import { idFromSegment, threadPath, dmPath, withPage, postPage } from './paths.js';
@@ -35,11 +35,9 @@ export function parsePath() {
   return { segments, params, page };
 }
 
-// Resolves a thread's first unread post. A read thread falls back to page 1 with no post, like voz.vn. The
-// thread object comes back so the caller keeps the canonical slug.
+// First unread post target; read threads fall back to page 1, like voz.vn.
 async function unreadTarget(threadId) {
-  // One bare probe carries everything resolution needs — is_unread, visitor_read_date and the thread's date
-  // range — so no post bodies and no fallback fetch.
+  // One metadata probe covers is_unread + read date; no post bodies fetched.
   const head = await api.threadMeta(threadId);
   const thread = head.thread || { thread_id: threadId, title: '' };
   if (!thread.is_unread) return { thread, page: 1, postId: null };
@@ -52,8 +50,7 @@ async function unreadTarget(threadId) {
   return { thread, page: target.page, postId: target.postId };
 }
 
-// Page, thread and title for one post id: `?post=` links and `/p/{id}/` both need to know which page a post
-// lives on before the thread can be rendered there.
+// Which page a post id lives on, for ?post= and /p/{id}/ links.
 async function postLocation(postId) {
   try {
     const { post } = await api.post(postId);
@@ -73,7 +70,7 @@ export async function route() {
   const { segments, params, page } = parsePath();
   const head = segments[0] || '';
   teardownInfiniteScroll({ keepSentinel: true });
-  // Leaving the thread screen fires the queued `read` signal (see views/thread.js).
+  // Leaving a thread fires the queued read signal (views/thread.js).
   if (head !== 't') window.dispatchEvent(new Event('voz:leave-thread'));
 
   try {
@@ -89,18 +86,16 @@ export async function route() {
     if (head === 't') {
       const threadId = idFromSegment(segments[1]);
       const focusPost = Number(params.get('post')) || null;
-      // /t/<slug>.<id>/unread — resolve the page, then replace the URL like voz.vn's redirect.
+      // /unread: resolve the page, then replace URL like voz.vn.
       if (segments[2] === 'unread') {
         const target = await unreadTarget(threadId);
         const href = `${withPage(threadPath(target.thread), target.page)}${target.postId ? `#post-${target.postId}` : ''}`;
         return navigate(href, { replace: true });
       }
-      // A bare `?post=` carries no page, so the thread would open at the top whenever the post is past page 1.
-      // As `/p/{id}/` does, resolve the page from the post's position and rewrite the URL to the form everything
-      // else links with.
+      // Bare ?post= lacks a page; resolve it and rewrite like /p/{id}/.
       if (focusPost) {
         const target = await postLocation(focusPost);
-        // A post that no longer resolves (deleted) falls through: the thread opens normally instead of erroring.
+        // Deleted post: fall through and open the thread normally.
         if (target) {
           const href = `${withPage(threadPath({ thread_id: target.threadId, title: target.title }), target.page)}#post-${focusPost}`;
           if (`${location.pathname}${location.search}${location.hash}` !== href) return await navigate(href, { replace: true });
@@ -112,7 +107,7 @@ export async function route() {
     if (head === 'new') return await viewNewThreads(page);
     if (head === 'search') return await viewSearch(params.get('q') || '', params.get('id'), page);
     if (head === 'direct-messages' || head === 'dm') {
-      // voz.vn alert URLs point here for a reacted DM message; the message resolves its conversation.
+      // voz.vn alert URLs point here; resolve the message's conversation.
       if (segments[1] === 'replies' && /^\d+$/.test(segments[2] || '')) {
         const messageId = Number(segments[2]);
         const { message } = await api.conversationMessage(messageId);
@@ -131,7 +126,7 @@ export async function route() {
     if (head === 'watched') return await viewWatched(page);
     if (head === 'u') return await viewUser(idFromSegment(segments[1]), params, segments[2] || '');
     if (head === 'pp' && /^\d+$/.test(segments[1] || '')) return await viewProfilePost(Number(segments[1]), page);
-    // voz URLs: /profile-posts/{id}/ → single post; /profile-posts/comments/{id}/ → comment, resolves to parent post.
+    // /profile-posts/{id}/ → post; /comments/{id}/ → comment → parent post.
     if (head === 'profile-posts') {
       if (segments[1] === 'comments' && /^\d+$/.test(segments[2] || '')) {
         const commentId = Number(segments[2]);
@@ -149,13 +144,13 @@ export async function route() {
     setTitle('Oops! We ran into some problems.');
     app.innerHTML = '<div class="empty">Không tìm thấy trang.</div>';
   } catch (err) {
-    // voz.vn's own error title.
+    // voz.vn's error title.
     setTitle('Oops! We ran into some problems.');
     app.innerHTML = errorBox(err);
   } finally {
     finishLoading();
     refreshUnreadCounts();
-    // One clean adblock-check report per navigation (throttled inside), like a voz.vn page load.
+    // One adblock-check ping per navigation, throttled internally.
     supportPing();
   }
 }

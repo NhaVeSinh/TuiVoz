@@ -1,4 +1,4 @@
-// OAuth login: exchange the authorization code (PKCE) captured by the userscript.
+/** Login view. */
 
 import { app, state } from '../core/dom.js';
 import { navigate } from '../core/nav.js';

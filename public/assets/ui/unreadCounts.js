@@ -1,3 +1,5 @@
+/** Unread badges. */
+
 import { state } from '../core/dom.js';
 import { api } from '../api.js';
 import { isDataSaving } from '../lib/dataSaving.js';
@@ -5,9 +7,7 @@ import { isDataSaving } from '../lib/dataSaving.js';
 let pending;
 let lastRefresh = 0;
 
-// Navigation, focus and visibility all fire refreshes; a completed fetch at most every 30s keeps the badges
-// honest without paying two list payloads per navigation. force (menu open, explicit mark-read actions)
-// bypasses both the interval and the in-flight dedupe.
+// Throttle fetches to 30s; `force` bypasses the interval and in-flight dedupe.
 const MIN_REFRESH_INTERVAL = 30_000;
 
 export async function refreshUnreadCounts(force = false) {
@@ -51,8 +51,7 @@ export function wireUnreadCounts() {
     if (!document.hidden) refreshUnreadCounts();
   });
   setInterval(() => {
-    // Save mode pauses the background poll entirely — navigation and returning focus still refresh (throttled),
-    // so only "sitting on one page for minutes" defers badge updates.
+    // Save mode pauses the poll; navigation/focus still refresh (throttled).
     if (!document.hidden && !isDataSaving()) refreshUnreadCounts();
   }, 60000);
 }

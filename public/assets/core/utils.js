@@ -1,4 +1,4 @@
-// Formatting helpers shared by every view.
+/** Format helpers. */
 
 export const esc = (value) =>
   String(value ?? '')
@@ -8,8 +8,7 @@ export const esc = (value) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-// voz.vn rounds to K/M; the Hệ thống setting can print full figures. `scope` is 'thread' inside a thread view.
-// The mode is pushed in by ui/theme.js — core/ must not import lib/.
+// K/M rounding; 'full' mode is pushed in by ui/theme.js (core can't import lib/).
 export const FULL_NUMBERS_MODES = ['off', 'thread', 'all'];
 let fullNumbersMode = 'off';
 
@@ -33,7 +32,7 @@ export const unix = (seconds) => (seconds ? Number(seconds) * 1000 : 0);
 // Post numbers are always full: #13,661, never the rounded #14K.
 export const postNumber = (value) => (Number(value) || 0).toLocaleString('en-US');
 
-// Relative time; the full-numbers mode prints the absolute timestamp instead.
+// Relative time; full mode prints the absolute timestamp.
 export function timeAgo(seconds, scope) {
   const ms = unix(seconds);
   if (!ms) return '';
@@ -66,7 +65,7 @@ export function fullDate(seconds) {
   });
 }
 
-// voz.vn prints only the year; the full-numbers mode prints the whole date.
+// Year only; full mode prints the whole date.
 export function joinDate(seconds, scope) {
   const ms = unix(seconds);
   if (!ms) return '—';

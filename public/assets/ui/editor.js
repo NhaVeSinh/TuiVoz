@@ -1,4 +1,4 @@
-// The textarea remains the canonical, synchronous BBCode interface for every view.
+/** BBCode editor. */
 import { esc } from '../core/utils.js';
 import { state } from '../core/dom.js';
 import { editorCodeHtml, editorDomCode, editorCodePlain } from '../lib/editorCodec.js';
@@ -9,8 +9,7 @@ import { openMentionMenu, mentionContext } from './mentionMenu.js';
 import { uploadImageFiles, pikBbcode } from '../lib/pikUpload.js';
 import { AttachmentUploads, attachmentSupported, ATTACH_ACCEPT } from '../lib/uploadAttachments.js';
 
-// `context` pins the attachment key to its target, e.g. { thread_id } for a reply or { node_id } for a new
-// thread — the same values the app posts in `context[...]` to /attachments/new-key.
+// `context` pins the attachment key, e.g. { thread_id } for a reply.
 export function editorHtml(id, value = '', placeholder = 'Nội dung…', context) {
   const attach = context && typeof context === 'object'
     ? ` data-attach-context="${esc(JSON.stringify(context))}"`
@@ -53,7 +52,7 @@ function wireOneEditor(editor) {
     const native = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
     let sourceMode = false, savedRange = null, sourceSelection = [0, 0], composing = false;
     const history = [textarea.value]; let position = 0;
-    // Page numbers must not split reply drafts; post edits have an explicit identity.
+    // Page numbers must not split reply drafts.
     const draftKey = `voz-editor:v1:${state.me?.user_id || 'guest'}:${location.pathname.replace(/\/page-\d+\/?$/, '/')}:${editor.dataset.draftContext || textarea.id}`;
     let stored = null;
     try { stored = JSON.parse(localStorage.getItem(draftKey)); if (!stored || Date.now() - stored.date > 30 * 86400000) { localStorage.removeItem(draftKey); stored = null; } } catch { /* Storage may be disabled. */ }
@@ -61,11 +60,10 @@ function wireOneEditor(editor) {
     restoreButton.disabled = !stored?.value;
     if (stored?.value) status.textContent = 'Có bản nháp cục bộ. Nhấn Khôi phục nháp để mở.';
     const value = () => native.get.call(textarea);
-    // Smilies are images in the visual editor but their code in the textarea, so the caret is tracked against a
-    // virtual text where an image counts as its code.
+    // Caret measured against virtual text where a smilie image counts as its code.
     const virtualLength = (node) => {
       if (node.nodeType === 3) return node.nodeValue.length;
-      // cloneContents() returns a DocumentFragment (nodeType 11), not an element.
+      // cloneContents() yields a DocumentFragment (nodeType 11).
       if (node.nodeType !== 1 && node.nodeType !== 11) return 0;
       if (node.dataset?.smilie) return node.dataset.smilie.length;
       if (node.tagName === 'BR') return 1;
@@ -78,7 +76,7 @@ function wireOneEditor(editor) {
       if (!selection?.rangeCount) return null;
       const range = selection.getRangeAt(0);
       if (!visual.contains(range.startContainer)) return null;
-      // Measure everything before the caret; this also works when the caret sits on the editor element itself.
+      // Also works when the caret sits on the editor element itself.
       const before = document.createRange();
       before.selectNodeContents(visual);
       before.setEnd(range.startContainer, range.startOffset);
@@ -120,14 +118,13 @@ function wireOneEditor(editor) {
     };
     const render = () => { visual.innerHTML = editorCodeHtml(value()); renderSmilies(visual); };
     const refreshPreview = () => { if (!preview.hidden) { preview.innerHTML = editorCodeHtml(value(), true); renderSmilies(preview); } };
-    // An emoji shows its image immediately. The caret is only re-placed when a text node was replaced, or it
-    // would fight the browser's own caret.
+    // Re-place the caret only when a text node was replaced.
     const liveSmilies = () => {
       if (sourceMode || !smiliesReady() || !visual.isConnected) return;
       const offset = caretOffset();
       if (renderSmilies(visual) && offset !== null) restoreCaret(offset);
     };
-    // The catalogue arrives asynchronously; redraw once so drafted codes become images.
+    // Catalogue loads async; redraw once so drafted codes become images.
     loadSmilies().then(() => { if (!sourceMode && visual.isConnected) liveSmilies(); });
     const save = () => {
       try {
@@ -142,7 +139,7 @@ function wireOneEditor(editor) {
       editor.querySelector('[data-tool="redo"]').disabled = position === history.length - 1;
       save(); refreshPreview();
     };    const set = (next, remember = true) => { native.set.call(textarea, String(next)); render(); savedRange = null; if (remember) record(); else { save(); refreshPreview(); } };
-    // Existing quote/reply code assigns .value without dispatching input events.
+    // Quote/reply assigns .value without dispatching input events.
     Object.defineProperty(textarea, 'value', { configurable: true, get: value, set: (next) => set(next) });
     const nativeFocus = textarea.focus.bind(textarea);
     textarea.focus = (options) => { if (sourceMode) nativeFocus(options); else visual.focus(options); };
@@ -175,13 +172,11 @@ function wireOneEditor(editor) {
         target.insertNode(fragment);
         if (last) { target.setStartAfter(last); target.collapse(true); const selection = document.getSelection(); selection.removeAllRanges(); selection.addRange(target); savedRange = target.cloneRange(); }
         native.set.call(textarea, editorDomCode(visual)); record();
-        // The inserted BBCode may be a smilie code: show its image right away. liveSmilies() re-places the
-        // caret, so repeated picks keep their order.
+        // Show an inserted smilie code's image right away.
         if (!plain) liveSmilies();
       }
     };
     const wrap = (tag, attrs = '') => insert(`[${tag}${attrs}]${selected() || '…'}[/${tag}]`);
-    // The menu writes into the visual editor, so the textarea and the draft follow through `record()`.
     const mention = openMentionMenu({
       ed: visual,
       list: mentionList,
@@ -220,8 +215,7 @@ function wireOneEditor(editor) {
         toggle.classList.remove('is-open');
       }
     };
-    // voz.vn slides the extra buttons open as a second row inside the toolbar; the height is animated so the
-    // editor below moves down smoothly instead of jumping.
+    // Height animated so the editor below slides down smoothly.
     const openMenu = (toggle, menu) => {
       menu.hidden = false;
       const height = menu.scrollHeight;
@@ -235,7 +229,7 @@ function wireOneEditor(editor) {
       panel.hidden = true; panel.replaceChildren(); delete panel.dataset.panelKind;
       for (const tool of editor.querySelectorAll('[data-tool][aria-expanded="true"]')) tool.setAttribute('aria-expanded', 'false');
     };
-    // The emoji popup sits under the toolbar, whose height changes when the buttons wrap on narrow screens.
+    // Toolbar height changes when buttons wrap on narrow screens.
     const syncPanelOffset = () => {
       const toolbar = editor.querySelector('.editor-toolbar');
       if (toolbar) editor.style.setProperty('--editor-toolbar-h', `${Math.round(toolbar.getBoundingClientRect().height)}px`);
@@ -247,8 +241,7 @@ function wireOneEditor(editor) {
       if (!editor.isConnected) { document.removeEventListener('pointerdown', outsidePointer); return; }
       if (!event.target.closest('.mention-menu')) mention.close();
       if (event.target.closest('.editor-toolbar, .editor-panel')?.closest('.rich-editor') === editor) return;
-      // The emoji and sticker pickers stay open until their own toolbar button is pressed again; they cover a lot
-      // of the screen on mobile, so an outside tap is the only other way to dismiss them.
+      // Emoji/sticker pickers dismiss only via their button or an outside tap.
       if (['smilies', 'stickers'].includes(panel.dataset.panelKind) && !panel.hidden) { closeMenus(); return; }
       closeMenus(); closePanel();
     };
@@ -260,7 +253,7 @@ function wireOneEditor(editor) {
         closeMenus(); closePanel(); toggle?.focus();
       }
     });
-    // A closed row keeps a stale pixel height, so the next open would start from the wrong value.
+    // Reset stale pixel height or the next open animates from it.
     editor.addEventListener('transitionend', (event) => {
       if (event.propertyName !== 'height') return;
       const menu = event.target.closest?.('[data-menu-panel]');
@@ -269,7 +262,7 @@ function wireOneEditor(editor) {
     editor.addEventListener('pointerdown', (event) => {
       const option = event.target.closest('.mention-menu li[data-username]');
       if (option && mentionList.contains(option)) {
-        // Keep the editor from taking the caret back before the click lands.
+        // preventDefault keeps the caret until the click lands.
         event.preventDefault();
         event.stopPropagation();
         mention.choose([...mentionList.children].indexOf(option));
@@ -283,16 +276,15 @@ function wireOneEditor(editor) {
         if (composing) return;
         if (surface === visual) native.set.call(textarea, editorDomCode(visual)); else render();
         rememberSelection(); record();
-        // Typing a smilie code shows the image immediately.
+        // Show a typed smilie code's image immediately.
         if (surface === visual) liveSmilies();
-        // @name suggestions only exist while the member is typing them.
         if (surface === visual) mention.update();
       });
       surface.addEventListener('compositionstart', () => { composing = true; });
       surface.addEventListener('compositionend', () => { composing = false; surface.dispatchEvent(new Event('input', { bubbles: true })); });
       surface.addEventListener('beforeinput', (event) => { if (event.inputType === 'historyUndo' || event.inputType === 'historyRedo') { event.preventDefault(); undo(event.inputType === 'historyUndo' ? -1 : 1); } });
       surface.addEventListener('keydown', (event) => {
-        // Arrow keys, Enter, Tab and Escape belong to the open @mention list; Ctrl+Z stays with the editor.
+        // Arrows/Enter/Tab/Escape belong to the open @mention list.
         if (surface === visual && !event.ctrlKey && !event.metaKey && !event.altKey && !composing && mention.key(event)) return;
         if ((event.ctrlKey || event.metaKey) && ['z', 'y'].includes(event.key.toLowerCase())) { event.preventDefault(); undo(event.key.toLowerCase() === 'y' || event.shiftKey ? 1 : -1); }
         if ((event.ctrlKey || event.metaKey) && ['b', 'i', 'u'].includes(event.key.toLowerCase()) && !sourceMode) {
@@ -300,8 +292,7 @@ function wireOneEditor(editor) {
         }
       });
     }
-    // Native voz attachments: voz's own "Đính kèm tệp" button opens a file picker for any accepted type and the
-    // files join the post through `attachment_key`. Paste/drop stay on pik.vn (see uploadAndInsert).
+    // "Đính kèm tệp" uploads any file via attachment_key; paste/drop use pik.vn.
     let attachContext = null;
     try { attachContext = editor.dataset.attachContext ? JSON.parse(editor.dataset.attachContext) : null; } catch { attachContext = null; }
     const uploads = attachContext && attachmentSupported() ? new AttachmentUploads(attachContext) : null;
@@ -336,8 +327,7 @@ function wireOneEditor(editor) {
       if (item) uploads.remove(item).then(renderUploadList);
     });
 
-    // The attach button lives in the form's button row (views/thread.js) so it sits next to the submit button;
-    // its hidden any-file input is injected once per editor.
+    // The attach button lives in the form's button row next to submit.
     const attachInput = document.createElement('input');
     attachInput.type = 'file';
     attachInput.multiple = true;
@@ -373,9 +363,7 @@ function wireOneEditor(editor) {
         status.textContent = error.message || 'Tải tệp lên thất bại.';
       }
     };
-    // Paste, drop and the image panel always host on pik.vn and insert [IMG]; the native attachment API is a
-    // separate button (xem attach::*) for arbitrary files. The status line reports progress because it is a
-    // network round trip.
+    // Paste/drop/image panel host on pik.vn as [IMG]; attachments use the API.
     const pendingUploads = new Set();
     const uploadAndInsert = async (files) => {
       if (!files?.length) return;
@@ -421,7 +409,7 @@ function wireOneEditor(editor) {
       rememberSelection();
       insert(event.clipboardData.getData('text/plain'), true);
     });
-    // Also catch image pastes while the visual editor is not focused.
+    // Catch image pastes while the visual editor is unfocused.
     editor.addEventListener('paste', (event) => {
       if (event.defaultPrevented) return;
       const images = clipboardImages(event.clipboardData);
@@ -500,8 +488,7 @@ function wireOneEditor(editor) {
       }
     });
     textarea.addEventListener('editor:clear-draft', () => { try { localStorage.removeItem(draftKey); stored = null; restoreButton.disabled = true; status.textContent = 'Đã gửi · Đã xoá nháp.'; } catch { /* No storage available. */ } });
-    // Quote/reply inserts at the top; the caret belongs at the end so the reader can type. The visual editor
-    // owns the caret, so it is placed there.
+    // Quote/reply inserts at top; caret goes to the end.
     textarea.addEventListener('editor:focus-end', () => {
       if (sourceMode) {
         nativeFocus();

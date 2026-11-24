@@ -1,4 +1,4 @@
-/* Responsive overrides — keep last so they win. */
+/* Mobile breakpoints. */
 
 @media (max-width: 900px) {
   .structItem-cell--meta { width: 115px; font-size: calc(12px * var(--ui-scale)); }
@@ -29,8 +29,7 @@
   .p-breadcrumbs { align-items: flex-start; }
   .p-breadcrumbs .button { flex: 0 0 auto; }
 }
-/* Full-bleed content like voz.vn: the gutter moves onto the elements that need it (breadcrumbs,
-   pager, thread header). */
+/* full-bleed like voz.vn: gutter moves onto elements needing it */
 @media (max-width: 650px) {
   .p-body { padding-left: 0; padding-right: 0; }
   .p-breadcrumbs { padding: 0 12px; }
@@ -38,7 +37,7 @@
   .message { border-radius: 0; }
   .block-outer { padding-left: 12px; padding-right: 12px; }
   .block--messages > .block-header { padding-left: 12px; padding-right: 12px; }
-  /* voz.vn drops the avatar column from the quick reply on phones. */
+  /* voz drops the quick-reply avatar column on phones */
   .js-quickReply .message-cell--user { display: none; }
 }
 @media (max-width: 620px) {

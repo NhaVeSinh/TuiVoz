@@ -1,10 +1,9 @@
-// "Tải ảnh" — a translucent download control on large post images. The wrapper is an inline-block on the text
-// baseline, like voz.vn's .bbImageWrapper.
+/** Image download button. */
 import { getImageDownload } from './settings.js';
 import { toast } from '../ui/feedback.js';
 import { ICON_DOWNLOAD } from '../core/icons.js';
 
-// A sticker is small in both dimensions and in area; a wide banner keeps its button.
+// Sticker-sized images get no button; wide banners do.
 const MIN_EDGE = 96;
 const MIN_AREA = 20_000;
 const WRAPPER_CLASS = 'downloadable-image';
@@ -29,8 +28,7 @@ function imageUrl(img) {
   return img.currentSrc || img.src || '';
 }
 
-// The declared size wins over the intrinsic one: a 512px sticker shown at 80px is still a sticker and gets no
-// button.
+// Declared size wins; a sticker rendered big stays a sticker.
 function imageSize(img) {
   const attrWidth = Number(img.getAttribute('width')) || 0;
   const attrHeight = Number(img.getAttribute('height')) || 0;
@@ -70,7 +68,7 @@ function fileName(url, type, forceJpg) {
     const path = new URL(url, location.href).pathname;
     base = decodeURIComponent(path.split('/').filter(Boolean).pop() || base);
   } catch {
-    // Keep the fallback name.
+    // Keep fallback name.
   }
   base = base.replace(/[<>:"/\\|?*\x00-\x1f]/g, '-').slice(0, 120) || 'voz-image';
   const extension = forceJpg ? 'jpg' : EXTENSIONS[type] || base.match(/\.([a-z0-9]{2,5})$/i)?.[1] || 'jpg';
@@ -87,12 +85,11 @@ function triggerDownload(blob, name) {
   document.body.append(link);
   link.click();
   link.remove();
-  // Firefox reads the blob lazily, so revoking on the next tick would cancel the save.
+  // Firefox reads blobs lazily; early revoke cancels the save.
   setTimeout(() => URL.revokeObjectURL(href), 60_000);
 }
 
-// A same-origin image is read straight from the page. Anything else has no CORS header, so the proxy is used
-// first instead of wasting a round trip that fails.
+// Same-origin reads directly; cross-origin lacks CORS so use the proxy.
 function isSameOrigin(url) {
   try {
     return new URL(url, location.href).origin === location.origin;
@@ -116,8 +113,7 @@ async function fetchImage(url) {
   return response.blob();
 }
 
-// /attachments/<id>/ is a redirect with no filename, so the REST API resolves the canonical URL first and the
-// saved file keeps the author's name.
+// /attachments/<id>/ redirects filename-less; API resolves the canonical URL.
 export async function resolveAttachment(url) {
   const id = url.match(/\/attachments\/(?:[^/?#]*\.)?(\d+)\/?$/)?.[1];
   if (!id) return null;
@@ -132,11 +128,10 @@ export async function resolveAttachment(url) {
   }
 }
 
-// An animated WebP carries ANIM/ANMF chunks; drawing it to a canvas would keep only the first frame, so those
-// are downloaded untouched. voz.vn stores every uploaded GIF as animated WebP.
+// Animated WebP: canvas would keep frame 1; download untouched.
 async function isAnimatedWebp(blob) {
   if (blob.type !== 'image/webp') return false;
-  // The container header precedes the frame data, so a small prefix decides it.
+  // Container header precedes frame data; a prefix suffices.
   const header = await blob.slice(0, 65_536).text();
   return header.includes('ANIM') && header.includes('ANMF');
 }
@@ -150,7 +145,7 @@ function blobToJpeg(blob) {
       canvas.width = image.naturalWidth;
       canvas.height = image.naturalHeight;
       const context = canvas.getContext('2d');
-      // WebP may carry transparency; JPEG cannot, so flatten onto white first.
+      // JPEG lacks transparency: flatten WebP onto white.
       context.fillStyle = '#fff';
       context.fillRect(0, 0, canvas.width, canvas.height);
       context.drawImage(image, 0, 0);
@@ -165,7 +160,7 @@ function blobToJpeg(blob) {
   });
 }
 
-// Confirms the save happened; a blocked download would otherwise look like a broken button.
+// Confirm the save; a blocked download would look broken.
 function flashSaved(button) {
   button.innerHTML = CHECK_ICON;
   button.classList.add('is-saved');
@@ -187,7 +182,7 @@ async function downloadImage(img, button) {
     const attachment = await resolveAttachment(url);
     const source = attachment?.url || url;
     const blob = await fetchImage(source);
-    // Only a static WebP is converted; an animated one keeps its frames as .webp.
+    // Only static WebP converts; animated stays .webp.
     const webp = (blob.type === 'image/webp' || /\.webp(?:$|[?#])/i.test(source)) && !(await isAnimatedWebp(blob));
     const output = webp ? await blobToJpeg(blob) : blob;
     triggerDownload(output, fileName(attachment?.name || source, blob.type, webp));
@@ -204,7 +199,7 @@ async function downloadImage(img, button) {
 
 function addControl(img) {
   if (wrapperOf(img) || isExcludedImage(img) || isSmallImage(img)) return;
-  // A <picture> must be wrapped as a whole, or it splits from its sources.
+  // Wrap whole <picture> or it splits from its sources.
   const target = img.closest('picture') || img;
   const wrapper = document.createElement('span');
   wrapper.className = WRAPPER_CLASS;
@@ -218,7 +213,7 @@ function addControl(img) {
   button.setAttribute('aria-label', 'Tải ảnh');
   button.innerHTML = DOWNLOAD_ICON;
   button.addEventListener('click', (event) => {
-    // The image may sit inside a link; stop the event so the link does not open.
+    // Image may sit inside a link; don't let it open.
     event.preventDefault();
     event.stopPropagation();
     downloadImage(img, button);
@@ -246,9 +241,9 @@ function schedule() {
 
 export function wireImageDownloads() {
   refresh();
-  // One observer for the whole document covers both re-renders and appended pages.
+  // One document observer covers re-renders and appended pages.
   new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
-  // Intrinsic sizes are only known after load, so re-check when an image arrives.
+  // Intrinsic size known only after load; re-check on image load.
   document.addEventListener('load', (event) => {
     if (event.target instanceof HTMLImageElement && event.target.closest('.message-body')) schedule();
   }, true);

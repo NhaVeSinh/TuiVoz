@@ -1,5 +1,4 @@
-// Attachment URL resolution for the visual editor. A post body carries [ATTACH]3860636[/ATTACH] while the real
-// URL lives in post.Attachments[], so the view registers what it fetched.
+/** Attachment URLs. */
 
 import { isDataSaving } from './dataSaving.js';
 import { ICON_DOWNLOAD } from '../core/icons.js';
@@ -24,7 +23,6 @@ function normalise(attachment) {
   };
 }
 
-// Registers attachments from one or more posts.
 export function registerAttachments(source) {
   const lists = Array.isArray(source) ? source : [source];
   for (const list of lists) {
@@ -42,7 +40,7 @@ export function getAttachment(id) {
   return registry.get(String(id)) || null;
 }
 
-// Reverse lookup: the rendered <img> only knows its src.
+// Reverse lookup: the rendered img only knows its src.
 export function attachmentIdForUrl(url) {
   const target = String(url || '');
   if (!target) return null;
@@ -56,10 +54,7 @@ export function clearAttachments() {
   registry.clear();
 }
 
-// Where a guest can actually load an attachment: direct_urls on the data.voz.vn CDN load fine, but a
-// voz.vn/attachments/<name>.<id>/ route redirects through Cloudflare and answers 403 without a forum cookie,
-// so anything else goes through the edge downloader. `?name=` marks the response Content-Disposition inline
-// so <img> can render it; the plain /?id= form stays an attachment download.
+// CDN direct_url loads for guests; other routes 403 and use the edge downloader.
 export function attachmentViewUrl(attachment) {
   const url = attachment?.direct_url || attachment?.url || '';
   if (/^https:\/\/data\.voz\.vn\//i.test(url)) return url;
@@ -68,21 +63,12 @@ export function attachmentViewUrl(attachment) {
   return `/api/attachment-download?id=${encodeURIComponent(id)}&name=${encodeURIComponent(attachment?.filename || 'image')}`;
 }
 
-// Same rule for an id with no registry entry (quotes, conversations that never called registerAttachments).
+// Same rule for an id with no registry entry.
 export function attachmentViewUrlForId(id) {
   return `/api/attachment-download?id=${encodeURIComponent(id)}&name=view`;
 }
 
-// Data-saving: attachments render their low-res thumbnail as the preview — recognisable, ~13KB instead of a
-// multi-hundred-KB original — with a download button sized to ~22% of the picture on top, so the softness
-// reads as a deliberate loading state and one tap brings in the sharp original. Non-save rendering is
-// untouched, and only attachments that actually carry a distinct thumbnail are swapped.
-//
-// Matching can't be string equality: rendered post HTML references attachments as relative
-// /attachments/<name>-webp.<id>/ paths (the registry holds absolute direct_urls), and [IMG]-pasted images use
-// data.voz.vn/attachments/<folder>/<id>-<hash>.<ext> full-size URLs. So every number in the URL is a
-// candidate, and only one that actually exists in the registry counts — which also keeps a thumbnail URL's
-// own id (3877482, different from its attachment) from ever matching.
+// Data-saving: swap in the low-res thumbnail; src matched by registry id in URL.
 export function swapAttachmentThumbnails(root) {
   if (!isDataSaving()) return 0;
   let swapped = 0;
@@ -95,13 +81,10 @@ export function swapAttachmentThumbnails(root) {
     if (!attachment || attachment.isVideo || attachment.isAudio) continue;
     if (!attachment.thumbnail || attachment.thumbnail === attachment.url) continue;
     img.dataset.saveOriginal = src;
-    // The 1x thumbnail is the only size voz.vn guarantees to exist — the 2x retina variant 404s on some
-    // attachments, which made whole pictures vanish. At its natural size the preview is sharp, small, and
-    // ~20% of the original's bytes; one tap brings in the original.
+    // Only the 1x thumbnail is guaranteed; the 2x variant 404s on some attachments.
     img.setAttribute('src', attachment.thumbnail);
     img.removeAttribute('srcset');
-    // voz's HTML emits the original's width/height attributes; a 150px thumbnail stretched to them is the
-    // blur this lever exists to prevent. Natural size + the wrapper's max-width handle display instead.
+    // Original width/height attrs would stretch the small thumbnail into a blur.
     img.removeAttribute('width');
     img.removeAttribute('height');
     const wrapper = img.ownerDocument.createElement('span');
@@ -120,7 +103,7 @@ export function swapAttachmentThumbnails(root) {
   return swapped;
 }
 
-// One tap handler for every swapped image: the button (or the image itself) loads the sharp original.
+// One delegated tap handler loads the sharp original.
 document.addEventListener('click', (event) => {
   const chip = event.target.closest('.save-thumb-load');
   const img = event.target.closest('img[data-save-original]');
@@ -143,7 +126,7 @@ function attachmentIdFromSrc(src) {
   return null;
 }
 
-// Markup for an attachment id, or null when unknown so the caller keeps the raw BBCode.
+// Image info for an id; null keeps the raw BBCode.
 export function attachmentImage(attachment, sizeHint) {
   if (!attachment || attachment.isVideo || attachment.isAudio) return null;
   const src = attachment.url;

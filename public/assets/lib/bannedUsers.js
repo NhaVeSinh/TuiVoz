@@ -1,39 +1,22 @@
-// "KIA" (banned) detection.
-//
-// The `/users/{id}/` user object carries NO ban information, and the two conditions that hide a profile look
-// identical there: a banned account and a member who simply hid their profile both come back with
-// can_view_profile/can_view_profile_posts = false. Neither last_activity nor the staff flags separate them.
-//
-// The distinction shows up only as a different error code on a profile-scoped endpoint:
-//
-//   GET /users/{id}/profile-posts  -> 403 this_users_profile_is_not_available   => banned
-//   GET /users/{id}/profile-posts  -> 403 member_limits_viewing_profile         => member hid their profile
-//   GET /users/{id}/profile-posts  -> 200                                       => normal
-//
-// Verified against voz.vn: every "profile is not available" account answers the profile page with "This user's
-// profile is not available." while every "limits viewing" one answers "This member limits who may view their
-// full profile." The member-finder autocomplete cannot stand in for this — it also drops members who merely hid
-// their profile, so an empty result there is not proof of a ban.
+/** Banned-user check. */
 
 import { api, ApiError } from '../api.js';
 import { getBannedUsers } from './settings.js';
 
-// voz.vn styles the strike itself: `.username--banned { text-decoration: line-through; }`.
+// voz.vn's own banned-strike class.
 export const BANNED_CLASS = 'username--banned';
 
-// Error code XenForo returns for an account that is disabled/banned.
+// XenForo error for a disabled/banned account.
 export const BANNED_ERRCODE = 'this_users_profile_is_not_available';
-// Returned when the member merely hid their profile — definitively not a ban.
+// Member merely hid their profile — definitively not a ban.
 const LIMITED_ERRCODE = 'member_limits_viewing_profile';
 
-// A banned account and a hidden profile both set these flags, so `true` here only means "worth asking"; the
-// profile-posts error code decides. Visible and staff profiles can never be banned.
+// These flags only mean "worth asking"; the error code decides.
 export function mayBeBanned(user) {
   return !!user && !user.is_staff && user.can_view_profile === false && user.can_view_profile_posts === false;
 }
 
-// "smart" only resolves a member the reader explicitly asked about (tooltip, profile page); "all" also resolves
-// every username that scrolls near the viewport. Anything else keeps the page free of ban lookups.
+// "all" resolves visible usernames too; "smart" is on-demand only.
 export function shouldLookupBulk() {
   return getBannedUsers() === 'all';
 }
@@ -42,9 +25,7 @@ export function bannedFeatureOn() {
   return getBannedUsers() !== 'off';
 }
 
-// Verdicts are stored in IndexedDB as well as memory: a ban does not change between page loads, and without
-// persistence every reload re-checks every visible author. Entries expire after a week so a member who gets
-// banned (or unbanned) is picked up then rather than never.
+// Verdicts persist in IndexedDB, expiring after a week.
 const DB_NAME = 'TuiVozBanStorage';
 const DB_VERSION = 1;
 const STORE = 'verdicts';
@@ -87,7 +68,7 @@ async function loadVerdicts() {
     }
     if (expired.length) pruneVerdicts(expired);
   } catch {
-    // Private mode or a blocked upgrade: fall back to memory for this session.
+    // Private mode / blocked upgrade: memory only.
     database = null;
   }
 }
@@ -100,7 +81,7 @@ function pruneVerdicts(ids) {
   } catch { /* best effort */ }
 }
 
-// Writes are batched into one transaction per tick: a thread page can produce a dozen verdicts at once.
+// Writes batched into one transaction per tick.
 const queued = new Map();
 let flushScheduled = false;
 
@@ -126,8 +107,7 @@ function persistVerdict(id, banned, at) {
 let loadPromise = null;
 const ensureLoaded = () => (loadPromise ||= loadVerdicts());
 
-// Resolves true only when the profile lookup reports the banned error code. Only definitive answers are cached;
-// a network error or rate limit leaves the verdict unknown so the next render can retry.
+// Only definitive verdicts are cached; errors stay retryable.
 export async function checkBanned(userOrId) {
   if (!bannedFeatureOn()) return false;
   const user = typeof userOrId === 'object' && userOrId !== null ? userOrId : null;
@@ -146,10 +126,9 @@ export async function checkBanned(userOrId) {
       storeVerdict(id, true);
       return true;
     }
-    // member_limits_viewing_profile is a definite "not banned"; anything else (rate limit, offline) is unknown,
-    // so do not cache it and let a later render try again.
+    // LIMITED is "not banned"; other errors stay uncached for retry.
     if (err instanceof ApiError && err.code === LIMITED_ERRCODE) storeVerdict(id, false);
-    // A 429 means the reader turned this on and hit voz.vn's throttle; say so once instead of failing silently.
+    // 429 = voz.vn throttle; warn once.
     if (err instanceof ApiError && err.status === 429) warnRateLimited();
     return false;
   }
@@ -171,8 +150,7 @@ function storeVerdict(id, banned) {
   persistVerdict(id, banned, at);
 }
 
-// Prefix match, so a caller can also reach usernames that share the class with something else
-// ("username comment-user"). Avatar links carry the same data-member-id but no .username, so they stay clean.
+// Prefix match so compound classes ("username comment-user") still hit.
 const USERNAME_SELECTOR = '[class*="username"]';
 
 export function forgetBanned(userId) {
@@ -182,14 +160,12 @@ export function forgetBanned(userId) {
   pruneVerdicts([id]);
 }
 
-// Turning the setting off should not leave already-struck names behind. The observer keeps running for the rest
-// of the session but every check short-circuits, and re-enabling redraws the page so the wiring runs again.
+// Toggling off must not leave struck names behind.
 export function clearBannedMarks(root = document) {
   for (const el of root.querySelectorAll(`.${BANNED_CLASS}`)) el.classList.remove(BANNED_CLASS);
 }
 
-// On-demand lookup for one member, used by "smart" mode (member tooltip / profile page). Adds or removes the
-// strike on `elements` and resolves to the verdict.
+// "smart" on-demand lookup; toggles the strike on elements.
 export async function applyBannedMark(elements, userId) {
   const els = (Array.isArray(elements) ? elements : [elements]).filter(Boolean);
   const id = Number(userId);
@@ -202,13 +178,7 @@ export async function applyBannedMark(elements, userId) {
   return banned;
 }
 
-// Scans a rendered container for usernames and strikes the banned ones. Each username element either carries
-// `data-member-id` itself (profile name) or sits under an element that does (post author link). Pass `users` —
-// real user objects (thread/post `.User`) — so accounts with a visible profile skip the round-trip entirely.
-//
-// The ban check is one request per author, so like the reaction strips these wait until the element is near the
-// viewport: a full page would otherwise fire a dozen lookups right after render. `checkBanned` caches per user,
-// so a member appearing several times costs one request and scrolling back costs none.
+// Strike banned usernames; one request per author, deferred till near viewport.
 function collectBuckets(root, users) {
   const visible = new Set();
   for (const user of users) {
@@ -225,14 +195,10 @@ function collectBuckets(root, users) {
   return buckets;
 }
 
-// Start early enough that the strike is in place before the name scrolls into view. Kept tight: every observed
-// name that intersects costs one request, and a page of 24 rows fits inside the viewport plus margin almost
-// immediately, which would defeat the point.
+// Tight margin: wider would fire requests for a whole page at once.
 const OBSERVE_MARGIN = '150px 0px';
 
-// Element -> the lookup that should run when it gets close to the viewport. The observer is shared across the
-// whole session (one per page is plenty) but every observed node carries its own callback; keying off the shared
-// observer's closure would resolve every name with the first author's id.
+// Per-element callback; one shared observer can't key the member id.
 const pending = new WeakMap();
 
 let nameObserver = null;
@@ -254,7 +220,7 @@ function getObserver() {
 }
 
 export function wireBannedUsernames(root, users = []) {
-  // Only "all" scans the page. "smart" leaves the page alone and resolves a member on demand (tooltip/profile).
+  // Only "all" scans the page; "smart" resolves on demand.
   if (!shouldLookupBulk()) return;
   if (!root) return;
   for (const [id, els] of collectBuckets(root, users)) {
@@ -268,8 +234,7 @@ export function wireBannedUsernames(root, users = []) {
       apply();
       continue;
     }
-    // Observing the first copy is enough: the whole group is struck together, and the same member can appear
-    // several times on one page (several posts, or thread starter plus latest poster).
+    // Observe the first copy; the whole group strikes together.
     pending.set(els[0], apply);
     getObserver().observe(els[0]);
   }

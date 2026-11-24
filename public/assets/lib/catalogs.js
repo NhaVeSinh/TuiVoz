@@ -1,8 +1,4 @@
-// Catalogs that are identical for every user and change rarely — the node tree, the reaction set, the smilie
-// list — cached in localStorage with a TTL. Cold page loads read them from disk instead of re-downloading
-// (nodes alone is ~100KB), and a discarded mobile tab loses nothing. Values live in one versioned key per
-// catalog; bump PREFIX's version when a catalog's shape changes. Concurrent first calls share one fetch via
-// the pending map; failures are never cached, so the next caller retries.
+/** Cached catalogs. */
 
 const PREFIX = 'voz-catalog:v1:';
 const TTL = 24 * 60 * 60 * 1000;
@@ -11,7 +7,7 @@ const memory = new Map();
 const pending = new Map();
 const storedAt = new Map();
 
-// Sync peek: memory first, then a non-expired localStorage entry. Null when absent or expired.
+// Memory first, then non-expired localStorage; null if absent.
 export function readCatalog(key) {
   if (memory.has(key)) return memory.get(key);
   try {
@@ -22,12 +18,12 @@ export function readCatalog(key) {
       return hit.v;
     }
   } catch {
-    // Corrupt entry: treat as absent.
+    // Corrupt entry: treat as absent
   }
   return null;
 }
 
-// Milliseconds since the stored copy was fetched; null when nothing is stored (or it expired).
+// Ms since the stored copy was fetched; null if none.
 export function catalogAge(key) {
   if (storedAt.has(key)) return Date.now() - storedAt.get(key);
   readCatalog(key);
@@ -41,7 +37,7 @@ export function storeCatalog(key, value) {
   try {
     localStorage.setItem(PREFIX + key, JSON.stringify({ t: Date.now(), v: value }));
   } catch {
-    // Quota or private-mode failure: the in-memory copy still serves this page load.
+    // Quota/private-mode failure: memory copy still serves this load.
   }
 }
 

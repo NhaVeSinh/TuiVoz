@@ -1,4 +1,4 @@
-// Toast, loading placeholder and error box.
+/** Toast + errors. */
 
 import { app, toastEl } from '../core/dom.js';
 import { esc } from '../core/utils.js';

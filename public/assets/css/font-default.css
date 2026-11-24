@@ -1,6 +1,4 @@
-/* The default reading font, linked from index.html so the first paint is already correct. Kept
-   out of fonts.css because `be-vietnam` is FONT_DEFAULT and cannot wait for the lazy link.
-   Only the 400 face is declared, like voz.vn: 500 renders the 400 cut, 600/700 are synthesised. */
+/* Default font. */
 
 @font-face {
   font-family: "Be Vietnam";

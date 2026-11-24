@@ -3,8 +3,7 @@
 .bbCodeBlock--unfurl { margin: 1em 0; max-width: 650px; padding: 12px; border: 1px solid var(--border); border-left: 3px solid var(--block-header-bg); border-radius: 4px; background: var(--quote-bg); font-size: calc(13px * var(--ui-scale)); }
 .bbCodeBlock--unfurl .contentRow { display: flex; align-items: center; gap: 12px; }
 .bbCodeBlock--unfurl .contentRow-figure { flex: 0 0 80px; margin: 0; }
-/* The pending spinner is voz.vn's inline `<svg>` with no width/height; unsized it falls back to 300x150 and
-   stretches the figure, so the placeholder must be pinned like the resolved image. */
+/* unsized spinner svg falls back to 300x150; pin it */
 .bbCodeBlock--unfurl .contentRow-figure > span { display: flex; align-items: center; justify-content: center; width: 80px; height: 80px; }
 .bbCodeBlock--unfurl .contentRow-figure svg { width: 24px; height: 24px; }
 .bbCodeBlock--unfurl .contentRow-figure .bbCodeBlockUnfurl-image { display: block; width: 80px; height: 80px; object-fit: cover; margin: 0; }
@@ -17,7 +16,7 @@
 .media-frame { display: block; width: 100%; aspect-ratio: 16 / 9; height: auto; border: 0; background: var(--content-bg); }
 .media-embed--portrait { max-width: 325px; }
 .media-embed--portrait > .media-frame { aspect-ratio: 9 / 16; }
-/* Douyin's player is a vertical 325x735 frame; the wrapper only reserves the box. */
+/* Douyin player is a fixed 325x735 frame */
 .media-embed--douyin { max-width: 325px; }
 .media-embed--douyin > .media-frame { aspect-ratio: 325 / 735; height: auto; }
 .media-embed--douyin > .media-source { display: block; text-align: center; }
@@ -25,27 +24,22 @@
 .media-embed--imgur > .media-frame { aspect-ratio: auto; height: 500px; }
 .media-embed--social { max-width: 550px; }
 .media-embed--social > .media-frame { aspect-ratio: auto; height: 650px; }
-/* Facebook's SDK replaces .fb-video with a fluid wrapper and sizes the iframe itself, so the
-   wrapper must not impose an aspect-ratio or a narrow max-width. */
+/* FB SDK sizes the iframe itself; impose no aspect-ratio here */
 .media-embed--facebook { max-width: 560px; }
 .media-embed--facebook .fb-video { width: 100%; }
 .media-embed--facebook iframe { border: 0; }
 .media-source { display: inline-block; margin-top: 5px; font-size: calc(12px * var(--ui-scale)); }
-/* Data-saving placeholder: video embeds render as this button until the reader taps, then the real iframe
-   replaces it in place. */
+/* data-saving placeholder; tap swaps in the real iframe */
 .media-play-button { display: block; width: 100%; margin: 0; padding: 16px 12px; border: 1px solid var(--border); border-radius: 4px; background: var(--quote-bg); color: inherit; font-size: calc(14px * var(--ui-scale)); text-align: center; cursor: pointer; }
 .media-play-button:active { background: var(--block-header-bg); }
 .media-play-button[disabled] { opacity: 0.7; }
-/* Data-saving attachment previews, Telegram-style: the low-res thumbnail stretches to its display slot and
-   is blurred — the blur is what hides the upscale — with a centered download button. Tapping loads the sharp
-   original and removes both. filter is GPU-composited static content: no per-frame cost while scrolling. */
-/* inline-block so the wrapper shrink-wraps the picture: the button then sits ON the image, not floating in
-   the column beside a small preview. */
+/* blurred low-res thumbnail hides the upscale; tap loads the original */
+/* inline-block shrink-wraps the image so the button sits on it */
 .save-thumb-wrap { position: relative; display: inline-block; max-width: 100%; overflow: hidden; }
 .save-thumb-load { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; width: 22%; min-width: 44px; max-width: 96px; aspect-ratio: 1; margin: 0; padding: 0; border: 0; border-radius: 50%; background: rgba(0, 0, 0, 0.55); color: #fff; cursor: pointer; }
 .save-thumb-load svg { width: 45%; height: 45%; }
 .save-thumb-load:active { background: rgba(0, 0, 0, 0.78); }
-/* oEmbed embeds resolve to a picture; the fallback link shows briefly. */
+/* oEmbed resolves to a picture; link shows meanwhile */
 .media-embed--oembed { max-width: 100%; margin: 12px 0; }
 .media-embed--oembed > a { display: inline-block; max-width: 100%; }
 .media-embed--oembed img { max-width: min(100%, 683px); height: auto; }

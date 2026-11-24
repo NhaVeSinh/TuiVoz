@@ -1,3 +1,5 @@
+/** Member tooltip. */
+
 import { esc, timeAgo } from '../core/utils.js';
 import { userPath } from '../core/paths.js';
 import { avatarMarkup } from '../lib/avatar.js';
@@ -42,7 +44,7 @@ export function wireMemberTooltips(container, users) {
     card.addEventListener('focusout', scheduleHide);
     const render = (user) => {
       if (active !== link || !card) return;
-      // The member card always prints full figures, so it needs no scope.
+      // Card prints full figures, so no scope needed.
       const count = (value) => Number(value || 0).toLocaleString('vi-VN');
       const bannerUrl = (user.profile_banner_urls || {}).l;
       const headerStyle = bannerUrl ? ` style="background-image:url('${esc(bannerUrl)}');background-size:cover;background-position:center"` : '';
@@ -60,12 +62,12 @@ export function wireMemberTooltips(container, users) {
     const id = link.dataset.memberId;
     render(byId.get(id) || { user_id: Number(id), username: link.textContent });
     const decorateBanned = () => {
-      // "smart" mode resolves the ban only for the member the reader actually opened.
+      // "smart" mode resolves the ban only for the opened member.
       if (!bannedFeatureOn() || !card) return;
       const targetCard = card;
       applyBannedMark(link, id).then((banned) => {
         if (!banned || !targetCard.isConnected) return;
-        // render() replaces innerHTML, so the name element is resolved here rather than held from before.
+        // render() replaced innerHTML, so resolve the name element here.
         targetCard.querySelector('.member-card-name')?.classList.add('username--banned');
         const host = targetCard.querySelector('.member-card-header > div');
         if (host && !targetCard.querySelector('.member-card-banned')) {
@@ -81,7 +83,7 @@ export function wireMemberTooltips(container, users) {
       if (!cache.has(id)) cache.set(id, api.user(id).then((res) => res.user).catch((err) => { cache.delete(id); throw err; }));
       render(await cache.get(id));
       decorateBanned();
-    } catch { /* Keep the public details already included with the post. */ }
+    } catch { /* Keep details already shown. */ }
   };
   for (const link of container.querySelectorAll('[data-member-id]')) {
     const start = () => {

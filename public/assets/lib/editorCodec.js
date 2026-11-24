@@ -1,4 +1,4 @@
-// Independent BBCode codec. Unrecognised constructs stay lossless, atomic blocks.
+/** BBCode-DOM codec. */
 import { getAttachment, attachmentImage } from './attachments.js';
 
 const escape = (value) => String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -68,7 +68,7 @@ export function editorCodeHtml(value, preview = false) {
       if (url) return `<a href="${escape(url)}" target="_blank" rel="noopener noreferrer">${escape(url)}</a>`;
     }
     if (tag === 'img' && safeEditorUrl(text)) {
-          // Images keep size/width so the editor shows the picture; they round-trip via data-bb-*.
+          // Size attrs kept so the editor shows the picture; round-trips via data-bb-*.
           const size = /(?:^|\s)(?:size\s*=|=\s*)\s*"?(\d+)(?:x(\d+))?"?/i.exec(node.attrs);
           const width = /width\s*=\s*"?(\d+)(?:px)?"?/i.exec(node.attrs);
           const height = /height\s*=\s*"?(\d+)(?:px)?"?/i.exec(node.attrs);
@@ -77,7 +77,7 @@ export function editorCodeHtml(value, preview = false) {
           else if (width || height) style = `${width ? `width:${width[1]}px;` : ''}${height ? `height:${height[1]}px;` : ''}`;
           return `<img${data} src="${escape(safeEditorUrl(text))}" alt="Ảnh" loading="lazy"${style ? ` style="${escape(style)}"` : ''}>`;
         }
-        // [ATTACH] carries an id, not a URL: shown once the view registers the attachments.
+        // [ATTACH] holds an id, not a URL; resolved via the registry.
         if (tag === 'attach') {
           const attachment = getAttachment(text.trim());
           const size = /(?:^|\s)(?:size\s*=|=\s*)\s*"?(\d+)(?:x(\d+))?"?/i.exec(node.attrs);
@@ -109,10 +109,7 @@ export function editorCodeHtml(value, preview = false) {
   return parseEditorCode(value).children.map(render).join('');
 }
 export function editorDomCode(root) {
-  // Folds the inline width/height the resizer wrote back into attributes voz.vn understands. `[IMG=W]` is not
-  // valid XenForo BBCode: the server stores it literally and auto-links the URL after it, so an edited picture
-  // turned into text. The px width alone is not a resize signal either — the editor renders the stored size into
-  // the style, so only the resizer's own marker counts.
+  // Fold resizer's inline size into BBCode attrs; [IMG=W] is invalid XenForo.
   function sizedAttrs(node, attrs) {
     const raw = String(attrs || '');
     if (!node.dataset.bbResized) return raw;
@@ -132,20 +129,19 @@ export function editorDomCode(root) {
     if (node.hasAttribute('data-bb-raw')) return node.getAttribute('data-bb-raw');
     const name = node.tagName.toLowerCase();
     if (name === 'br') return '\n';
-    // Live smilies are images; the BBCode is the original code.
+    // Smilie images serialize back to their code.
     if (name === 'img' && node.dataset.smilie) return node.dataset.smilie;
     let body = [...node.childNodes].map(serialize).join('');
     let tag = node.dataset.bbTag, attrs = node.dataset.bbAttrs || '';
-    // A resized picture carries its new width in the inline style; fold it back into the BBCode attrs so the
-    // post keeps [IMG=W] / [ATTACH=W] and the server renders it at that size.
+    // Resized picture: fold inline width back into the BBCode attrs.
     if (tag === 'img' || tag === 'attach') attrs = sizedAttrs(node, attrs);
     if (tag === 'img') return `[IMG${attrs}]${safeEditorUrl(node.getAttribute('src')) || ''}[/IMG]`;
-    // An attachment picture serializes back to its numeric id; the element only knows the URL.
+    // Attachment img serializes to its numeric id, not the URL.
     if (tag === 'attach') {
       const id = node.dataset.bbAttachId || attachmentIdForUrl(node.getAttribute('src'));
       if (id) return `[ATTACH${attrs}]${id}[/ATTACH]`;
     }
-        // An <img> without data-bb-tag must still survive as BBCode.
+        // An img without data-bb-tag still becomes [IMG].
         if (name === 'img') {
           const src = safeEditorUrl(node.getAttribute('src'));
           if (src) return `[IMG]${src}[/IMG]`;

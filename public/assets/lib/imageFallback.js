@@ -1,5 +1,4 @@
-// Implements the `data-onerror` contract in voz.vn's server HTML: XenForo binds it in JS we never load, so a
-// dead favicon would keep its alt text. `error` does not bubble.
+/** Broken-image fallback. */
 
 const BOUND = Symbol('vozImageFallbacks');
 

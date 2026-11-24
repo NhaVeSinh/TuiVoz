@@ -1,8 +1,8 @@
-
+/* CSS bundle. */
 /* ==== filters.css ==== */
 /* Bộ lọc — khối ẩn trong suốt + form editor trong tab Cài đặt. */
 
-/* The translucent placeholder that stands in for a hidden thread/post. */
+/* Translucent placeholder standing in for a hidden thread/post. */
 .filtered-block { margin-bottom: 10px; list-style: none; }
 .filtered-reveal {
   display: flex;
@@ -22,12 +22,12 @@
 .filtered-reveal:hover { border-color: var(--link); color: var(--link); }
 .filtered-reveal svg { flex: 0 0 auto; }
 .filtered-block .filtered-content[hidden] { display: none; }
-/* The inner .message/.structItem supplies its own margin/borders once revealed. */
+/* Inner .message supplies its own margins once revealed. */
 .filtered-block > .filtered-content > .message { margin-bottom: 0; }
-/* A permalink to a hidden post still lands on the placeholder — mark it like .message:target. */
+/* Permalink target highlight on the placeholder, like .message:target. */
 .filtered-block:target > .filtered-reveal { outline: 2px solid var(--nav-active); }
 
-/* Highlighted rows get their look from an inline style (per-filter colour). */
+/* Highlight colour comes from a per-filter inline style. */
 
 /* Filter settings tab. */
 .filter-row.is-disabled .shortcut-name,

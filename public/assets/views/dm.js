@@ -1,4 +1,4 @@
-// Direct messages: list, conversation, compose.
+/** DM views. */
 
 import { app } from '../core/dom.js';
 import { esc, num, timeAgo } from '../core/utils.js';
@@ -20,14 +20,12 @@ import { openInlineEditWith } from '../ui/inlineEdit.js';
 import { wireMemberTooltips } from '../ui/memberTooltip.js';
 import { jumpToAnchor } from '../lib/jumpToAnchor.js';
 
-// Same anchoring as a thread permalink: land the message's top under the sticky bars, then correct while
-// late-loading images and lazily-filled strips settle. `#conversation-message-...` is what an alert links to.
+// Alerts link to #conversation-message-…; anchors like a thread permalink.
 function jumpToMessage(id) {
   return jumpToAnchor(id);
 }
 
-// Every conversation click handler attached to `#app`. The router never removes them, and a re-render keeps the
-// same `#app`, so stale handlers would resolve an old message map. The thread view tracks its own the same way.
+// #app persists across re-renders; track handlers so stale ones get removed.
 const conversationClickHandlers = [];
 
 function removeConversationClickHandlers() {
@@ -91,10 +89,10 @@ export async function viewDm(conversationId, page) {
       { label: 'Hộp thư', href: '/direct-messages' },
     ]);
     setTitle(conv.title, currentPage);
-    // A conversation by nature has two sides; opening it clears its unread state like a thread does.
+    // Opening a conversation clears its unread state.
     if (conv.is_unread && conv.last_message_date) {
       api.markConversationRead(conv.conversation_id, conv.last_message_date).catch(() => {});
-      // The header badge counts unread conversations; the throttled refresh would otherwise lag up to 30s.
+      // Badge counts unread convs; throttled refresh would lag ~30s.
       refreshUnreadCounts(true);
     }
     app.innerHTML = `
@@ -129,7 +127,7 @@ export async function viewDm(conversationId, page) {
         </div>
       </div>`;
     wireEditor(app);
-    // Each message may carry [ATTACH] ids; only this conversation's list is registered.
+    // Register [ATTACH] ids for this conversation only.
     registerAttachments(messages);
     wireMemberTooltips(app, messages.map((m) => m.User));
     wireSignatureToggles(app);
@@ -154,7 +152,7 @@ export async function viewDm(conversationId, page) {
         submit.textContent = 'Gửi';
       }
     });
-    // DELETE /conversations/{id}/ leaves the conversation (app flow); like voz.vn it cannot be rejoined.
+    // Leaving is permanent — cannot rejoin (like voz.vn).
     document.getElementById('leave-conversation')?.addEventListener('click', async (event) => {
       event.preventDefault();
       if (!confirm('Rời hội thoại này? Bạn sẽ không nhận thêm tin nhắn.')) return;
@@ -166,8 +164,7 @@ export async function viewDm(conversationId, page) {
         toast(err.message || 'Không rời được hội thoại', true);
       }
     });
-    // An alert's `direct-messages/replies/{id}` URL resolves to this route with the message hash; jump to it the
-    // same way a thread permalink jumps to its post.
+    // Alert links resolve here with a message hash; jump like a permalink.
     if (location.hash.startsWith('#conversation-message-') && jumpToMessage(location.hash.slice(1))) keepCurrentScroll();
   } catch (err) {
     app.innerHTML = errorBox(err);
@@ -194,8 +191,7 @@ function wireSignatureToggles(root) {
   });
 }
 
-// Reply/quote are the same two-step as the thread view: fill the box, then either stay (Trích dẫn) or go to the
-// box (Trả lời). Conversation messages are quoted with their own BBCode, not a thread post reference.
+// DM quotes use plain BBCode, not a post reference.
 function insertMessageQuote(message) {
   const textarea = document.getElementById('dm-reply');
   if (!textarea) return false;

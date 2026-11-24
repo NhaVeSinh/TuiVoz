@@ -1,19 +1,16 @@
-// voz.vn native attachments: the same flow the app uses — POST /attachments/new-key, upload each file to
-// /attachments with that key, then pass `attachment_key` on the post body and reference files as [ATTACH]<id>.
-// Needs a logged-in session with attachment:write; guests (and pre-relogin sessions lacking the scope) fall
-// back to pik.vn [IMG] uploads.
+/** Attachment upload. */
 
 import { api, ApiError } from '../api.js';
 import { state } from '../core/dom.js';
 import { registerAttachments } from './attachments.js';
 
 export const ATTACH_MAX_BYTES = 8 * 1024 * 1024; // images ≤ 8 MB like the app
-// voz's attach picker `accept` list, taken from its own .js-attachmentUpload button: archives, text, PDF and
-// the image formats it accepts (svg included — it is not a raster type, so it cannot go through pik.vn).
+// voz's picker `accept` list (from .js-attachmentUpload); svg goes here
+// since it cannot go through pik.vn.
 export const ATTACH_ACCEPT = '.zip,.7z,.tgz,.txt,.pdf,.png,.jpg,.jpeg,.gif,.svg,.webp';
 
-// Editors declare what their post will be attached to so the key carries the right context:
-// { thread_id } for replies, { post_id } for edits, { node_id } for new threads.
+// Context the attachment key is created with: { thread_id } for replies,
+// { post_id } for edits, { node_id } for new threads.
 export function attachmentSupported() {
   return !!(state.loggedIn && state.me);
 }
@@ -26,7 +23,7 @@ export class AttachmentUploads {
   }
 
   get key() {
-    // One key per compose box, created lazily on first file like the app's ensureKey().
+    // One key per compose box, created lazily on first file.
     if (!this.keyPromise) {
       this.keyPromise = api
         .attachmentKey(this.context)
@@ -44,8 +41,8 @@ export class AttachmentUploads {
   }
 
   async add(files, onChange) {
-    // No size filter here: voz's own uploader lets the server reject an oversized file, and the API reports the
-    // reason (413 / "too large"), which reads better than a silent drop.
+    // No size filter: let the server reject oversized files and report
+    // the reason rather than silently dropping them.
     const list = [...(files || [])].filter((file) => file && file.size > 0);
     if (!list.length) return;
     const notify = () => onChange?.(this.items);
@@ -79,7 +76,7 @@ export class AttachmentUploads {
     }
   }
 
-  // BBCode the app inserts into the message for one uploaded file.
+  // BBCode inserted into the message for one uploaded file.
   attachBbcode(item) {
     return item?.id ? `[ATTACH]${item.id}[/ATTACH]` : '';
   }

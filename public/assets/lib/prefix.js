@@ -1,4 +1,4 @@
-// Thread prefixes. The id → colour mapping is what voz.vn renders.
+/** Thread prefixes. */
 
 import { esc } from '../core/utils.js';
 

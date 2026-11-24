@@ -1,6 +1,6 @@
-/* Bộ lọc — khối ẩn trong suốt + form editor trong tab Cài đặt. */
+/* Filter styles. */
 
-/* The translucent placeholder that stands in for a hidden thread/post. */
+/* translucent placeholder standing in for a hidden item */
 .filtered-block { margin-bottom: 8px; list-style: none; }
 .filtered-reveal {
   display: flex;
@@ -20,14 +20,11 @@
 .filtered-reveal:hover { border-color: var(--link); color: var(--link); }
 .filtered-reveal svg { flex: 0 0 auto; width: 13px; height: 13px; }
 .filtered-block .filtered-content[hidden] { display: none; }
-/* The inner .message/.structItem supplies its own margin/borders once revealed. */
+/* revealed inner block supplies its own margin/borders */
 .filtered-block > .filtered-content > .message { margin-bottom: 0; }
-/* A permalink to a hidden post still lands on the placeholder — mark it like .message:target. */
+/* permalink to hidden post lands on the placeholder; mark like :target */
 .filtered-block:target > .filtered-reveal { outline: 2px solid var(--nav-active); }
 
-/* Highlighted rows get their look from an inline style (per-filter colour). */
-
-/* Filter settings tab. */
 .filter-row.is-disabled .shortcut-name,
 .filter-row.is-disabled .shortcut-url { opacity: .5; }
 .filter-color-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; vertical-align: -1px; border: 1px solid var(--border); }
@@ -35,7 +32,6 @@
 .filter-enabled { display: inline-flex; flex: 0 0 auto; align-items: center; }
 .filter-enabled input { width: 17px; height: 17px; accent-color: var(--link); }
 
-/* Editor modal. */
 .filter-editor-modal .modal-body { max-height: 70vh; overflow-y: auto; }
 .filter-scope-picks,
 .filter-action-picks { display: flex; flex-wrap: wrap; gap: 10px 16px; }
@@ -77,7 +73,6 @@
 .filter-cond .cond-remove { flex: 0 0 auto; }
 #filter-add-cond { margin-top: 2px; }
 
-/* 'Tự chọn' scope: danh sách URL áp dụng — một dòng một mẫu. */
 .filter-custom-urls { margin-top: 8px; }
 .filter-custom-urls[hidden] { display: none; }
 .filter-url-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }

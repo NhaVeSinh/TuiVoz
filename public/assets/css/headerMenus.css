@@ -1,3 +1,5 @@
+/* Header menus. */
+
 .header-menu-wrap { position: relative; }
 .header-icon[data-header-menu] { position: relative; }
 .header-unread { position: absolute; top: 0; right: 0; min-width: 16px; padding: 1px 4px; border-radius: 3px; background: #e02e2e; color: #fff; font-size: calc(11px * var(--ui-scale)); font-weight: var(--fw-bold); line-height: 14px; text-align: center; pointer-events: none; }

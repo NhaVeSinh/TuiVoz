@@ -1,8 +1,7 @@
-/* Page chrome: header, nav, body wrapper, blocks, footer. */
+/* Page layout. */
 
-/* ---------- header ---------- */
-/* Header + nav form one sticky block that auto-hides on scroll down (ui/chromeAutoHide.js
-   toggles .chrome-hidden). The header sits one layer above the nav for its dropdowns. */
+/* header */
+/* header+nav auto-hide on scroll down via .chrome-hidden; header sits above for dropdowns */
 .p-header {
   position: sticky;
   top: 0;
@@ -11,7 +10,7 @@
   color: var(--header-fg);
   transition: transform .2s ease;
 }
-/* Lifted by its own height; the nav shifts by the combined height. */
+/* header lifts its own height; nav shifts by the pair */
 :root.chrome-hidden .p-header {
   transform: translateY(calc(-1 * var(--header-h, 100%)));
 }
@@ -23,7 +22,7 @@
   gap: 14px;
   padding: 6px 12px;
 }
-/* Scaled by height so the aspect ratio sets the width; 26px keeps the wordmark legible. */
+/* height sets width via aspect ratio; 26px stays legible */
 .p-header-logo {
   display: inline-flex;
   align-items: center;
@@ -33,7 +32,7 @@
   display: block;
   height: 26px;
   width: auto;
-  /* The artwork is already white, so no filter is needed. */
+  /* artwork is already white; no filter */
 }
 .p-header-logo:hover { opacity: .85; }
 .p-header-account {
@@ -59,18 +58,18 @@
   font-weight: var(--fw-bold);
 }
 
-/* ---------- nav ---------- */
+/* nav */
 .p-nav {
   position: sticky;
-  /* Parks the nav under the header; --header-h comes from ui/chromeAutoHide.js. */
+  /* parks under the header; --header-h set by chromeAutoHide.js */
   top: var(--header-h, 0px);
   z-index: 100;
   background: var(--nav-bg);
-  /* No border-top: both bars share --nav-bg, so a hairline would cut them apart. */
+  /* no border-top: both bars share --nav-bg */
   transition: transform .2s ease;
 }
 :root.chrome-hidden .p-nav {
-  /* Starts at --header-h, so it needs the full pair height to clear the viewport. */
+  /* starts below the header, so it needs the pair's height */
   transform: translateY(calc(-1 * var(--chrome-h, 100%)));
 }
 @media (prefers-reduced-motion: reduce) {
@@ -80,8 +79,7 @@
   max-width: var(--max-width);
   margin: 0 auto;
   padding: 0 12px;
-  /* The nav items are rendered by JS, so the bar would start empty and grow on boot; reserving one row keeps the
-     sticky bars from shifting the page. 36px is one row of `.p-nav-list a` (6px + 24px + the list's own line). */
+  /* JS fills the bar after boot; reserve one row against shift */
   min-height: 36px;
 }
 .p-nav-list {
@@ -91,7 +89,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  /* Shortcuts are unlimited; the cap is a safety valve. */
+  /* 40vh cap is a safety valve; shortcuts are unlimited */
   max-height: 40vh;
   overflow-y: auto;
   scrollbar-width: thin;
@@ -115,14 +113,12 @@
   border-bottom-color: var(--nav-active);
 }
 
-/* ---------- page body ---------- */
+/* page body */
 .p-body {
   max-width: var(--max-width);
   margin: 0 auto;
   padding: 14px 12px 40px;
-  /* Every view replaces #app's innerHTML in one write. Scroll anchoring then picks a node inside the outgoing
-     view and scrolls to keep it in place, so the list visibly jumped before the new page settled. With
-     anchoring off, the router owns the scroll position alone. */
+  /* scroll anchoring jumps on view swap; router owns scroll instead */
   overflow-anchor: none;
 }
 .p-breadcrumbs {
@@ -135,7 +131,7 @@
 .p-breadcrumbs a:hover { color: var(--on-dark); }
 .p-breadcrumbs .sep { margin: 0 6px; color: var(--chrome-dimmed); }
 
-/* ---------- blocks ---------- */
+/* blocks */
 .block {
   background: var(--content-bg);
   border-radius: var(--radius);
@@ -169,7 +165,7 @@
   color: var(--dimmed);
 }
 
-/* ---------- footer ---------- */
+/* footer */
 .p-footer {
   background: var(--footer-bg);
   color: var(--footer-fg);
@@ -182,6 +178,6 @@
 }
 .p-footer a { color: var(--on-chrome-link); }
 .p-footer .u-dimmed, .p-footer .u-muted { color: var(--chrome-dimmed); }
-/* Single line by default; the margin only matters with a second paragraph. */
+/* margin only matters for a second paragraph */
 .p-footer p { margin: 0; }
 .p-footer p + p { margin-top: 6px; }

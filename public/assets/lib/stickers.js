@@ -1,4 +1,4 @@
-// Sticker albums and recents live in IndexedDB; legacy localStorage keys are migrated on startup.
+/** Sticker storage. */
 const DB_NAME = 'TuiVozStickerStorage';
 const DB_VERSION = 1;
 const STORE_NAME = 'records';
@@ -14,8 +14,7 @@ let storageError = null;
 
 export const MAX_RECENT = 30;
 export const PARALLEL_DOWNLOADS = 5;
-// The Client-ID the userscript shipped with, not configurable: a custom key only ever produced 403s for anyone
-// who did not own an imgur app.
+// The userscript's Client-ID; custom keys only ever produced 403s.
 export const DEFAULT_CLIENT_ID = '66850c248e91c93';
 export const MAX_ALBUMS = 100;
 export const MAX_IMAGES = 500;
@@ -55,12 +54,12 @@ function writeJson(key, value) {
   schedulePersist();
 }
 
-// A function so callers read as "the key to use" and the value can be swapped in one place.
+// Function wrapper so the id can be swapped in one place.
 export function getClientId() {
   return DEFAULT_CLIENT_ID;
 }
 
-// https URLs only, or a data:image preview. Never javascript:/http:.
+// https URLs or a data:image preview; never javascript:/http:.
 export function normalizeStickerUrl(value) {
   const raw = String(value ?? '').trim();
   if (!raw) return null;
@@ -216,7 +215,7 @@ export function clearRecentStickers() {
   return [];
 }
 
-// Downscale to at most 400px and re-encode as WebP. GIFs are returned as-is.
+// Downscale to 400px and re-encode as WebP; GIFs pass through.
 export async function imageFileToBase64(file, maxSize = 400, quality = 0.8) {
   if (file.type === 'image/gif') return readAsDataUrl(file);
   const dataUrl = await readAsDataUrl(file);
@@ -261,7 +260,7 @@ export function readAsDataUrl(file) {
   });
 }
 
-// Fetch a remote image and cache it as a downscaled data URL.
+// Fetch a remote image as a downscaled data URL.
 export async function urlToBase64(url, { signal } = {}) {
   const response = await fetch(url, { signal, mode: 'cors', credentials: 'omit' });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);

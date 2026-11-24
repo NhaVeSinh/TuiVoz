@@ -1,4 +1,4 @@
-// Search form + results.
+/** Search view. */
 
 import { app } from '../core/dom.js';
 import { esc, num } from '../core/utils.js';

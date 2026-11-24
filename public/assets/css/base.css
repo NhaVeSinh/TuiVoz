@@ -1,23 +1,22 @@
-/* VOZ-style theme — palette sampled from voz.vn. */
+/* Theme palette. */
 
-/* Two palettes, one set of token names: `:root` is light, the dark block re-points them.
-   Components never hardcode a colour, so data-theme on <html> flips the reading surface. */
+/* one token set, two palettes; data-theme on <html> flips it */
 :root {
-  /* chrome — dark in both themes */
+  /* chrome */
   --header-bg: #363d45;
   --header-fg: #d1d4d6;
   --nav-bg: #363d45;
   --chrome-page-bg: #373d43;
   --nav-fg: #d1d4d6;
   --nav-active: #ff6600;
-  /* Accent text on the reading surface; --nav-active fails AA as text on light. */
+  /* --nav-active fails AA as text on light */
   --accent-text: #a84300;
-  /* Controls on the chrome are frozen: the chrome never changes with the theme. */
+  /* chrome controls frozen: the chrome never changes theme */
   --chrome-field-bg: #eff0f0;
   --chrome-field-fg: #202122;
   --chrome-field-hover: #6b80ab;
   --chrome-avatar-bg: #4a525b;
-  /* Muted text on the dark page background (breadcrumbs). Frozen like the field colours. */
+  /* muted text on the dark chrome; frozen too */
   --chrome-dimmed: #adb3bb;
   --footer-bg: #102138;
   --footer-fg: #ebf1f9;
@@ -26,42 +25,42 @@
   --block-header-hover: #4c5f83;
   --block-header-fg: #f2f4f8;
   --link: #23497b;
-  /* voz.vn's hover orange, darkened to clear AA as text; brand orange stays on chrome. */
+  /* voz hover orange, darkened to clear AA as text */
   --link-hover: #a84300;
   --text: #202122;
-  /* Lightest grey that still clears 4.5:1 on every light surface (worst case 4.53). */
+  /* lightest grey still clearing 4.5:1 on light surfaces */
   --dimmed: #606569;
   --page-bg: var(--chrome-page-bg);
   --content-bg: #f4f5f5;
   --content-bg-alt: #eef0f1;
   --border: #d5d8db;
   --border-faint: #e2e5e8;
-  /* Page-jump numbers sit on --content-bg-alt, where #6b7075 only reached 4.37. */
+  /* on --content-bg-alt, #6b7075 only reached 4.37 */
   --dimmed-2: #63686d;
   --quote-bg: #eaeaeb;
   --quote-border: #ff944c;
 
   /* surfaces and controls */
-  --surface: #fff;                 /* input fields, menu rows, cards */
-  --surface-sunken: #eff0f0;       /* header search pill, flat list backgrounds */
-  --surface-raised: #dfe2e4;       /* separators and small chips above --surface */
-  --surface-hover: #f4f5f5;        /* menu row hover */
-  --surface-accent: #dfe7f6;       /* pager cells, primary label chips */
+  --surface: #fff;
+  --surface-sunken: #eff0f0;
+  --surface-raised: #dfe2e4;
+  --surface-hover: #f4f5f5;
+  --surface-accent: #dfe7f6;
   --surface-accent-hover: #cfdcf2;
-  --surface-tint: #dce3ed;         /* toolbar/picker active + hover tint */
-  --surface-code: #edf0f5;         /* <pre> and atomic BBCode blocks */
+  --surface-tint: #dce3ed;
+  --surface-code: #edf0f5;
   --surface-editor-panel: #f4f6fb;
-  --surface-quote: #eef3f9;        /* blockquote inside the editor preview */
-  --editor-bg: #eff0f0;            /* editor surface, one step below --content-bg like voz.vn */
-  --editor-more-bg: #e7e8e9;       /* the expanding "more" row inside the toolbar */
-  --editor-submit-bg: #407bc9;     /* popup action button, sampled from voz.vn */
+  --surface-quote: #eef3f9;
+  --editor-bg: #eff0f0;            /* one step below --content-bg like voz.vn */
+  --editor-more-bg: #e7e8e9;
+  --editor-submit-bg: #407bc9;     /* sampled from voz.vn */
   --editor-submit-hover: #3569ad;
   --editor-button-fg: rgba(18, 38, 64, .85);
   --editor-button-hover-bg: rgba(64, 123, 201, .15);
   --border-code: #a3adc0;
   --border-atomic: #8999b4;
 
-  /* callouts — unread rows, danger/success messages, toasts */
+  /* callouts */
   --unread-bg: #fff8f2;
   --unread-bg-strong: #fff2e5;
   --info-bg: #eef3fb;
@@ -74,7 +73,7 @@
   --success-bg: #eaf6ea;
   --success-border: #b4dcb4;
 
-  /* text and overlays drawn on the dark chrome */
+  /* ink and overlays on the dark chrome */
   --on-dark: #fff;
   --on-accent: #fff;
   --chip-fg: #e6e8ea;
@@ -96,20 +95,18 @@
 
   --radius: 4px;
   --max-width: 1058px;
-    /* Stock stack, used until ui/theme.js applies the reader's choice (and for `system`).
-       "Be Vietnam" is first because font-default.css declares it and index.html links it. */
+    /* stock stack until ui/theme.js applies the reader's choice */
     --font-post: "Be Vietnam", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --font-control: "Be Vietnam", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --font: var(--font-control);
-    /* Cỡ chữ: --ui-scale sizes everything outside a post body, --post-scale the prose inside
-       one. A post body re-points --ui-scale to --post-scale for its subtree. */
+    /* post bodies re-point --ui-scale to --post-scale */
     --ui-scale: 1;
     --post-scale: 1;
-    /* The grade every 600/700 resolves to; theme.css lowers it to 500 for some families. */
+    /* resolves 600/700; theme.css lowers it to 500 per family */
     --fw-bold: 600;
   }
 
-/* Dark reading surface: same token names, re-pointed. Text and links stay at or above AA. */
+/* dark palette: same tokens re-pointed; text stays at/above AA */
 :root[data-theme="dark"] {
   --header-bg: #181a1b;
   --nav-bg: #181a1b;
@@ -164,7 +161,7 @@
 
   --chip-fg: #e6e8ea;
   --chip-bg: #333a44;
-  /* --link is light in dark mode, so text on a link-coloured surface must be dark. */
+  /* link-tinted surfaces need dark text in dark mode */
   --on-accent: #1b1f24;
   --shadow-menu: 0 6px 20px rgba(0, 0, 0, .55);
   --shadow-card: 0 4px 16px rgba(0, 0, 0, .55);
@@ -177,8 +174,7 @@
   --node-icon: #7d8590;
 }
 
-/* Catppuccin Mocha — dark palette. Resolves to data-theme="dark", so every stock dark rule
-   (media dimming, link overrides) applies; these overrides re-point the tokens on top of it. */
+/* Catppuccin Mocha: resolves to dark, re-points tokens on top */
 :root[data-theme-mode="catppuccin-mocha"] {
   --header-bg: #11111b;
   --nav-bg: #11111b;
@@ -248,8 +244,7 @@
 
 html { background: var(--page-bg); }
 
-/* The header + nav are sticky, so scroll-padding-top reserves their height (--chrome-h).
-   It is the only mechanism that also covers the app's own programmatic scrolls. */
+/* scroll-padding reserves the sticky header+nav height, even for JS scrolls */
 html { scroll-padding-top: var(--chrome-h, 0px); }
 
 body {
@@ -264,13 +259,12 @@ body {
 a { color: var(--link); text-decoration: none; }
 a:hover { color: var(--link-hover); }
 
-/* Banned ("KIA") accounts: voz strikes the name through. `!important` because every contextual link rule
-   (.structItem-minor a, .contentRow-minor--hideLinks a, …) resets text-decoration at higher specificity. */
+/* banned-name strike needs !important against higher-specificity link rules */
 .username--banned { text-decoration: line-through !important; }
 
 img { max-width: 100%; }
 
-/* ---------- utilities ---------- */
+/* utilities */
 .u-dimmed { color: var(--dimmed); }
 .u-smaller { font-size: calc(13px * var(--ui-scale)); }
 .u-muted { color: var(--dimmed); }

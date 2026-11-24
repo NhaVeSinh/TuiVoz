@@ -1,8 +1,5 @@
-// In-place post editing, like voz.vn: the body is swapped for an editor inside the same post container. Saving
-// restores the body without a reload; cancelling puts the original back.
-//
-// `ctx` switches the endpoint family: { kind: 'post', thread, page } (default) or
-// { kind: 'conversation', conversation, page }.
+/** Inline post edit. */
+// `ctx` switches endpoints: { kind: 'post', thread, page } or { kind: 'conversation', conversation, page }.
 
 import { esc, timeAgo, fullDate, postDate } from '../core/utils.js';
 import { threadPath, dmPath, withPage } from '../core/paths.js';
@@ -34,7 +31,7 @@ export function cancelInlineEdit() {
   cell.classList.remove('is-editing');
 }
 
-// False when the post has no editable markup (e.g. it was re-rendered).
+// Returns false when the post markup is not editable.
 export function openInlineEdit(post, thread, page) {
   return openInlineEditWith(post, { kind: 'post', thread, page });
 }
@@ -49,7 +46,7 @@ export function openInlineEditWith(post, ctx) {
   const main = cell?.querySelector('.message-main');
   if (!cell || !main) return false;
 
-  // Make sure this post's attachments resolve even if rendered elsewhere.
+  // Resolve this post's attachments even if rendered elsewhere.
   registerAttachments(post);
 
   const form = document.createElement('form');
@@ -78,8 +75,7 @@ export function openInlineEditWith(post, ctx) {
     }
   });
   textarea.focus();
-  // Revealing the editor can tuck the form under the sticky bars; tell the auto-hide watcher this scroll is
-  // ours.
+  // Tell auto-hide this reveal scroll is ours.
   suppressChromeAutoHide();
   form.scrollIntoView({ block: 'nearest' });
 
@@ -114,7 +110,7 @@ export function openInlineEditWith(post, ctx) {
   return true;
 }
 
-// Only the body and the attribution line change; the rest of the post stays as it is.
+// Only body and attribution change; the rest stays.
 function renderEditResult(post, article, ctx) {
   const body = article.querySelector('.message-userContent');
   if (body) body.innerHTML = `<article class="message-body bbWrapper">${sanitizeHtml(post.message_parsed || esc(post.message), post.message)}</article>`;

@@ -1,5 +1,4 @@
-// Continuous scrolling for thread lists and threads (Cài đặt → Hệ thống): on appends at the bottom, manual
-// only after the pager button, off is pager only. Pages are appended, not re-rendered.
+/** Infinite scroll. */
 
 import { app } from '../core/dom.js';
 import { getInfiniteScroll } from '../lib/settings.js';
@@ -7,11 +6,11 @@ import { isDataSaving } from '../lib/dataSaving.js';
 
 let current = null;
 let stopButton = null;
-// Scroll-direction reveal state for the floating stop button.
+// Scroll-direction state for the floating stop button.
 let lastY = 0;
 const REVEAL_THRESHOLD = 8;
 
-// `render` receives a page number and the node(s) to append into, and returns `{ count }`.
+// `insert` returns `{ count }` after appending a page.
 export function mountInfiniteScroll(options) {
   teardownInfiniteScroll();
   const mode = getInfiniteScroll();
@@ -63,17 +62,17 @@ export function mountInfiniteScroll(options) {
       const count = await state.insert(target, res);
       if (current !== state) return;
       if (!count) {
-        // A page with nothing to show: stop instead of looping.
+        // Empty page: stop instead of looping.
         state.page = state.lastPage;
         state.refreshLabel();
         return;
       }
       state.page = target;
       try {
-        // Keep `history.state`: it carries the scroll-position key, and passing `null` would drop it.
+        // Keep `history.state`; null would drop the scroll-position key.
         history.replaceState(history.state, '', `${state.makeHref(target)}${location.hash}`);
       } catch {
-        /* replaceState can fail on a stale entry; the URL is cosmetic here. */
+        /* replaceState can fail on a stale entry; URL is cosmetic. */
       }
       state.onPageAppended?.(target, res);
       state.refreshLabel();
@@ -90,7 +89,7 @@ export function mountInfiniteScroll(options) {
     }
   };
 
-  // A user gesture is required first, so a tall window does not chain-load on open.
+  // Require a gesture first so a tall window does not chain-load.
   let allow = false;
   const firstGesture = () => {
     allow = true;
@@ -108,12 +107,11 @@ export function mountInfiniteScroll(options) {
       if (!entries.some((entry) => entry.isIntersecting)) return;
       loadNext();
     },
-    // Data-saving waits until the sentinel is actually on screen: 400px of lookahead regularly fetched pages
-    // the reader never reached.
+    // Data-saving drops the 400px lookahead that fetched unseen pages.
     { rootMargin: isDataSaving() ? '0px 0px' : '400px 0px' }
   );
 
-  // Sits after the pager so the status reads as "more below".
+  // After the pager so the status reads as "more below".
   if (options.after?.parentNode) options.after.insertAdjacentElement('afterend', sentinel);
   else app.append(sentinel);
   state.observer = observer;
@@ -121,26 +119,25 @@ export function mountInfiniteScroll(options) {
   state.loadNow = () => loadNext();
   observer.observe(sentinel);
   state.refreshLabel();
-  // "on" starts armed, so the stop control appears with it.
+  // "on" starts armed, so show the stop control.
   if (state.armed) showStopButton();
 
   return state;
 }
 
-// Arms the current page: used by the pager button in "manual" mode.
+// Pager button in "manual" mode arms the current page.
 export function armInfiniteScroll() {
   if (!current) return false;
   current.armed = true;
   current.allow?.();
   showStopButton();
-  // The observer only fires on a change; load now if the sentinel is already on screen.
+  // Observer only fires on change; load now if already visible.
   current.sentinel.scrollIntoView({ block: 'nearest' });
   if (current.sentinel.getBoundingClientRect().top < innerHeight) current.loadNow?.();
   return true;
 }
 
-// Turning continuous scrolling off without leaving the page: the observer stops and the appended pages stay
-// put, so the reader keeps their place.
+// Stops the observer but keeps appended pages in place.
 export function disarmInfiniteScroll() {
   if (!current) return false;
   current.armed = false;
@@ -148,8 +145,7 @@ export function disarmInfiniteScroll() {
   return true;
 }
 
-// Floating "stop continuous scroll" control, outside the pager so it stays reachable while the list grows.
-// Present only while scrolling is armed, and it slides away on scroll down.
+// Floating stop control, only while armed; hides on scroll down.
 function showStopButton() {
   if (!current || !current.armed) return;
   if (stopButton) return;
@@ -161,7 +157,7 @@ function showStopButton() {
   btn.setAttribute('aria-label', 'Dừng cuộn liên tục');
   btn.addEventListener('click', () => {
     disarmInfiniteScroll();
-    // The pager's arm button mirrors this state, so hand it back to idle.
+    // Reset the pager's arm button, which mirrors this state.
     for (const armBtn of app.querySelectorAll('[data-scroll-arm]')) {
       armBtn.disabled = false;
       armBtn.classList.remove('is-active');
@@ -176,13 +172,13 @@ function showStopButton() {
   window.addEventListener('scroll', onScrollDirection, { passive: true });
 }
 
-// Scroll-direction reveal. The threshold keeps a jittery trackpad from flickering the button.
+// Threshold keeps a jittery trackpad from flickering the button.
 function onScrollDirection() {
   if (!stopButton) return;
   const y = window.scrollY;
   const delta = y - lastY;
   if (Math.abs(delta) < REVEAL_THRESHOLD) return;
-  // Hide only when going down with something above, so it stays visible at the top.
+  // Hide on scroll down only, so it stays visible at top.
   stopButton.classList.toggle('is-hidden', delta > 0 && y > REVEAL_THRESHOLD);
   lastY = y;
 }
@@ -197,9 +193,7 @@ export function teardownInfiniteScroll({ keepSentinel = false } = {}) {
   hideStopButton();
   if (!current) return;
   current.observer?.disconnect();
-  // A navigation keeps the sentinel: it is 38px of document height, and dropping it before the next view has
-  // written its markup shortens the document mid-navigation, so the browser clamps scrollY and the list jumps up
-  // before the thread appears. The next `app.innerHTML` removes it in the same task.
+  // Keep the sentinel's 38px during navigation; removing it early clamps scrollY.
   if (!keepSentinel) current.sentinel?.remove();
   current = null;
 }

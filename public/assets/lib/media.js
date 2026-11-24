@@ -1,3 +1,5 @@
+/** Media embeds. */
+
 import { isDataSaving } from '../lib/dataSaving.js';
 
 window.addEventListener('message', (event) => {
@@ -17,7 +19,7 @@ window.addEventListener('message', (event) => {
   }
   const imgur = event.origin === 'https://imgur.com' ? resize('.media-embed--imgur > iframe') : null;
   if (imgur) {
-    // imgur posts { message: "resize_imgur", height, width } after the media loads.
+    // imgur posts { message: "resize_imgur", height } after load.
     if (!imgur.frame || imgur.payload?.message !== 'resize_imgur' || typeof imgur.payload.height !== 'number' || !Number.isFinite(imgur.payload.height)) return;
     imgur.frame.style.height = `${Math.min(3000, Math.max(100, Math.ceil(imgur.payload.height)))}px`;
   }
@@ -40,20 +42,17 @@ const frameRules = [
   ['embed.reddit.com', /^\/r\/[\w]+\/comments\/[a-z0-9]+(?:\/[\w-]*)?\/?$/i],
 ];
 
-// Providers embedded via XenForo oEmbed with no direct iframe URL. voz.vn resolves them server-side; a still
-// image is what ends up in the page.
+// oEmbed providers with no iframe URL resolve server-side to an image.
 const OEMBED_SITES = {
   flickr: (key) => `https://www.flickr.com/services/oembed/?url=${encodeURIComponent(`https://flic.kr/p/${key}`)}&format=json`,
 };
 
-// Facebook has no iframe URL we can build: XenForo ships .fb-video markup and the SDK replaces it at runtime.
-// Loading the SDK and calling FB.XFBML.parse() makes the embed appear.
+// No buildable URL: the FB SDK swaps .fb-video markup at runtime.
 const FACEBOOK_SDK_SRC = 'https://connect.facebook.net/vi_VN/sdk.js';
 const FACEBOOK_SDK_ID = 'facebook-jssdk';
 let facebookSdkPromise = null;
 
-// Injects the SDK once and resolves when FB.XFBML can be called. A failure resolves to null, so a blocked
-// facebook.com falls back to the link instead of rejecting.
+// Inject SDK once; null on failure so a blocked FB falls back to a link.
 function loadFacebookSdk() {
   if (facebookSdkPromise) return facebookSdkPromise;
   facebookSdkPromise = new Promise((resolve) => {
@@ -63,20 +62,20 @@ function loadFacebookSdk() {
     }
     const previousInit = window.fbAsyncInit;
     window.fbAsyncInit = function () {
-      // XFBML turns the .fb-video divs into iframes.
+      // XFBML turns .fb-video divs into iframes.
       window.FB.init({ xfbml: false, version: 'v21.0' });
       if (typeof previousInit === 'function') previousInit.call(this);
       resolve(window.FB);
     };
     if (document.getElementById(FACEBOOK_SDK_ID)) {
-      // Another embed already injected the tag; fbAsyncInit still fires.
+      // Tag already injected; fbAsyncInit still fires.
       return;
     }
     const script = document.createElement('script');
     script.id = FACEBOOK_SDK_ID;
     script.async = true;
     script.defer = true;
-    // `#xfbml=1` scans the document on load; later batches use the explicit parse below.
+    // #xfbml=1 scans on load; later batches parse explicitly.
     script.src = `${FACEBOOK_SDK_SRC}#xfbml=1&version=v21.0`;
     script.onerror = () => resolve(null);
     document.head.append(script);
@@ -84,8 +83,7 @@ function loadFacebookSdk() {
   return facebookSdkPromise;
 }
 
-// Renders every .fb-video the SDK has not replaced, waiting for the placeholders to reach the live document:
-// sanitizeHtml() builds markup in a detached document.
+// Poll for .fb-video placeholders; sanitizeHtml builds in a detached doc.
 const FACEBOOK_ATTEMPTS = 40;
 
 function waitForFacebookEmbeds(attempts = FACEBOOK_ATTEMPTS) {
@@ -104,19 +102,17 @@ async function hydrateFacebook() {
   if (!pending.length) return;
   const fb = await loadFacebookSdk();
   if (!fb || typeof fb.XFBML?.parse !== 'function') return;
-  // One parse per parent covers every embed inside it; re-parsing is a no-op.
+  // One parse per parent; re-parsing is a no-op.
   const containers = new Set(pending.map((el) => el.parentElement).filter(Boolean));
   for (const container of containers) fb.XFBML.parse(container);
 }
 
-// restoreMedia runs once per post and most posts have no Facebook markup, so the caller says whether this
-// render produced a .fb-video before we start polling.
+// Only poll when this render produced a .fb-video.
 function scheduleFacebookHydration(mayHaveFacebook) {
   if (mayHaveFacebook) hydrateFacebook();
 }
 
-// Save mode: the .fb-video div stays in the embed (the SDK needs it for parsing) and the button sits on top
-// until tapped; the tap loads the SDK and parses the container.
+// Save mode: .fb-video stays for the SDK; tap loads and parses.
 function playFacebookPlaceholder(doc) {
   const button = doc.createElement('button');
   button.type = 'button';
@@ -126,7 +122,7 @@ function playFacebookPlaceholder(doc) {
   return button;
 }
 
-// Flickr serves pictures from these hosts; anything else is dropped.
+// Only these Flickr image hosts are trusted.
 const OEMBED_IMAGE_HOSTS = ['live.staticflickr.com', 'staticflickr.com', 'farm1.staticflickr.com', 'farm2.staticflickr.com', 'farm3.staticflickr.com', 'farm4.staticflickr.com', 'farm5.staticflickr.com', 'farm6.staticflickr.com', 'farm8.staticflickr.com', 'farm9.staticflickr.com'];
 
 const oembedCache = new Map();
@@ -150,7 +146,7 @@ export function safeMediaUrl(value) {
 }
 
 function configureFrame(frame, src) {
-  // Rebuild rather than trust attributes from server/user HTML.
+  // Rebuild rather than trust server/user attributes.
   for (const attr of [...frame.attributes]) frame.removeAttribute(attr.name);
   frame.src = src;
   frame.title = 'Nội dung media nhúng';
@@ -161,8 +157,7 @@ function configureFrame(frame, src) {
   frame.setAttribute('allowfullscreen', '');
 }
 
-// Fetches the provider's oEmbed payload and swaps the fallback for the picture, through our proxy because
-// neither provider sends CORS headers. Fills every copy of the placeholder.
+// Fetch oEmbed via proxy (no CORS) and swap fallback for the picture.
 const OEMBED_SELECTOR = (site, key) => `[data-media-site-id="${CSS.escape(site)}"][data-id="${CSS.escape(key)}"]`;
 
 function findOembedPlaceholders(site, key, attempts = 40) {
@@ -200,7 +195,7 @@ async function hydrateOembed(site, key, href) {
     return;
   }
   for (const embed of targets) {
-    // A second hydration pass must not stack pictures.
+    // A second pass must not stack pictures.
     if (embed.querySelector('img')) {
       embed.classList.remove('media-embed--oembed');
       continue;
@@ -231,8 +226,7 @@ async function hydrateOembed(site, key, href) {
   }
 }
 
-// Douyin (抖音) share links. voz.vn leaves them as plain anchors; each is swapped for an open.douyin.com player.
-// A short link's id needs a redirect only our API can follow.
+// Douyin links: swap anchors for the player; short ids resolve via API.
 const DOUYIN_SHORT_HOSTS = ['v.douyin.com'];
 const DOUYIN_MEDIA_HOSTS = ['www.douyin.com', 'douyin.com', 'www.iesdouyin.com', 'iesdouyin.com'];
 const DOUYIN_VIDEO_ID = /\/(?:share\/)?video\/(\d{6,25})(?:[/?#]|$)/;
@@ -240,13 +234,11 @@ const DOUYIN_SHORT_CODE = /^\/[\w-]{4,32}\/?$/;
 const DOUYIN_EMBED = (id) => `https://open.douyin.com/player/video?vid=${id}&autoplay=0`;
 const DOUYIN_PAGE = (id) => `https://www.douyin.com/video/${id}`;
 
-// Data-saving placeholder scope: the players that cost megabytes of provider JavaScript. Image/content embeds
-// (imgur, Reddit, Spotify, SoundCloud, Flickr) keep loading — they are often the content itself.
+// Save mode defers video players; content embeds still load.
 const VIDEO_SITES = ['youtube', 'vimeo', 'tiktok', 'facebook', 'twitter'];
 const SITE_LABELS = { youtube: 'YouTube', vimeo: 'Vimeo', tiktok: 'TikTok', facebook: 'Facebook', twitter: 'X' };
 
-// One tap handler per placeholder kind, installed once. Each rebuilds the real embed in place, so the lazy
-// iframe (and the provider's JavaScript) only loads when the reader asks for it.
+// Delegated tap handlers rebuild the real embed on demand.
 document.addEventListener('click', (event) => {
   const button = event.target.closest('[data-media-frame-src]');
   if (!button) return;
@@ -296,11 +288,10 @@ document.addEventListener('click', (event) => {
   source.textContent = 'Mở trên Douyin';
   embed.append(source);
 });
-// XenForo wraps a bare link in .bbCodeBlock--unfurl, whose flex layout would squash a 9:16 player into an 80px
-// column, so a link inside one replaces the whole card.
+// An unfurl card's flex layout squashes the player; replace the card.
 const DOUYIN_WRAPPER = 'p, .bbCodeBlock--unfurl';
 
-// The aweme id when this href is already a full video URL, else null. Short links resolve asynchronously.
+// Aweme id from a full video URL; short links resolve async.
 export function douyinVideoId(value) {
   let url;
   try {
@@ -313,7 +304,7 @@ export function douyinVideoId(value) {
   return DOUYIN_MEDIA_HOSTS.includes(url.hostname) && match ? match[1] : null;
 }
 
-// True for both link shapes, including a short link with no resolvable id.
+// Both link shapes, incl. unresolved short links.
 export function isDouyinLink(value) {
   let url;
   try {
@@ -329,7 +320,7 @@ function markDouyin(embed) {
   embed.classList.add('media-embed', 'media-embed--douyin', 'media-embed--portrait');
 }
 
-// Turns one anchor into the player. False when the id is not known yet.
+// Anchor → player; false when the id is unknown.
 function embedDouyin(anchor, id) {
   if (isDataSaving()) return douyinPlaceholder(anchor, id);
   const doc = anchor.ownerDocument;
@@ -351,8 +342,7 @@ function embedDouyin(anchor, id) {
   return true;
 }
 
-// Save mode: the Douyin player only loads when the reader taps the placeholder. Short links stay plain anchors
-// entirely — resolving them needs an API round trip before any embed could exist.
+// Save mode: tap-to-load player; short links stay anchors.
 function douyinPlaceholder(anchor, id) {
   const doc = anchor.ownerDocument;
   const embed = doc.createElement('div');
@@ -369,11 +359,10 @@ function douyinPlaceholder(anchor, id) {
 }
 
 function hydrateDouyinLinks(root) {
-  // Already-embedded posts are skipped here too: restoreMedia runs once per post per render, so a re-render
-  // would otherwise stack a second player on every existing one.
+  // Skip embedded anchors so re-renders don't stack players.
   const saving = isDataSaving();
   const anchors = [...root.querySelectorAll('a[href]')].filter((a) => !a.closest('.media-embed') && (isDouyinLink(a.getAttribute('href')) || douyinVideoId(a.getAttribute('href'))));
-  // Grouped by href so a repeated link costs one request and shares the module cache.
+  // Grouped by href: one request per unique link.
   const pending = new Map();
   for (const anchor of anchors) {
     const href = anchor.getAttribute('href');
@@ -382,14 +371,14 @@ function hydrateDouyinLinks(root) {
       embedDouyin(anchor, id);
       continue;
     }
-    if (saving) continue; // short-link resolution is an API round trip; the anchor stays a link
+    if (saving) continue; // short-link resolve costs an API call
     if (!pending.has(href)) pending.set(href, []);
     pending.get(href).push(anchor);
   }
   for (const [href] of pending) resolveDouyinShortLink(href);
 }
 
-// The id a short link resolved to, cached per href. A failed resolve is not cached.
+// Resolved ids per href; failures aren't cached.
 const douyinIds = new Map();
 
 function resolveDouyinShortLink(href) {
@@ -410,7 +399,7 @@ function resolveDouyinShortLink(href) {
     .get(href)
     .then((id) => {
       if (!id) return;
-      // The parse document's anchors never reach the page, so live copies are found by href.
+      // Live copies are found by href in the real document.
       for (const anchor of document.querySelectorAll('a[href]')) {
         if (anchor.getAttribute('href') !== href) continue;
         if (anchor.closest('.media-embed')) continue;
@@ -420,9 +409,9 @@ function resolveDouyinShortLink(href) {
 }
 
 export function restoreMedia(root) {
-  // Tracked so Facebook hydration only polls when this render produced a .fb-video.
+  // Track whether this render produced a .fb-video.
   let sawFacebook = false;
-  // Douyin links arrive as ordinary anchors, so they are found by href, not by a placeholder.
+  // Douyin links arrive as plain anchors; found by href.
   hydrateDouyinLinks(root);
   for (const frame of root.querySelectorAll('iframe')) {
     const src = safeMediaUrl(frame.getAttribute('src'));
@@ -453,12 +442,11 @@ export function restoreMedia(root) {
       src = `https://imgur.com/${key}/embed`;
       href = `https://imgur.com/${key}`;
     } else if (OEMBED_SITES[site] && /^[\w-]{3,32}$/.test(key)) {
-      // Resolved asynchronously: the payload is a picture, not a frame.
+      // oEmbed resolves async to a picture, not a frame.
       href = site === 'flickr' ? `https://flic.kr/p/${key}` : '';
       pendingOembed = true;
     } else if (site === 'facebook' && /^\d+$/.test(key) && embed.querySelector('.fb-video')) {
-      // Keep XenForo's .fb-video markup untouched: the SDK needs data-href and the data-show-* flags. No source
-      // link is added; the plugin supplies its own.
+      // Keep .fb-video markup untouched; the SDK needs its data attrs.
       pendingFacebook = true;
       sawFacebook = true;
       if (isDataSaving()) embed.append(playFacebookPlaceholder(root.ownerDocument));
@@ -467,7 +455,7 @@ export function restoreMedia(root) {
     if (src) {
       embed.replaceChildren();
       if (isDataSaving() && VIDEO_SITES.includes(site)) {
-        // Data-saving: the provider iframe (megabytes of player JavaScript) only loads when the reader taps.
+        // Save mode: iframe (MBs of player JS) loads on tap.
         const button = root.ownerDocument.createElement('button');
         button.type = 'button';
         button.className = 'media-play-button';
@@ -496,14 +484,13 @@ export function restoreMedia(root) {
     if (site === 'imgur') embed.classList.add('media-embed--imgur');
     if (site === 'facebook') embed.classList.add('media-embed--facebook');
     if (['twitter', 'x', 'reddit'].includes(site)) embed.classList.add('media-embed--social');
-    // A pending oEmbed keeps the fallback until the picture replaces it.
+    // Pending oEmbed keeps fallback till the picture lands.
     if (pendingOembed) {
       embed.classList.add('media-embed--oembed');
       hydrateOembed(site, key, href);
     } else if (!frame && !pendingFacebook) embed.classList.add('media-embed--fallback');
   }
-  // After the loop: the SDK parses whole containers and must run against the live document. Save mode skips it
-  // — the Facebook SDK plus the video fetch are exactly what the placeholder defers.
+  // SDK parse needs the live document; save mode defers it.
   if (!isDataSaving()) scheduleFacebookHydration(sawFacebook);
   for (const frame of root.querySelectorAll('iframe.media-frame')) {
     if (!frame.closest('.media-embed')) {

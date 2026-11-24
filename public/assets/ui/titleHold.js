@@ -1,3 +1,5 @@
+/** Title long-press. */
+
 export function wireTitleHold(title, activate) {
   let timer;
   let pointerId;

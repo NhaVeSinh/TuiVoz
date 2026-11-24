@@ -1,5 +1,4 @@
-// @mention autocomplete for the reply editor, mirroring voz.vn's `ul.autoCompleteList`: an avatar plus the
-// member name with the typed prefix in bold, three suggestions at a time.
+/** Mention menu. */
 
 import { api } from '../api.js';
 import { avatarMarkup } from '../lib/avatar.js';
@@ -7,7 +6,7 @@ import { avatarMarkup } from '../lib/avatar.js';
 const LIMIT = 3;
 const DELAY = 250;
 
-// A mention is typed at the start of a word; the app posts BBCode, so only the plain `@name` is stored.
+// BBCode stores plain `@name` only; mentions start a word.
 export function mentionContext(text, caret) {
   const upto = String(text || '').slice(0, caret);
   const match = /(^|[\s([{>])@([\p{L}\p{N}_.'\-]{1,50})$/u.exec(upto);
@@ -29,7 +28,7 @@ function highlight(username, query) {
   return fragment;
 }
 
-// `commit(username)` moves the caret; `list` lives inside the editor so `positionEditor` already ran.
+// `commit` moves the caret; `list` sits inside the editor.
 export function openMentionMenu({ ed, list, commit }) {
   let items = [];
   let active = 0;
@@ -75,7 +74,7 @@ export function openMentionMenu({ ed, list, commit }) {
     else ed.removeAttribute('aria-activedescendant');
   };
 
-  // voz.vn opens the list under the caret, keeping it inside the window on both axes.
+  // Opens under the caret, clamped inside the window.
   const place = () => {
     const range = anchor;
     if (!range || list.hidden) return;
@@ -120,7 +119,7 @@ export function openMentionMenu({ ed, list, commit }) {
   };
 
   return {
-    // Called after every change to the visual editor: re-reads the caret and re-queries on a new prefix.
+    // Runs after each editor change; re-queries on a new prefix.
     update() {
       const selection = document.getSelection();
       if (!selection?.rangeCount) return close();
@@ -142,7 +141,7 @@ export function openMentionMenu({ ed, list, commit }) {
       }
       close();
     },
-    // Returns true when the key belonged to the menu, so the editor must not also handle it.
+    // Returns true when the menu consumed the key.
     key(event) {
       if (list.hidden || !items.length) return false;
       if (event.key === 'ArrowDown') { event.preventDefault(); move(1); return true; }

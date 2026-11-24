@@ -1,10 +1,4 @@
-// Land an anchor's top under the sticky bars, then keep it there while late-loading images and lazily-filled
-// strips change the layout above it.
-//
-// The correction must stop the moment the reader scrolls themselves, or a picture that finishes loading seconds
-// later yanks the page back to the anchor. Watching only `wheel`/`touchmove` missed every other way of scrolling
-// (scrollbar drag, keyboard, trackpad fling, a programmatic scroll), so the position we last set is remembered
-// and any scroll away from it counts as the reader taking over.
+/** Anchor scroll. */
 
 import { revealFilteredBlock } from '../filters/apply.js';
 
@@ -15,11 +9,11 @@ export function jumpToAnchor(id, { settleMs = 1200, imageMs = 3000 } = {}) {
   const el = document.getElementById(id);
   if (!el) return false;
 
-  // A permalink targeting a filtered-hidden post lands on its placeholder; reveal it before measuring.
+  // A hidden-post permalink lands on the placeholder; reveal first.
   revealFilteredBlock(el);
 
   const scrollPadding = () => parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
-  // Where the anchor's top should sit, in document coordinates.
+  // Anchor's target top, in document coords.
   const targetY = () => window.scrollY + el.getBoundingClientRect().top - scrollPadding();
 
   let expectedY = targetY();
@@ -28,7 +22,7 @@ export function jumpToAnchor(id, { settleMs = 1200, imageMs = 3000 } = {}) {
   const place = () => {
     expectedY = targetY();
     el.scrollIntoView({ block: 'start' });
-    // The browser clamps at the document edges, so the real position can differ from the computed one.
+    // Edge clamping can shift the real position.
     requestAnimationFrame(() => {
       if (!userMoved) expectedY = window.scrollY;
     });
@@ -69,8 +63,7 @@ export function jumpToAnchor(id, { settleMs = 1200, imageMs = 3000 } = {}) {
   };
   requestAnimationFrame(settle);
 
-  // Images above the anchor have no intrinsic size yet, so each one that arrives shifts it. Bounded by `imageMs`:
-  // an image that finally loads a minute later must not move a reader who has long since scrolled elsewhere.
+  // Late-loading images shift the anchor; bounded by imageMs.
   const onLoad = () => {
     if (userMoved || !el.isConnected || Date.now() - startedAt > imageMs) return;
     place();

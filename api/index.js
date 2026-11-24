@@ -1,2 +1,2 @@
-// `/api` (no sub-path) — same handler as the catch-all route.
+/** /api route export. */
 export { config, default } from './[...path].js';

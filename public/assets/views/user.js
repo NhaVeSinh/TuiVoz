@@ -1,7 +1,4 @@
-// Public member profile — mirrors voz.vn's member page: banner header, stat row, button row and
-// member tabs. Wall posts render as .message blocks with inline latest comments, same as voz.
-// The app is read-only on profile posts (only profile_post:read), and follow/ignore/timeline are
-// web-only endpoints, so tabs that have no API fall back to content the API can serve.
+/** Member profile view. */
 
 import { app, state } from '../core/dom.js';
 import { esc, num, unix, timeAgo, fullDate, postDate } from '../core/utils.js';
@@ -22,8 +19,7 @@ import { wireEditor, clearEditorDraft } from '../ui/editor.js';
 import { registerAttachments } from '../lib/attachments.js';
 import { editorHtml } from '../ui/editor.js';
 
-// voz tab order: Profile posts is the landing tab, then activity, postings, about. The REST API
-// has no latest-activity feed, so "Hoạt động gần đây" reuses member posts like the app does.
+// voz tab order; activity reuses member posts (no latest-activity API).
 const PROFILE_TABS = ['wall', 'activity', 'postings', 'about'];
 const PROFILE_TAB_LABELS = {
   wall: 'Bài trên tường',
@@ -31,7 +27,7 @@ const PROFILE_TAB_LABELS = {
   postings: 'Bài đã đăng',
   about: 'Giới thiệu',
 };
-// voz tab slugs: wall has no suffix, others are /latest-activity, /recent-content, /about.
+// voz tab slugs; wall uses the base path.
 const PROFILE_TAB_SLUG = { wall: '', activity: 'latest-activity', postings: 'recent-content', about: 'about' };
 const SLUG_TO_TAB = Object.fromEntries(Object.entries(PROFILE_TAB_SLUG).map(([k, v]) => [v, k]));
 
@@ -94,7 +90,7 @@ function memberHeaderHtml(user, tab) {
   </h2>`;
 }
 
-// ---- Wall: profile posts as .message blocks with inline latest comments, like voz ----
+// Wall: posts as .message blocks with inline comments, like voz
 
 function commentHtml(comment) {
   const author = comment.User || { user_id: comment.user_id, username: comment.username };
@@ -206,7 +202,7 @@ async function wallTabHtml(user, page) {
     </div>`;
 }
 
-// ---- Member search tabs: activity = posts, postings = all member content ----
+// Member search tabs: activity=posts, postings=all content
 
 async function memberSearchTabHtml(user, content, page, emptyText, tabKey) {
   const created = await api.searchMember(user.user_id, content);
@@ -214,8 +210,7 @@ async function memberSearchTabHtml(user, content, page, emptyText, tabKey) {
   if (!id) return `<div class="empty">${emptyText}</div>`;
   const res = await api.searchResults(id, page);
   const results = res.results || [];
-  // Resolve profile-post owners (search results don't embed them) so rows can say
-  // "Bài trên tường của X" like voz's recent-content.
+  // Fetch profile-post owners; search results don't embed them.
   const ppIds = [...new Set(results.filter((i) => i.type === 'profile_post' || i.type === 'profile_post_comment').map((i) => i.result?.profile_post_id).filter(Boolean))];
   const owners = {};
   await Promise.all(ppIds.map(async (pid) => {
@@ -288,8 +283,7 @@ function wireWallForm(user) {
     const submit = form.querySelector('[type=submit]');
     submit.disabled = true;
     try {
-      // profile_post:write is not part of the app's granted scopes; this will surface a
-      // missing_scope error when voz's OAuth server refuses it.
+      // OAuth may lack profile_post:write scope; expect missing_scope.
       await api.createProfilePost(user.user_id, message);
       clearEditorDraft(textarea);
       toast('Đã đăng lên tường');
@@ -301,7 +295,7 @@ function wireWallForm(user) {
   });
 }
 
-// voz tab href: base path for wall, /<slug> for the rest.
+// voz tab href: base for wall, /<slug> otherwise.
 function memberTabUrl(user, tab) {
   const base = userPath(user);
   const slug = PROFILE_TAB_SLUG[tab] || '';
@@ -330,7 +324,7 @@ export async function viewUser(userId, params = new URLSearchParams(), tabSlug =
     wireWallForm(user);
     wireMemberTooltips(app, [user]);
     wireThreadRowBans(app, [user]);
-    // "smart" mode only resolves a member the reader opened; the profile header is exactly that.
+    // "smart" mode marks only the opened member.
     if (bannedFeatureOn()) {
       const names = [...app.querySelectorAll('.memberHeader-nameWrapper [class*="username"]')];
       applyBannedMark(names, user.user_id).catch(() => {});
@@ -340,7 +334,7 @@ export async function viewUser(userId, params = new URLSearchParams(), tabSlug =
   }
 }
 
-// Single profile-post page: the wall post plus its full comment thread (/pp/{id}).
+// /pp/{id}: wall post plus full comment thread.
 export async function viewProfilePost(postId, page = 1, anchorId = '') {
   setActiveNav('');
   loading();

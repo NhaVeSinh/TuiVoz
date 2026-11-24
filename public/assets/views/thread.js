@@ -1,4 +1,4 @@
-// Thread view: post list, reply box, and the click handlers for every post action.
+/** Thread view. */
 
 import { app, state } from '../core/dom.js';
 import { esc, num } from '../core/utils.js';
@@ -30,12 +30,10 @@ import { signalOpen, signalRead } from '../lib/signals.js';
 import { moderationButtonHtml, moderationMenuHtml, wireModeration, openWarnModal } from '../ui/threadModeration.js';
 import { cachedCatalog } from '../lib/catalogs.js';
 
-// Posts currently on screen, extended as infinite scroll appends, so the delegated click handler can resolve a
-// post from any appended page.
+// On-screen posts so delegated clicks resolve posts from appended pages.
 const postIndex = new Map();
 
-// Every post-action click handler attached to `#app`. A list rather than a single slot, so a concurrent
-// viewThread run cannot orphan a listener.
+// Tracked #app click handlers so concurrent re-renders can't orphan listeners.
 const threadClickHandlers = [];
 
 function removeThreadClickHandlers() {
@@ -44,19 +42,18 @@ function removeThreadClickHandlers() {
   app._threadHandler = null;
 }
 
-// The textarea is the source of truth but the visible surface is the contenteditable .editor-visual; assigning
-// .value re-renders it, so the quote lands in both.
+// Assigning .value re-renders the contenteditable .editor-visual too.
 function insertQuote(post) {
   const textarea = document.getElementById('reply-message');
   if (!textarea) return false;
   const value = textarea.value;
-  // Only the tail newline separates the last quote from the caret, so a following quote replaces it.
+  // Trailing newline marks where the next quote appends.
   const base = value.replace(/\n+$/, '');
   textarea.value = base ? `${base}${quoteBlock(post)}\n` : `${quoteBlock(post)}\n`;
   return true;
 }
 
-// Put the caret after the inserted quote so the reader can type straight away.
+// Caret goes after the inserted quote.
 function focusReplyEnd() {
   const textarea = document.getElementById('reply-message');
   if (!textarea) return;
@@ -64,8 +61,7 @@ function focusReplyEnd() {
   textarea.dispatchEvent(new Event('editor:focus-end'));
 }
 
-// voz.vn gives the quick reply the same left column as a post: the reader's avatar plus the arrow that points at
-// the editor.
+// Quick reply shows reader avatar + arrow column like voz.vn.
 function quickReplyUserHtml() {
   const me = state.me;
   const avatar = `<a ${me ? `href="${userPath(me)}" data-member-id="${Number(me.user_id)}"` : ''} class="avatar avatar--m" aria-label="${esc(me?.username || 'Khách')}">${avatarMarkup(me, 'm')}</a>`;
@@ -79,9 +75,7 @@ function quickReplyUserHtml() {
                         </div>`;
 }
 
-// voz.vn web marks a thread read up to the newest post on the page being viewed; without these marks the
-// server's read state stays empty and /t/<id>/unread always resolves to page 1. Marks only ever advance and
-// voz.vn discards cutoffs older than its retention window, so out-of-order or stale pages are harmless no-ops.
+// Mark read up to newest post, or /unread lands on page 1.
 function markReadUpTo(threadId, unread, posts) {
   const cutoff = posts.reduce((max, post) => Math.max(max, Number(post.post_date) || 0), 0);
   if (!state.loggedIn || !unread || !cutoff) return;
@@ -108,8 +102,7 @@ function wireSignatureToggles(root) {
   });
 }
 
-// `block: 'center'` put a tall post's middle in the viewport, so the reader landed inside a post they never
-// aimed at. Anchoring the top of the post under the sticky bars is what the permalink implies.
+// Anchor post top under sticky bars, not viewport center.
 function jumpToPost(id) {
   return jumpToAnchor(id);
 }
@@ -128,8 +121,7 @@ export async function viewThread(threadId, page, focusPost) {
     const [res] = await Promise.all([api.thread(threadId, page === 'last' ? 1 : page), loadSmilies()]);
     const thread = res.thread;
     const posts = res.posts || [];
-    // Same analytics the app sends: an `open` when the thread screen mounts, a `read` when it unmounts
-    // (flushed in lib/signals.js). `_vozRead` accumulates pages/depth across page navigations.
+    // Analytics: open on mount, read on unmount; _vozRead accumulates depth.
     signalOpen(thread.thread_id, 'other');
     if (window._vozRead?.id !== thread.thread_id) window._vozRead = { id: thread.thread_id, started: Date.now(), pages: new Set(), depth: 0, posts: 0 };
     window._vozRead.pages.add(res.pagination?.current_page || 1);
@@ -147,16 +139,15 @@ export async function viewThread(threadId, page, focusPost) {
         if (read?.id) signalRead(read.id, Math.round((Date.now() - read.started) / 1000), read.posts, read.depth, read.pages.size);
       });
     }
-    // [ATTACH] needs the post's attachment list to render a picture.
+    // [ATTACH] renders via the post's attachment list.
     clearAttachments();
     registerAttachments(posts);
     const forum = thread.Forum || {};
 
-    // The API has no "last page" shortcut: resolve it from pagination and refetch.
+    // No "last page" API shortcut: resolve from pagination and refetch.
     if (page === 'last' && res.pagination && res.pagination.last_page > 1) {
       return viewThread(threadId, res.pagination.last_page, focusPost);
     }
-    // Uses the resolved page, so /page-last and /unread get the real number.
     setThreadTitle(thread, res.pagination && res.pagination.current_page);
     setBreadcrumbs([
       { label: 'Diễn đàn', href: '/' },
@@ -234,15 +225,13 @@ export async function viewThread(threadId, page, focusPost) {
     wirePageJump((p) => withPage(threadPath(thread), p));
     wireScrollArm();
     hydrateReactionLists(app);
-    // Continuous scrolling: append the next page. Attachments and member tooltips are registered per page, so
-    // each append repeats that wiring.
+    // Per-page wiring (attachments, tooltips) repeats on each append.
     mountInfiniteScroll({
       makeHref: (p) => withPage(threadPath(thread), p),
       currentPage: res.pagination?.current_page || 1,
       lastPage: res.pagination?.last_page || 1,
       after: document.getElementById('pager-slot'),
-      // Appending needs only the next page's posts: the full thread payload would re-send the thread metadata
-      // (Forum, permissions, …) on every page for nothing.
+      // threadPosts avoids re-fetching thread metadata per page.
       fetchPage: (p) => api.threadPosts(threadId, p),
       insert: (p, next) => {
         const list = document.getElementById('post-list');
@@ -259,13 +248,11 @@ export async function viewThread(threadId, page, focusPost) {
         return more.length;
       },
     });
-    // Opening a thread page marks it read up to that page's newest post, like voz.vn web — reading the last
-    // page clears the bold title in the forum listing.
+    // Reading last page clears the bold title in forum listing.
     markReadUpTo(threadId, thread.is_unread, posts);
 
     if (focusPost) {
-      // A permalink owns the scroll even when the post is not on this page: falling through to the reset would
-      // drop the reader at the top of the thread instead of at the post they asked for.
+      // Permalink owns scroll even when post is off-page.
       keepCurrentScroll();
       jumpToPost(`post-${focusPost}`);
     } else if (location.hash.startsWith('#post-')) {
@@ -282,8 +269,7 @@ function wireThreadActions(threadId, posts, thread, page = 1) {
   const byId = { get: (id) => postIndex.get(id) };
   const reload = (target, focus) => viewThread(threadId, target, focus);
 
-  // Every listener this view attached is tracked and removed before a new one is added: a single slot was
-  // overwritten when viewThread ran twice concurrently, so one click ran twice.
+  // Remove old listeners; a single slot caused double-fires.
   removeThreadClickHandlers();
 
   const onClick = async (event) => {
@@ -296,8 +282,7 @@ function wireThreadActions(threadId, posts, thread, page = 1) {
     }
     const postNumberLink = event.target.closest('[data-post-number]');
     if (postNumberLink) {
-      // The jump is left to the browser (the href is the real permalink); the popup only adds the copy actions,
-      // so preventDefault is deliberately not called.
+      // No preventDefault: href is the real permalink.
       openPostNumberPopup(
         postNumberLink,
         thread,
@@ -374,7 +359,7 @@ function wireThreadActions(threadId, posts, thread, page = 1) {
       if (!state.loggedIn) return navigate('/login');
       const post = byId.get(Number(quoteLink.dataset.quote));
       if (!post) return;
-      // Trích dẫn only fills the box: the reader keeps their place in the thread.
+      // Trích dẫn: fill box, stay in place.
       if (!insertQuote(post)) return;
       toast('Đã trích dẫn vào khung trả lời');
       return;
@@ -386,7 +371,7 @@ function wireThreadActions(threadId, posts, thread, page = 1) {
       if (!state.loggedIn) return navigate('/login');
       const post = byId.get(Number(replyLink.dataset.reply));
       if (!post) return;
-      // Trả lời quotes the post and takes the reader to the box, caret at the end.
+      // Trả lời: quote and scroll to the box.
       if (!insertQuote(post)) return;
       const block = document.getElementById('reply-block');
       block?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -491,16 +476,12 @@ function wireThreadActions(threadId, posts, thread, page = 1) {
         if (!res.ok) throw new ApiError(res.status, payload);
         clearEditorDraft(textarea);
         toast('Đã gửi trả lời');
-        // The reply response carries the thread's pagination: one navigation renders the last page with the
-        // focus post. The old code read `pagination` off the fetch Response (always undefined, so it landed on
-        // page 1) and re-rendered again through viewThread('last'), which refetched page 1 to resolve the real
-        // page — three payloads and a wasted render per reply.
+        // Reply payload carries pagination; navigate straight to last page.
         const lastPage = Number(payload.pagination?.last_page);
         if (lastPage) {
           navigate(`${withPage(threadPath(thread), lastPage)}?post=${payload.post.post_id}`);
         } else {
-          // No pagination in the payload: resolve 'last' through the view like before, without the extra
-          // page-1 navigation render.
+          // Fallback: resolve 'last' via the view.
           await viewThread(threadId, 'last', payload.post.post_id);
         }
       } catch (err) {

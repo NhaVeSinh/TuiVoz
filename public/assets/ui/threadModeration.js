@@ -1,6 +1,4 @@
-// Thread moderation tools, mirroring voz's "More options" menu: edit title/prefix, lock, stick, delete, move.
-// Every entry is gated on the flag the thread payload carries (`can_edit`, `can_lock_unlock`, …), so a normal
-// member sees nothing beyond the watch button.
+/** Thread moderation. */
 
 import { api } from '../api.js';
 import { cachedCatalog } from '../lib/catalogs.js';
@@ -120,14 +118,13 @@ function openEditDialog(thread, onChanged) {
 async function openMoveDialog(thread, onChanged) {
   if (!state.nodes) {
     try {
-      // Same response shape as the forum views ({ nodes, tree_map }): state.nodes holds the whole payload
-      // everywhere, so the move dialog and the home view can never disagree about what state.nodes is.
+      // state.nodes holds the whole { nodes, tree_map } payload, same as forum views.
       state.nodes = await cachedCatalog('nodes', () => api.nodes());
     } catch (error) {
       return toast(error.message || 'Không tải được danh sách diễn đàn', true);
     }
   }
-  // Only real forums are valid targets; categories and link forums cannot hold threads.
+  // Only Forum nodes can hold threads.
   const forums = ((state.nodes || {}).nodes || [])
     .filter((node) => node.node_type_id === 'Forum' && Number(node.node_id) !== Number(thread.node_id))
     .sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'vi'));
@@ -199,7 +196,7 @@ function openDeleteDialog(thread, onChanged) {
 
 const ICON_TOOLS = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>`;
 
-// Warn dialog, opened from a post's action bar. Definitions come from `/voz/warnings`; the API takes one id.
+// Warn dialog; definitions come from `/voz/warnings`, API takes one id.
 export async function openWarnModal(postId, onDone) {
   let definitions = [];
   try {

@@ -1,4 +1,4 @@
-// Browser-local settings: nav bar shortcuts plus JSON backup/restore.
+/** Settings view. */
 
 import { app } from '../core/dom.js';
 import { esc } from '../core/utils.js';
@@ -66,7 +66,7 @@ const FULL_NUMBERS_HELP = {
   all: 'Toàn bộ web: mọi số liệu và mốc thời gian đều hiện đầy đủ, kể cả danh sách chủ đề, hồ sơ và trang chủ.',
 };
 
-// Radio-card group shared by the settings panels. `name` keys the input group.
+// Shared radio-card group; `name` keys the input group.
 function optionCards(name, values, labels, help, active) {
   return `<ul class="option-cards" role="radiogroup" aria-label="${esc(name)}">
     ${values.map(
@@ -150,8 +150,7 @@ function recentPreviewHtml() {
     .join('');
 }
 
-// The page is split into tabs so the reader sees one group at a time. Every panel stays in the DOM (hidden with
-// [hidden]) because the wiring below resolves its elements once at mount.
+// All panels stay in the DOM (toggled via [hidden]); wired once at mount.
 const TABS = [
   { id: 'appearance', label: 'Giao diện' },
   { id: 'system', label: 'Hệ thống' },
@@ -163,12 +162,10 @@ const TABS = [
 
 const TAB_IDS = new Set(TABS.map((tab) => tab.id));
 
-// Old fragments that no longer name a tab: `#scroll` moved into Hệ thống, so a saved link still lands on the
-// panel that now holds those settings.
+// Legacy fragments map to the tab that now holds those settings.
 const TAB_ALIASES = { scroll: 'system' };
 
-// The active tab lives in the fragment so the choice survives a reload and the sticker picker's "Quản lý
-// sticker" link opens the right panel.
+// Tab lives in the fragment so reloads and deep links land correctly.
 export function settingsTabFromHash(hash = location.hash) {
   const id = String(hash || '').replace(/^#/, '');
   if (TAB_IDS.has(id)) return id;
@@ -377,13 +374,12 @@ function settingsHtml(active = settingsTabFromHash()) {
     </div>`;
 }
 
-// Writes an imported JSON payload into storage and reports what changed. Shared by the sticker import panel and
-// the backup/restore section.
+// Applies imported JSON; shared by sticker import and backup restore.
 async function applyImported(result) {
   const parts = [];
   if (result.albums) {
     if (result.addOnly) {
-      // Single-album file: only add names that are not already present.
+      // Single-album file: only add names not already present.
       const names = new Set(getAlbums().map((album) => album.name));
       let added = 0;
       let skipped = 0;
@@ -398,7 +394,7 @@ async function applyImported(result) {
       const saved = result.albums.map((raw) => addAlbum(raw)).filter((res) => res.ok).length;
       parts.push(`${saved} album`);
     }
-    // Only a full backup carries recents; add-only files must not clear them.
+    // Add-only files must not clear recents.
     if (!result.addOnly && Array.isArray(result.recent)) {
       clearRecentStickers();
       for (const item of [...result.recent].reverse()) {
@@ -418,21 +414,21 @@ async function applyImported(result) {
   return parts;
 }
 
-// Refreshes whatever sticker UI is currently mounted.
+// Refresh sticker UI if mounted.
 function renderStickerExtras() {
   if (typeof window.__stickerRerenderExtras === 'function' && document.getElementById('sticker-album-list')) {
     window.__stickerRerenderExtras();
   }
 }
 
-// Same hook for the filter list: the backup import can run while the Bộ lọc panel is mounted.
+// Same hook for the filter list.
 function renderFilterExtras() {
   if (typeof window.__filterRerender === 'function' && document.getElementById('filter-list')) {
     window.__filterRerender();
   }
 }
 
-// Sticker album management: add, rename, reorder, bulk delete, export, image viewer, recents.
+// Sticker album management: add/rename/reorder/delete/export/images/recents.
 function wireStickerSettings() {
   const albumList = document.getElementById('sticker-album-list');
   if (!albumList) return () => {};
@@ -565,7 +561,7 @@ function wireStickerSettings() {
     submit.textContent = 'Tạo album';
   });
 
-  // JSON album import: files exported here or by the userscript.
+  // JSON album import (files from here or the userscript).
   const importError = document.getElementById('sticker-import-error');
   const importProgress = document.getElementById('sticker-import-progress');
   const importFiles = document.getElementById('sticker-import-files');
@@ -625,7 +621,7 @@ function wireStickerSettings() {
     if (exportBtn) {
       const album = getAlbums().find((item) => item.id === exportBtn.dataset.export);
       if (!album) return;
-      // Single-album files are add-only for stickers.
+      // Single-album export files are add-only.
       const payload = JSON.stringify(
         { version: '1.3', exportDate: new Date().toISOString(), addOnly: true, albums: [album] },
         null,
@@ -745,14 +741,13 @@ function wireStickerSettings() {
   return rerenderExtras;
 }
 
-// Album editor: rename and reorder the images in one dialog. Both the pencil and the image-grid button land
-// here.
+// Album editor: rename + reorder images in one dialog.
 function openAlbumEditor(albumId, onChange) {
   const album = getAlbums().find((item) => item.id === albumId);
   if (!album) return;
   const originalName = album.name;
   let images = [...album.images];
-  // Reordering is index bookkeeping: keep a working copy and only write on save.
+  // Work on a copy; write only on save.
   let dragFrom = null;
 
   const body = `
@@ -841,7 +836,7 @@ function openAlbumEditor(albumId, onChange) {
       cell.addEventListener('drop', (event) => {
         event.preventDefault();
         cell.classList.remove('is-drop-target');
-        // dragFrom is the in-page handle; dataTransfer covers a drop with no dragstart.
+        // dragFrom is primary; dataTransfer covers missing dragstart.
         const from = dragFrom ?? Number(event.dataTransfer.getData('text/plain'));
         if (!Number.isInteger(from) || from === index || from < 0 || from >= images.length) return;
         const [moved] = images.splice(from, 1);
@@ -863,7 +858,7 @@ function openAlbumEditor(albumId, onChange) {
     const name = nameInput.value.replace(/\s+/g, ' ').trim();
     if (!name) return showError('Tên album không được để trống.');
     if (!images.length) return showError('Album cần ít nhất một hình ảnh. Dùng nút thùng rác ở danh sách để xoá cả album.');
-    // Rename first: a rejected name must not leave the images half-saved.
+    // Rename first so a rejected name can't half-save images.
     if (name !== originalName) {
       const renamed = renameAlbum(album.id, name);
       if (!renamed.ok) return showError(renamed.error);
@@ -899,7 +894,7 @@ export function viewSettings() {
   let editingId = null;
   let draggedId = null;
 
-  // Theme and font re-apply immediately: ui/theme.js listens for voz:settings, so no reload.
+  // Theme/font re-apply live via the voz:settings listener.
   wireOptionGroup('theme-mode', (value) => {
     setTheme(value);
     toast(`Giao diện: ${THEME_LABELS[value]}`);
@@ -908,8 +903,7 @@ export function viewSettings() {
     setFont(value);
     toast(`Phông chữ: ${FONT_LABELS[value]}`);
   });
-  // Size sliders apply on `input` so the page resizes while dragging, but only `change` toasts — a single drag
-  // would otherwise fire dozens.
+  // `input` applies live; only `change` toasts.
   wireSizeSlider('size-post', (value) => setFontScale({ ...getFontScale(), postSize: value }));
   wireSizeSlider('size-ui', (value) => setFontScale({ ...getFontScale(), uiSize: value }));
   document.getElementById('image-download')?.addEventListener('change', (event) => {
@@ -935,14 +929,13 @@ export function viewSettings() {
   wireOptionGroup('data-saving', (value) => {
     setDataSaving(value);
     toast(`Tiết kiệm dữ liệu: ${DATA_SAVING_LABELS[value]}`);
-    // Levers re-check isDataSaving() at their own trigger points; this event lets anything listening re-run.
+    // Lets listeners re-check isDataSaving().
     window.dispatchEvent(new CustomEvent('voz:save-mode', { detail: { saving: isDataSaving() } }));
   });
   wireOptionGroup('banned-users', (value) => {
     setBannedUsers(value);
     toast(`Thành viên bị ban: ${BANNED_USERS_LABELS[value]}`);
-    // The strike is applied while rendering, so the current page has to be redrawn. Dispatch on `window`:
-    // CustomEvent does not bubble, so a `document` dispatch never reaches the app listener.
+    // Dispatch on window: CustomEvent doesn't bubble to document listeners.
     window.dispatchEvent(new CustomEvent('voz:banned-users-change', { detail: { mode: value } }));
   });
   wireOptionGroup('infinite-scroll', (value) => {
@@ -1016,7 +1009,7 @@ export function viewSettings() {
     }
   });
 
-  // Drag and drop to reorder; the drop position comes from the pointer's vertical midpoint.
+  // Drop position comes from the pointer's vertical midpoint.
   list.addEventListener('dragstart', (event) => {
     const row = event.target.closest('.shortcut-row');
     if (!row) return;
@@ -1062,8 +1055,7 @@ export function viewSettings() {
     jsonError.hidden = !message;
   };
 
-  // Full payload = nav shortcuts + sticker albums + recents + bộ lọc, shaped like the userscript backup so
-  // either file restores in full.
+  // Backup = shortcuts + albums + recents + filters (userscript format).
   const buildBackup = () =>
     exportSettingsJson({
       albums: getAlbums(),
@@ -1117,19 +1109,18 @@ export function viewSettings() {
   jsonBox.value = buildBackup();
 }
 
-// Tab switcher. Panels are toggled with [hidden] and the selection is mirrored into the fragment with
-// replaceState, so a reload reopens the same tab without a history entry.
+// Tab switcher; selection mirrored to fragment via replaceState (no history entry).
 function wireSettingsTabs() {
   const list = app.querySelector('.settings-tabs');
   if (!list) return;
 
-  // A legacy fragment (#scroll) opens a different tab than it names; rewrite the URL to match.
+  // Rewrite legacy fragments (e.g. #scroll) to the tab they now map to.
   const legacy = String(location.hash || '').replace(/^#/, '');
   if (legacy && !TAB_IDS.has(legacy) && TAB_ALIASES[legacy]) {
     try {
       history.replaceState(history.state, '', `${location.pathname}${location.search}#${TAB_ALIASES[legacy]}`);
     } catch {
-      /* the panel is already correct; only the URL lags. */
+      /* URL rewrite may fail; panel already correct. */
     }
   }
 
@@ -1148,7 +1139,7 @@ function wireSettingsTabs() {
     try {
       history.replaceState(history.state, '', `${location.pathname}${location.search}#${id}`);
     } catch {
-      /* replaceState can fail on a stale entry; the tab still switched, only the URL lags. */
+      /* replaceState can fail; tab still switched. */
     }
   };
 
@@ -1157,7 +1148,7 @@ function wireSettingsTabs() {
     if (btn && !btn.classList.contains('is-active')) activate(btn.dataset.tab);
   });
 
-  // Keyboard support: arrows wrap, Home/End jump to the ends.
+  // Keyboard: arrows wrap, Home/End jump to ends.
   list.addEventListener('keydown', (event) => {
     const index = TAB_IDS.size ? [...list.querySelectorAll('[data-tab]')].indexOf(event.target.closest('[data-tab]')) : -1;
     if (index < 0) return;
@@ -1173,7 +1164,7 @@ function wireSettingsTabs() {
   });
 }
 
-// Wires one size slider: live preview on `input`, one toast on `change`.
+// Size slider: live preview on `input`, toast on `change`.
 function wireSizeSlider(id, onPick) {
   const input = document.getElementById(id);
   const output = document.getElementById(`${id}-value`);
@@ -1188,7 +1179,7 @@ function wireSizeSlider(id, onPick) {
   });
 }
 
-// Wires one radio-card group: writes the value, moves is-active, and toasts.
+// Radio-card group: write value, move is-active, toast.
 function wireOptionGroup(name, onPick) {
   const group = document.querySelector(`.option-cards input[name="${name}"]`)?.closest('.option-cards');
   if (!group) return;

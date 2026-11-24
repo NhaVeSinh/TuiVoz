@@ -1,5 +1,4 @@
-// "Chụp bài viết" — rasterise one post plus the thread title into a PNG. Pictures go through the proxy as
-// data URLs (a canvas cannot read a cross-origin <img>), and layout comes from an SVG <foreignObject>.
+/** Post screenshot PNG. */
 
 import { toast } from '../ui/feedback.js';
 import { getPostScreenshot, getFontScale, normalizeFontScale } from './settings.js';
@@ -10,43 +9,38 @@ const BUTTON_CLASS = 'post-screenshot-button';
 const ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
 const CHECK_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4 10-10"/></svg>';
 
-// Rendered at up to 2x so text stays sharp. A very long post would allocate a bitmap big enough to fail, so the
-// scale drops until it fits. The post is never clipped.
+// 2x for sharp text; scale drops until the bitmap fits instead of clipping.
 const SCALE = 2;
 const MAX_PIXELS = 40_000_000;
-// Firefox refuses a foreignObject taller than its coordinate space, so a very long post is capped here.
+// Firefox caps foreignObject height at its coordinate space.
 const MAX_HEIGHT = 16000;
 
-// A post keeps its two-column shape at every size, so the sheet's width drives the layout. It must be the post's
-// own on-screen width, not a rounded stand-in: a 390px phone would otherwise be captured at 430px and rules such
-// as `max-width: 400px` would not match. Only a very wide window is capped, so a huge monitor does not produce a
-// wall of whitespace.
+// Sheet width must be the post's real on-screen width or rules like
+// `max-width: 400px` won't match; cap only very wide windows.
 const MAX_SHEET_WIDTH = 1000;
 function layoutWidth(article) {
   const measured = Math.round(article.getBoundingClientRect().width);
   return Math.min(measured || document.documentElement.clientWidth, MAX_SHEET_WIDTH);
 }
 
-// The reader's own text size must survive into the picture, or the PNG disagrees with what they see.
+// Carry the reader's text size into the PNG.
 function scaleTokens() {
   const { uiSize, postSize } = getFontScale();
   return { ui: normalizeFontScale(uiSize) / 100, post: normalizeFontScale(postSize) / 100 };
 }
 
-// The page heading: a thread's `#thread-title`, or a conversation's `#conversation-title`. Falls back to
-// document.title, which already carries the thread/conversation name on both routes.
+// Page heading (#thread-title or #conversation-title), else document.title.
 function threadTitle() {
   const el = document.getElementById('thread-title') || document.getElementById('conversation-title');
   if (!el) return (document.title || '').replace(/\s*\|\s*VOZ\s*$/, '');
-  // The header holds a prefix badge plus the title; only the text is wanted.
+  // Strip the prefix badge; only the title text is wanted.
   const clone = el.cloneNode(true);
   clone.querySelectorAll('.label, .labelLink, .prefix').forEach((n) => n.remove());
   return clone.textContent.replace(/\s+/g, ' ').trim();
 }
 
-// Firefox matches `:root` and `[data-theme]` inside a foreignObject but never `html` or `:root[data-theme]`.
-// Anchoring those rules on the sheet wrapper instead makes them resolve, because the wrapper carries the same
-// data-theme/data-font attributes as the live document.
+// Firefox never matches `html` or `:root[data-theme]` inside foreignObject;
+// re-anchor those selectors on the sheet wrapper (same data attributes).
 const ROOT_AT = /(^|[\s,>+~])(?::root|html)(?![-\w])/;
 
 function remapSelector(selector) {
@@ -54,7 +48,7 @@ function remapSelector(selector) {
   const match = ROOT_AT.exec(trimmed);
   if (!match) return trimmed;
   const after = trimmed.slice(match.index + match[0].length).trim();
-  // Nothing follows, so the rule styles the document root itself (tokens, color-scheme). Keep it on `:root`.
+  // Rule styles the document root itself; keep it on `:root`.
   if (after === '') return match[1] + ':root' + trimmed.slice(match.index + match[0].length);
   return trimmed.slice(0, match.index) + match[1] + after;
 }
@@ -69,7 +63,7 @@ function prefixSelector(text) {
 function serializeRule(rule, width) {
   if (rule.type === CSSRule.MEDIA_RULE) {
     const query = rule.conditionText || rule.media?.mediaText || '';
-    // Keep the sheet's own width as the reference even when the query is flattened away.
+    // Evaluate width queries against the sheet's own width.
     const body = [...rule.cssRules].map((child) => serializeRule(child, width)).join('');
     return queryMatches(query, width) ? body : '';
   }
@@ -81,11 +75,8 @@ function serializeRule(rule, width) {
   return head + [...rule.cssRules].map((child) => serializeRule(child, width)).join('') + tail;
 }
 
-// Media queries inside a foreignObject are evaluated against the SVG document, not the sheet's CSS width, so at
-// 2x a 430px mobile sheet reports 860px and every `max-width: 620px` rule is skipped. The mobile layout is then
-// never applied, the desktop two-column post overflows the sheet, and the capture comes out too wide and cut
-// short. Flattening the width queries against the sheet width at build time is what makes the capture match the
-// screen.
+// Media queries inside foreignObject see the SVG viewport, not the sheet
+// width, so mobile `max-width` rules never fire. Flatten them at build time.
 function widthMatches(query, width) {
   const min = query.match(/min-width:\s*([\d.]+)px/);
   const max = query.match(/max-width:\s*([\d.]+)px/);
@@ -96,12 +87,12 @@ function widthMatches(query, width) {
 }
 
 function queryMatches(query, width) {
-  // A comma is an `or`, so one matching branch is enough.
+  // Comma is `or`: one matching branch is enough.
   for (const part of query.split(',')) {
     const text = part.trim();
     const byWidth = widthMatches(text, width);
     if (byWidth === false) continue;
-    // pointer/hover/color-scheme and friends are unknowable here: keep the block and let the browser decide.
+    // pointer/hover etc. are unknowable here; keep the block.
     if (byWidth === null && !/^all$/.test(text)) return true;
     if (byWidth === true) return true;
   }
@@ -115,7 +106,7 @@ function inlineStyles(width) {
     try {
       rules = sheet.cssRules;
     } catch {
-      // A cross-origin sheet throws; those rules are not needed, the fonts are already loaded.
+      // Cross-origin sheets throw; skip them (fonts already loaded).
       continue;
     }
     for (const rule of rules) css += `${serializeRule(rule, width)}\n`;
@@ -123,14 +114,12 @@ function inlineStyles(width) {
   return css;
 }
 
-// Re-encode through the proxy so the canvas stays untainted. Unreadable images are dropped rather than failing
-// the whole capture.
+// Re-encode via the proxy to keep the canvas untainted; drop unreadable images.
 async function toDataUrl(img) {
   const url = img.currentSrc || img.src || '';
   if (!url) return null;
   if (url.startsWith('data:')) return url;
-  // Attachments resolve to their canonical URL first: the short form is a redirect that Cloudflare often
-  // answers with a challenge.
+  // Resolve attachments first: the short form is a redirect Cloudflare often challenges.
   const resolved = await resolveAttachment(url);
   const source = resolved?.url || url;
   const blob = await fetchImageBlob(source).catch(() => null);
@@ -158,8 +147,7 @@ async function inlineImages(root) {
   }));
 }
 
-// An SVG document has no access to the page's font faces, so the text would fall back to a wider system font and
-// the PNG would not match the screen. Only the families in use are embedded, and the result is cached.
+// SVG can't reach the page's fonts; embed the families in use (cached).
 let fontCssPromise = null;
 
 function fontSelector(descriptor) {
@@ -203,7 +191,7 @@ async function embedFonts() {
         faces.push({ src: src[1], weight: rule.style.getPropertyValue('font-weight').trim(), style: rule.style.getPropertyValue('font-style').trim(), family, display: rule.style.getPropertyValue('font-display').trim() });
       }
     }
-    // Warm each face so the browser has the file before it is turned into a data URL.
+    // Warm each face so the browser has the file first.
     await Promise.all(faces.map((face) => document.fonts.load(fontSelector({ family: face.family, weight: face.weight, style: face.style })).catch(() => null)));
     const blocks = await Promise.all(faces.map(async (face) => {
       const url = new URL(face.src, document.baseURI).href;
@@ -216,7 +204,7 @@ async function embedFonts() {
   try {
     return await fontCssPromise;
   } catch {
-    // A missing font costs fidelity, not the capture.
+    // Missing font costs fidelity, not the capture.
     return '';
   }
 }
@@ -224,8 +212,7 @@ async function embedFonts() {
 function buildSheet(threadName, postNode, width) {
   const root = document.documentElement;
   const { ui, post } = scaleTokens();
-  // A plain wrapper is easier to measure and keeps the title above the post. It mirrors the live <html> so
-  // every `:root`-scoped rule resolves exactly as it does on screen.
+  // Wrapper mirrors the live <html> so `:root`-scoped rules resolve as on screen.
   const holder = document.createElement('div');
   holder.className = 'screenshot-sheet';
   for (const name of ['theme', 'themeMode', 'font']) {
@@ -241,12 +228,9 @@ function buildSheet(threadName, postNode, width) {
   return holder;
 }
 
-// The sheet is measured the instant it is built, but inlined images have no layout yet at that moment, so the
-// bitmap would be sized from a shorter box than what is finally drawn — leaving either a clipped tail or a band
-// of empty backdrop. Wait for the images to decode and for layout to settle before anything is measured.
-// An image that is done but broken (complete with no pixels) fires neither load nor error again, so waiting on
-// those events would hang the capture forever. Every wait is also bounded: a stalled proxy fetch must not leave
-// the button spinning.
+// Wait for inlined images to decode before measuring, or the bitmap is
+// sized too short. Broken images fire no events and stalled fetches hang,
+// so every wait is bounded.
 const SETTLE_MS = 15000;
 
 function settle(node) {
@@ -263,9 +247,8 @@ function settle(node) {
   return Promise.all([...images.map(bounded), frames(), frames()]);
 }
 
-// The SVG lays the sheet out shorter than the DOM predicts, so the bitmap is allocated taller than what is drawn
-// and the surplus is uniform backdrop below the post. Find the last row that still contains post content and cut
-// there, keeping the sheet's own bottom padding.
+// SVG lays the sheet out shorter than the DOM predicts, leaving a uniform
+// backdrop tail; cut below the last content row, keeping bottom padding.
 function trimTail(canvas, context, width, background, scale = SCALE) {
   const height = canvas.height;
   const grab = (y) => context.getImageData(0, y, width, 1).data;
@@ -286,7 +269,7 @@ function trimTail(canvas, context, width, background, scale = SCALE) {
   };
   let last = height - 1;
   while (last > 0 && isBackdrop(grab(last))) last -= 1;
-  // The last non-backdrop row holds the final glyph or border; add back the sheet's 16px bottom padding.
+  // Add back the sheet's 16px bottom padding.
   return Math.min(height, last + Math.ceil(16 * scale) + 2);
 }
 
@@ -300,24 +283,22 @@ function crop(canvas, width, height) {
 
 function rasterize(node, fonts = '') {
   const width = Math.ceil(node.scrollWidth || node.getBoundingClientRect().width);
-  // The sheet is `position: fixed`, so it shrink-wraps its content and the box excludes the bottom margin. The
-  // real content height is the last child's bottom edge plus that margin, which keeps the bitmap free of empty
-  // backdrop below the post.
+  // Fixed-position sheet shrink-wraps: use last child's bottom edge plus
+  // its margin for the real content height.
   const rect = node.getBoundingClientRect();
   const last = node.lastElementChild;
   const contentHeight = last
     ? Math.ceil(last.getBoundingClientRect().bottom - rect.top + (parseFloat(getComputedStyle(last).marginBottom) || 0))
     : Math.ceil(node.scrollHeight || rect.height);
   const height = Math.max(Math.ceil(node.scrollHeight || 0), contentHeight, 1);
-  // Keep the full post: shrink the pixel ratio instead of cropping.
+  // Shrink the pixel ratio rather than cropping.
   let scale = SCALE;
   if (height * scale > MAX_HEIGHT) scale = MAX_HEIGHT / height;
   while (width * scale * (height * scale) > MAX_PIXELS && scale > 0.5) scale -= 0.1;
   const outWidth = Math.max(1, Math.round(width * scale));
   const outHeight = Math.max(1, Math.round(height * scale));
 
-  // The measuring copy is parked off-screen; that offset must not leak into the SVG, or the bitmap comes out
-  // blank.
+  // Strip the off-screen park position, or the SVG renders blank.
   const clone = node.cloneNode(true);
   clone.style.position = 'static';
   clone.style.left = 'auto';
@@ -325,26 +306,23 @@ function rasterize(node, fonts = '') {
   clone.style.width = `${width}px`;
   const style = `<style>${fonts}\n${inlineStyles(width)}</style>`;
   const markup = new XMLSerializer().serializeToString(clone);
-  // Firefox lays the title out slightly shorter than the DOM measurement, so the sheet can end a few dozen pixels
-  // above the bottom of the bitmap. The outer wrapper carries the same theme attributes as the sheet, so that
-  // leftover strip is drawn in the page colour instead of the default light one.
+  // Firefox leaves a strip below the sheet; theme the outer wrapper so
+  // it paints in the page colour, not the default light one.
   const theme = node.dataset.theme ? ` data-theme="${node.dataset.theme}"` : '';
-  // The Catppuccin palettes key off data-theme-mode, so the wrapper needs it too.
+  // Catppuccin palettes key off data-theme-mode.
   const themeMode = node.dataset.themeMode ? ` data-theme-mode="${node.dataset.themeMode}"` : '';
   const font = node.dataset.font ? ` data-font="${node.dataset.font}"` : '';
   const sheetBg = getComputedStyle(node).backgroundColor;
   const scaleVars = `--ui-scale:${getComputedStyle(node).getPropertyValue('--ui-scale') || 1};--post-scale:${getComputedStyle(node).getPropertyValue('--post-scale') || 1};`;
-  // `viewBox` keeps the layout in CSS pixels while width/height apply the scale, so text wraps identically at
-  // any ratio.
+  // viewBox keeps layout in CSS pixels so text wraps identically at any scale.
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${outWidth}" height="${outHeight}" viewBox="0 0 ${width} ${height}">` +
     `<foreignObject x="0" y="0" width="${width}" height="${height}">` +
     `<div xmlns="http://www.w3.org/1999/xhtml"${theme}${themeMode}${font} style="width:${width}px;min-height:${height}px;${scaleVars}background:${sheetBg}">${style}${markup}</div>` +
     '</foreignObject></svg>';
 
-  // A blob: URL makes Chrome treat the SVG as cross-origin and taint the canvas on export, while a data: URL
-  // stays same-document. encodeURIComponent keeps the bytes lossless; the string can be a few MB for a long
-  // post, which is well under Chrome's data: URL limit.
+  // blob: URLs taint the canvas in Chrome; data: stays same-document
+  // (a few MB is under Chrome's data: URL limit).
   const href = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -353,20 +331,19 @@ function rasterize(node, fonts = '') {
       canvas.width = outWidth;
       canvas.height = outHeight;
       const context = canvas.getContext('2d');
-      // Any sub-pixel row the SVG leaves unpainted must read as the sheet, not as transparency.
+      // Sub-pixel unpainted rows must read as the sheet, not transparency.
       context.fillStyle = sheetBg;
       context.fillRect(0, 0, canvas.width, canvas.height);
       context.drawImage(image, 0, 0, outWidth, outHeight);
       try {
-        // Firefox lays the sheet out shorter inside the SVG than in the DOM, so the bitmap is allocated taller
-        // than what is actually drawn. Trim the uniform tail so the PNG ends at the post instead of on empty
-        // backdrop. Chrome may throw a SecurityError reading pixels; the untrimmed canvas is still usable.
+        // Firefox draws the sheet shorter than the allocated bitmap; trim
+        // the uniform tail. Chrome may throw SecurityError; untrimmed is usable.
         let final = canvas;
         try {
           const trimmed = trimTail(canvas, context, outWidth, sheetBg, scale);
           if (trimmed !== outHeight) final = crop(canvas, outWidth, trimmed);
         } catch {
-          // Fall through to the untrimmed canvas.
+          // Use the untrimmed canvas.
         }
         final.toBlob((png) => (png ? resolve(png) : reject(new Error('Không tạo được ảnh PNG.'))), 'image/png');
       } catch (error) {
@@ -388,7 +365,7 @@ function triggerDownload(blob, name) {
   document.body.append(link);
   link.click();
   link.remove();
-  // Firefox reads the blob lazily, so revoking immediately would cancel the save.
+  // Firefox reads the blob lazily; revoking now would cancel the save.
   setTimeout(() => URL.revokeObjectURL(href), 60_000);
 }
 
@@ -408,11 +385,11 @@ function flashSaved(button) {
   }, 1600);
 }
 
-// Renders the post into a PNG blob without triggering any save; the caller decides what happens to it.
+// Render the post to a PNG blob without saving; caller decides its fate.
 async function renderPostPng(article) {
   const source = article.cloneNode(true);
   source.querySelectorAll(`.${BUTTON_CLASS}`).forEach((n) => n.remove());
-  // The clone is measured off-screen, then rasterised; it never becomes visible.
+  // Clone is measured and rasterised off-screen; never visible.
   const width = layoutWidth(article);
   const sheet = buildSheet(threadTitle(), source, width);
   sheet.style.position = 'fixed';
@@ -423,7 +400,7 @@ async function renderPostPng(article) {
     pruneUnloadedReactionStrips(sheet);
     const fonts = await embedFonts();
     await inlineImages(sheet);
-    // Inlining swaps every src, so the layout is only final once those decode.
+    // Inlining swaps every src; layout is final only after they decode.
     await settle(sheet);
     return await rasterize(sheet, fonts);
   } finally {
@@ -441,9 +418,8 @@ async function copyPng(png) {
   }
 }
 
-// Hands the PNG to the OS share sheet (Android/iOS) via Web Share Level 2. Returns {status}:
-// 'shared', 'cancelled' when the sheet is dismissed, or 'unsupported' when the browser can't share
-// files — `error` carries the exception name for the diagnostic toast.
+// Share the PNG via Web Share Level 2. Status: 'shared', 'cancelled',
+// 'unsupported'; `error` carries the exception name for diagnostics.
 async function sharePng(png, name) {
   if (!navigator.share) return { status: 'unsupported', error: 'no navigator.share' };
   const file = new File([png], name, { type: 'image/png' });
@@ -456,9 +432,8 @@ async function sharePng(png, name) {
   }
 }
 
-// Fallback when files cannot be shared (e.g. Firefox Android, which only accepts url/text): open the
-// share sheet with the post's voz.vn permalink. Returns 'url' when the sheet opened, 'cancelled',
-// or 'unsupported' when even URL sharing is unavailable.
+// Fallback when files can't be shared (Firefox Android only accepts
+// url/text): share the post's permalink. Status: 'url', 'cancelled', 'unsupported'.
 async function shareUrl(article) {
   if (!navigator.share) return { status: 'unsupported', error: 'no navigator.share' };
   const url = shareableUrl(article);
@@ -473,8 +448,8 @@ async function shareUrl(article) {
   }
 }
 
-// The link offered when the PNG itself cannot be shared. Public posts get their voz.vn permalink;
-// conversation messages have no public URL, so the current page URL is used.
+// Link offered when the PNG can't be shared; messages have no public
+// URL, so use the current page.
 function shareableUrl(article) {
   const postId = article.dataset.postId;
   if (postId) return `https://voz.vn/posts/${postId}/`;
@@ -489,7 +464,7 @@ async function copyText(text) {
       return true;
     }
   } catch {
-    // Falls through to the legacy path: clipboard access needs a secure context.
+    // Legacy path: clipboard access needs a secure context.
   }
   try {
     const field = document.createElement('textarea');
@@ -507,8 +482,8 @@ async function copyText(text) {
   }
 }
 
-// The share menu behind the camera button: same anchored popup the post number uses. It owns its own
-// outside-click/scroll/escape wiring and closes itself after a successful action.
+// Share menu behind the camera button; owns its dismiss wiring and
+// self-closes after a successful action.
 let menu = null;
 
 function closeScreenshotMenu() {
@@ -570,7 +545,7 @@ function openScreenshotMenu(trigger, article, png, noun) {
           return true;
         }
         if (urlResult.status === 'cancelled') return true;
-        // Nothing shareable: keep the image at least reachable via a download instead of dead-ending.
+        // Nothing shareable: fall back to downloading the image.
         triggerDownload(png, name);
         const copied = await copyText(shareableUrl(article));
         const reason = `${fileResult.error || ''}${urlResult.error ? ` / ${urlResult.error}` : ''}`;
@@ -625,7 +600,7 @@ async function capturePost(article, button) {
   const noun = article.dataset.messageId ? 'tin nhắn' : 'bài viết';
   toast(`Đang chụp ${noun}…`);
   try {
-    // Any stalled step (image decode, font load, proxy fetch) must end in a toast, not a spinning button.
+    // Bound every stalled step (decode, fonts, proxy) with a timeout toast.
     const png = await Promise.race([
       renderPostPng(article),
       new Promise((_, reject) => setTimeout(() => reject(new Error(`Chụp ${noun} quá lâu, thử lại sau.`)), 60_000)),
@@ -656,7 +631,7 @@ function addControl(article) {
     event.stopPropagation();
     capturePost(article, button);
   });
-  // Before the bookmark, so it never covers the post number.
+  // Before the bookmark so it never covers the post number.
   const item = document.createElement('li');
   item.append(button);
   list.prepend(item);
@@ -665,7 +640,7 @@ function addControl(article) {
 
 function removeControl(article) {
   const button = article.querySelector(`:scope .${BUTTON_CLASS}`);
-  // The control is wrapped in a list item; an empty <li> would keep its flex gap.
+  // Remove the wrapping <li> too; an empty one keeps its flex gap.
   const host = button?.closest('.message-attribution-opposite > li') || button;
   host?.remove();
   article.classList.remove('has-screenshot-button');
@@ -673,7 +648,7 @@ function removeControl(article) {
 
 function refresh() {
   const enabled = getPostScreenshot();
-  // Thread posts and conversation messages share the post layout, so both are candidates.
+  // Thread posts and conversation messages share the same layout.
   for (const article of document.querySelectorAll('#post-list .message--post, .block--conversation .message--conversation')) {
     if (enabled) addControl(article);
     else removeControl(article);
@@ -692,7 +667,7 @@ function schedule() {
 
 export function wirePostScreenshots() {
   refresh();
-  // One observer on the body covers both re-renders and appended pages.
+  // One body observer covers re-renders and appended pages.
   new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
   window.addEventListener('voz:settings', schedule);
 }

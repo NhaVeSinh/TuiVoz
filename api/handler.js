@@ -1,5 +1,4 @@
-// VOZ forum — edge API (Singapore region). Proxies voz.vn/api with the guest key or the user's OAuth bearer
-// token, and runs the OAuth2 + PKCE exchange server-side (the token endpoint needs a browser-only User-Agent).
+/** voz.vn edge API proxy + OAuth2. */
 
 export const config = {
   runtime: 'edge',
@@ -10,11 +9,11 @@ const SITE = 'https://voz.vn';
 const API_BASE = `${SITE}/api`;
 const GUEST_KEY = '5tYQHu6ETKPFQ4W-fQGd_78ttL1LyZpD';
 const CLIENT_ID = '2424906941304717';
-// imgur Client-ID for the sticker-album importer. Fixed, not user-supplied.
+// imgur Client-ID for the sticker importer; fixed server-side.
 const IMGBUR_CLIENT_ID = '66850c248e91c93';
 const REDIRECT_URI = 'vozma26://oauth';
 const UA = 'VOZ/MA26';
-// All 14 scopes the official app requests. New scopes only take effect after a fresh login.
+// All scopes the official app requests; new ones need re-login.
 const SCOPES = [
   'thread:read',
   'thread:write',
@@ -35,21 +34,19 @@ const SCOPES = [
 const SESSION_COOKIE = 'voz_session';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
 
-// oEmbed providers XenForo resolves server-side for [MEDIA=<site>]<key>[/MEDIA].
+// Server-side oEmbed targets for [MEDIA=<site>] embeds.
 const OEMBED_TARGETS = {
   flickr: (key) => `https://www.flickr.com/services/oembed/?url=${encodeURIComponent(`https://flic.kr/p/${key}`)}&format=json`,
 };
 
-// Douyin (抖音) share links. The player needs the numeric aweme id, which a short v.douyin.com link only reveals
-// through its Location header, and douyin.com sends no CORS headers.
+// Douyin share links: the aweme id hides behind redirects; no CORS.
 const DOUYIN_SHORT_HOSTS = ['v.douyin.com'];
 const DOUYIN_MEDIA_HOSTS = ['www.douyin.com', 'douyin.com', 'www.iesdouyin.com', 'iesdouyin.com'];
 const DOUYIN_VIDEO_ID = /\/(?:share\/)?video\/(\d{6,25})(?:[/?#]|$)/;
 const DOUYIN_SHORT_CODE = /^\/[\w-]{4,32}\/?$/;
 const DOUYIN_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 
-// Accepts a full share URL or a bare numeric id and returns the aweme id, or null. Anything not recognisably
-// douyin is rejected before a fetch.
+// Returns the aweme id from a share URL or bare numeric id.
 async function resolveDouyinVideoId(raw) {
   if (/^\d{6,25}$/.test(raw)) return raw;
   let url;
@@ -62,7 +59,7 @@ async function resolveDouyinVideoId(raw) {
   const direct = url.pathname.match(DOUYIN_VIDEO_ID);
   if (DOUYIN_MEDIA_HOSTS.includes(url.hostname) && direct) return direct[1];
   if (!DOUYIN_SHORT_HOSTS.includes(url.hostname) || !DOUYIN_SHORT_CODE.test(url.pathname)) return null;
-  // `redirect: 'manual'` is not portable across runtimes, so the hops are walked explicitly and capped.
+  // redirect:'manual' isn't portable, so hops are walked and capped.
   let next = url.href;
   for (let hop = 0; hop < 4; hop++) {
     let res;
@@ -83,7 +80,7 @@ async function resolveDouyinVideoId(raw) {
       continue;
     }
     if (!res.ok) return null;
-    // Some share links land on a real page instead of redirecting; the id is in the HTML.
+    // Some links serve HTML instead of redirecting; id is inside.
     const html = (await res.text()).slice(0, 200_000);
     const match = html.match(/"aweme_id"\s*:\s*"(\d{6,25})"/) || html.match(DOUYIN_VIDEO_ID);
     return match ? match[1] : null;
@@ -143,11 +140,7 @@ function json(data, init = {}) {
 
 function corsHeaders(request) {
   const origin = request.headers.get('origin') || '';
-  // Portable rule that works on any deployment of this code — production domain, previews, custom domains,
-  // forks — without hardcoding a single project name: the origin may read the API when it IS the host the
-  // request was made to (same-origin fetches never even need these headers, but the userscript on voz.vn and
-  // local dev do), when it is the site itself, or a local dev server. Everything else — every other Vercel
-  // customer's app, lookalike hosts like localhost.evil.com — gets the site as its ACAO and cannot read.
+  // ACAO only when origin is the request host, the site itself, or localhost.
   let originUrl = null;
   try {
     originUrl = origin ? new URL(origin) : null;
@@ -236,29 +229,20 @@ async function fetchMe(tokens) {
   return data.me || null;
 }
 
-// The reaction member list is scraped by the browser (ui/reactions.js): Cloudflare blocks a server-side fetch
-// of /p/{id}/reactions, so there is no proxy route for it.
+// No /reactions proxy: Cloudflare blocks server-side fetch; browser scrapes it.
 
-// Browser-cacheable GET responses, tiered by what staleness actually costs. The /voz/* app-support endpoints
-// are identical for every user and voz.vn itself tags them with ETags + a max-age, so the response's own ETag
-// and cache policy are passed through (a stale entry revalidates with If-None-Match and voz.vn answers 304).
-// The node tree changes rarely and is worth an hour. Everything else keeps no-store: voz.vn sends no ETags for
-// entities, so a cached thread page would render replies and read-state late — e.g. a reply navigating to the
-// page it just posted to.
+// Cacheable GET tiers: /voz/* pass through ETag/max-age; rest no-store.
 function cacheControlFor(method, sub, upstreamHeaders, headers) {
   if (method !== 'GET') return 'private, no-store, max-age=0';
   if (sub.startsWith('/voz/reactions') || sub.startsWith('/voz/smilies') || sub.startsWith('/voz/app-config')) {
-    // The /voz/* app-support payloads are identical for every user and voz.vn tags them with an ETag + a
-    // max-age — both pass through, but forced private: these responses also carry xf-request-user headers,
-    // and a public CDN-cached copy would hand one visitor's user id to the next within the max-age window.
+    // Pass ETag/max-age through but force private: xf-request-user is per-user.
     const etag = upstreamHeaders.get('etag');
     if (etag) headers.set('ETag', etag);
     const maxAge = /max-age=(\d+)/.exec(upstreamHeaders.get('cache-control') || '')?.[1]
       || (sub.startsWith('/voz/app-config') ? '60' : '3600');
     return `private, max-age=${maxAge}`;
   }
-  // Everything else — including /nodes, whose freshness the home revalidation depends on — stays no-store:
-  // voz.vn sends no ETags for entities, and cached content pages would render replies and read-state late.
+  // All else no-store: voz.vn sends no entity ETags.
   return 'private, no-store, max-age=0';
 }
 
@@ -306,7 +290,7 @@ async function handleProxy(request, url, tokens) {
 
   const headers = new Headers();
   headers.set('Content-Type', upstream.headers.get('content-type') || 'application/json; charset=utf-8');
-  // Cacheable tiers only apply to successful upstream responses — a proxied 5xx must never be cached.
+  // Cache tiers apply only to successful upstream responses.
   headers.set('Cache-Control', upstream.ok ? cacheControlFor(method, sub, upstream.headers, headers) : 'private, no-store, max-age=0');
   for (const name of ['xf-request-user', 'xf-request-user-extras']) {
     const value = upstream.headers.get(name);
@@ -319,8 +303,7 @@ async function handleProxy(request, url, tokens) {
 
 export default async function handler(request) {
   const url = new URL(request.url);
-  // vercel.json rewrites every /api/* request to this function as /api/handler?__path=<rest>, so the original
-  // path is rebuilt here. Catch-all `[...path].js` only works in Next.js.
+  // vercel.json rewrites /api/* as ?__path=<rest>; rebuild the real path.
   if (url.searchParams.has('__path')) {
     const rest = url.searchParams.get('__path') || '';
     url.searchParams.delete('__path');
@@ -342,7 +325,7 @@ export default async function handler(request) {
     });
   }
 
-  // Douyin share links: the page needs the aweme id but cannot follow the redirect itself.
+  // The page can't follow douyin redirects; resolve here.
   if (path === '/api/xf/douyin') {
     const id = await resolveDouyinVideoId(url.searchParams.get('url') || '');
     const headers = new Headers(corsHeaders(request));
@@ -351,8 +334,7 @@ export default async function handler(request) {
     return json({ id, embed: `https://open.douyin.com/player/video?vid=${id}&autoplay=0`, page: `https://www.douyin.com/video/${id}` }, { status: 200, headers });
   }
 
-  // XenForo resolves some embeds (flickr, …) through oEmbed instead of an iframe. Neither provider sends CORS
-  // headers, so the page relays through us.
+  // oEmbed providers send no CORS headers; the page relays here.
   if (path === '/api/xf/oembed') {
     const site = (url.searchParams.get('site') || '').toLowerCase();
     const key = url.searchParams.get('key') || '';
@@ -375,7 +357,7 @@ export default async function handler(request) {
     }
     const headers = new Headers(corsHeaders(request));
     headers.set('Cache-Control', 'private, max-age=3600');
-    // Only the fields the page needs; the raw payload can carry arbitrary URLs.
+    // Whitelist fields; the raw payload can carry arbitrary URLs.
     return json(
       {
         provider: String(payload.provider_name || site),
@@ -391,8 +373,7 @@ export default async function handler(request) {
     );
   }
 
-  // Sticker albums are imported straight from imgur. A page cannot skip CORS, so it relays here. The Client-ID
-  // is fixed server-side: a query-string one let any caller burn a third party's quota.
+  // imgur relay (no CORS); Client-ID stays server-side to protect quota.
   if (path.startsWith('/api/xf/imgur/')) {
     const sub = path.replace('/api/xf/imgur', '');
     const upstream = await fetch(`https://api.imgur.com/3${sub}`, {
@@ -418,11 +399,9 @@ export default async function handler(request) {
     if (target.protocol !== 'https:' || target.username || target.password) {
       return json({ error: 'invalid_image_url' }, { status: 400, headers: corsHeaders(request) });
     }
-    // `limit` asks upstream for only the first N bytes, so the avatar freezer can tell an animated avatar from
-    // a static one without downloading it in full.
+    // limit= fetches only N bytes so the avatar check skips a full download.
     const limit = Number(url.searchParams.get('limit')) || 0;
-    // Cloudflare answers a plain server-side fetch with a challenge page about half the time. A challenge is a
-    // 403 with an HTML body, so it is retried; a real 404 is not.
+    // Retry 403/429: a Cloudflare challenge is a 403 HTML page.
     const attempt = () => {
       const headers = { Accept: 'image/*', 'User-Agent': UA };
       if (limit > 0) headers.Range = `bytes=0-${limit - 1}`;
@@ -441,20 +420,17 @@ export default async function handler(request) {
     }
     const headers = new Headers(corsHeaders(request));
     headers.set('Content-Type', contentType);
-    // Avatars carry a `?<mtime>` cache-buster, so the bytes never change and the browser may reuse them.
-    // `private` keeps them out of shared caches.
+    // ?<mtime> makes bytes immutable; private keeps them per-user.
     headers.set('Cache-Control', 'private, max-age=86400');
     if (limit > 0) {
-      // Reported so the caller can tell a truncated prefix from the whole file.
+      // Lets the caller detect a truncated prefix.
       const total = upstream.headers.get('content-range')?.split('/')[1] || upstream.headers.get('content-length') || '';
       if (total) headers.set('X-Image-Total', total);
     }
     return new Response(upstream.body, { status: 200, headers });
   }
 
-  // Attachment downloads: post.Attachments[] gives a direct_url on voz.vn/attachments/<name>.<id>/, but that
-  // redirect answers Cloudflare-403 to anyone not carrying a forum session cookie — guests included — so the
-  // file has to be fetched server-side and streamed back, with Content-Disposition set from the metadata.
+  // Attachment direct_url 403s without a forum cookie; fetch server-side.
   if (path === '/api/attachment-download' && request.method === 'GET') {
     const id = String(url.searchParams.get('id') || '').replace(/\D/g, '');
     if (!id) return json({ error: 'missing_id' }, { status: 400, headers: corsHeaders(request) });
@@ -484,16 +460,14 @@ export default async function handler(request) {
     const headers = new Headers(corsHeaders(request));
     headers.set('Content-Type', upstream.headers.get('content-type') || 'application/octet-stream');
     if (upstream.headers.get('content-length')) headers.set('Content-Length', upstream.headers.get('content-length'));
-    // `?name=` marks a view link (lightbox <img src>): inline so the browser renders it. The plain /?id= form
-    // used by file rows stays `attachment` so the save dialog opens with the real filename.
+    // ?name= renders inline; plain ?id= downloads with the real filename.
     const disposition = url.searchParams.get('name') ? 'inline' : 'attachment';
     headers.set('Content-Disposition', `${disposition}; filename="${filename.replace(/"/g, '')}"; filename*=UTF-8''${encodeURIComponent(filename)}`);
     headers.set('Cache-Control', 'private, max-age=86400');
     return new Response(upstream.body, { status: 200, headers });
   }
 
-  // pik.vn image host. Its uploader sends no CORS headers, so the page relays here. The multipart body must be
-  // forwarded untouched so pik.vn's SHA-256 check still matches.
+  // pik.vn relay (no CORS); forward the body untouched for its SHA-256 check.
   if (path === '/api/pik/upload' && request.method === 'POST') {
     const contentType = request.headers.get('content-type') || '';
     if (!contentType.startsWith('multipart/form-data')) {
@@ -501,8 +475,7 @@ export default async function handler(request) {
     }
     let upstream;
     try {
-      // Buffered, not streamed: forwarding a request stream needs the non-portable `duplex: 'half'` on the edge
-      // runtime.
+      // Buffered: streaming needs non-portable duplex:'half' on edge.
       const body = await request.arrayBuffer();
       upstream = await fetch('https://pik.vn/api/upload', {
         method: 'POST',

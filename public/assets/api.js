@@ -1,13 +1,11 @@
-// Thin client for the edge API. Every voz.vn call goes through /api/xf/*, which attaches the guest key or the
-// session bearer token server-side.
+/** Edge API client. */
 
 const XF = '/api/xf';
 
 export class ApiError extends Error {
   constructor(status, payload) {
     const first = payload && payload.errors && payload.errors[0];
-    // `error` is a string from our handler, but an object ({ code, message }) for a Vercel platform error —
-    // never show "[object Object]".
+    // `error` can be a Vercel object ({ code, message }), not a string.
     const rawError = payload && payload.error;
     const errorText = rawError && typeof rawError === 'object' ? rawError.message || rawError.code : rawError;
     super((first && first.message) || (errorText ? String(errorText) : '') || `HTTP ${status}`);
@@ -44,7 +42,7 @@ export async function xf(path, { method = 'GET', query, body, json, form } = {})
     init.headers['Content-Type'] = 'application/json';
     init.body = JSON.stringify(json);
   } else if (form !== undefined) {
-    // FormData sets its own Content-Type with boundary; never set it manually.
+    // FormData sets its own boundary Content-Type; never override.
     init.body = form;
   }
   const res = await fetch(url, init);
@@ -68,8 +66,7 @@ export const api = {
   searchForumThreads: (id, page = 1) => xf(`/search-forums/${id}/threads`, { query: { page } }),
   threads: (page = 1, order = 'post_date') => xf('/threads/', { query: { page, order } }),
   thread: (id, page = 1) => xf(`/threads/${id}/`, { query: { with_posts: 'true', page } }),
-  // Thread metadata without the twenty post bodies: enough for is_unread, visitor_read_date, reply_count and
-  // the title used to build URLs.
+  // Thread metadata only, without the post bodies.
   threadMeta: (id) => xf(`/threads/${id}/`),
   threadPosts: (id, page = 1) => xf(`/threads/${id}/posts`, { query: { page } }),
   post: (id) => xf(`/posts/${id}/`),
@@ -82,12 +79,12 @@ export const api = {
   reportPost: (id, message) => xf(`/voz/posts/${id}/report`, { method: 'POST', body: { message } }),
   warnings: () => xf('/voz/warnings'),
   warnPost: (id, warningDefinitionId) => xf(`/voz/posts/${id}/warn`, { method: 'POST', body: { warning_definition_id: warningDefinitionId } }),
-  // Thread moderation: rename / pin / (un)lock; move; delete.
+  // Thread moderation.
   updateThread: (id, fields) => xf(`/threads/${id}/`, { method: 'POST', body: fields }),
   moveThread: (id, targetNodeId, starterAlert) =>
     xf(`/threads/${id}/move`, { method: 'POST', body: { target_node_id: targetNodeId, starter_alert: starterAlert } }),
   deleteThread: (id, opts) => xf(`/threads/${id}/`, { method: 'DELETE', query: opts }),
-  // Native attachments (the app flow): key -> multipart upload -> `attachment_key` on the post body.
+  // App attachment flow: key → upload → attachment_key on post.
   attachmentKey: (context) =>
     xf('/attachments/new-key', {
       method: 'POST',
@@ -102,13 +99,13 @@ export const api = {
   deleteAttachment: (id, key) => xf(`/attachments/${id}/`, { method: 'DELETE', query: key ? { key } : undefined }),
   conversations: (page = 1, filter) => xf('/conversations/', { query: { page, ...filter } }),
   conversation: (id, page = 1) => xf(`/conversations/${id}/`, { query: { with_messages: 'true', page } }),
-  // A conversation message carries its `conversation_id`, which the alert payload omits.
+  // Message carries conversation_id, which alert payloads omit.
   conversationMessage: (id) => xf(`/conversation-messages/${id}/`),
   createConversation: (recipientIds, title, message) =>
     xf('/conversations/', { method: 'POST', body: { recipient_ids: recipientIds, title, message } }),
   replyConversation: (conversationId, message) =>
     xf('/conversation-messages/', { method: 'POST', body: { conversation_id: conversationId, message } }),
-  // Author-only; there is no DELETE for conversation messages (the API answers 404 invalid_method).
+  // Author-only; DELETE answers 404 invalid_method.
   editConversationMessage: (messageId, message) =>
     xf(`/conversation-messages/${messageId}/`, { method: 'POST', body: { message } }),
   conversationMessages: (id, page = 1) => xf(`/conversations/${id}/messages`, { query: { page } }),
@@ -133,19 +130,19 @@ export const api = {
   profilePost: (id, page = 1) => xf(`/profile-posts/${id}/`, { query: { with_comments: 1, page } }),
   profilePostComment: (id) => xf(`/profile-post-comments/${id}/`),
   profilePostComments: (id, page = 1) => xf(`/profile-posts/${id}/comments`, { query: { page } }),
-  // Requires profile_post:write — not in the app's granted scopes; expect a missing_scope 403.
+  // Needs profile_post:write; expect a missing_scope 403.
   createProfilePost: (userId, message) => xf('/profile-posts/', { method: 'POST', body: { user_id: userId, message } }),
   createProfilePostComment: (postId, message) => xf(`/profile-posts/${postId}/comments`, { method: 'POST', body: { message } }),
   search: (keywords) => xf('/search/', { method: 'POST', body: { keywords, search_type: 'post', order: 'date' } }),
   searchMember: (userId, content = 'post') => xf('/search/member', { method: 'POST', body: content ? { user_id: userId, content } : { user_id: userId } }),
-  // Deeper pages of an expired search: `before` is a unix-date cursor from the last result.
+  // `before` is a unix-date cursor for paging expired searches.
   searchOlder: (searchId, before) => xf(`/search/${searchId}/older`, { method: 'POST', body: { search_id: searchId, before } }),
   createThread: (nodeId, title, message, prefixId, attachmentKey) =>
     xf('/threads/', { method: 'POST', body: { node_id: nodeId, title, message, prefix_id: prefixId, attachment_key: attachmentKey } }),
   searchResults: (searchId, page = 1) => xf(`/search/${searchId}/`, { query: { page } }),
   stats: () => xf('/stats'),
   appConfig: () => xf('/voz/app-config'),
-  // Batched client analytics like the app; JSON body, flushed on pagehide.
+  // Batched analytics, flushed on pagehide.
   signals: (events) => xf('/voz/signals', { method: 'POST', json: { events } }),
 };
 

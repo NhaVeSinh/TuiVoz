@@ -1,17 +1,15 @@
-// Navigation helpers. The router registers itself here so views can navigate without importing it.
+/** Navigation + scroll restore. */
 
-// The app sets scroll position itself; the browser's restoration would override it.
+// App owns scroll; browser restoration would override it.
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
 let routeHandler = () => {};
-// Set by a view that positions the page itself (a `#post-…` target), so the reset below does not undo it.
+// Set when a view positioned the page itself (a #post target).
 let keepScroll = false;
-// Set when a nested navigate consumed `keepScroll`, so the outer navigate's reset does not undo the same jump.
+// Set when a nested navigate already placed the scroll.
 let placedByNestedNavigate = false;
 
-// Scroll position per history entry. Entries are identified by a key stamped into `history.state`, because the
-// URL is not unique (a page can be pushed twice) and `history.state` is the only per-entry storage the platform
-// gives. Back/forward then restores the list position the reader left, instead of dumping them at the top.
+// Scroll per history entry, keyed by a stamp in history.state (URLs aren't unique).
 const scrollPositions = new Map();
 
 function stampKey(create) {
@@ -23,17 +21,15 @@ function stampKey(create) {
   return key;
 }
 
-// Called before leaving an entry: remembers where the reader was on it.
+// Remembers where the reader was before leaving an entry.
 export function saveScroll() {
   const key = stampKey(true);
   if (key) scrollPositions.set(key, window.scrollY);
 }
 
-// Called after a popstate render. Images and lazily-filled strips can still grow the page, so a single
-// `scrollTo` would land short; retry on the next frames until the position sticks.
+// After popstate render; retries frames until late-loading content settles.
 export function restoreScroll() {
-  // A `#post-...` / `#conversation-message-...` entry belongs to the post, not to a remembered offset: the view
-  // already jumped to the anchor (and called keepCurrentScroll), so restoring the old offset would undo it.
+  // #post/#conversation-message anchors own the scroll; don't restore the offset.
   const hash = location.hash.slice(1);
   if ((hash.startsWith('post-') || hash.startsWith('conversation-message-')) && document.getElementById(hash)) return;
   const key = stampKey(false);
@@ -55,34 +51,30 @@ export function setRouteHandler(fn) {
   routeHandler = fn;
 }
 
-// A view that jumped to a specific post after rendering owns the scroll position for this navigation.
+// A view that jumped to a post owns this navigation's scroll.
 export function keepCurrentScroll() {
   keepScroll = true;
 }
 
-// History-API routing: /t/845346, not /#/t/845346.
+// History-API routing: /t/845346, not #/t/845346.
 export function navigate(path, { replace = false } = {}) {
-  // The outgoing entry keeps its own position, so going back to it lands where it was left.
+  // Save the outgoing entry's position so back lands where it was left.
   saveScroll();
-  // Replacing keeps any existing state; a fresh key is stamped right after for the new entry.
+  // Replace keeps existing state; a fresh key is stamped next.
   if (replace) history.replaceState({ ...(history.state || {}) }, '', path);
   else history.pushState({}, '', path);
   stampKey(true);
-  // Reset the scroll after the view is in the DOM, never before: resetting first made the old page jump to the
-  // top and stay there for the whole request, which reads as "the page jumped, then the thread appeared". The
-  // view's `innerHTML` write and this microtask both run before the next paint, so no frame shows the new page
-  // mid-scroll.
+  // Reset scroll only after the view is in the DOM (pre-paint microtask).
   return Promise.resolve(routeHandler()).finally(() => {
     if (keepScroll) {
       keepScroll = false;
-      // The view placed itself (a post permalink); record that position for this entry too.
+      // View placed itself (post permalink); record that position too.
       saveScroll();
-      // An enclosing navigate (the /p/{id}/ → thread redirect) must not reset the scroll this one just set.
+      // Enclosing navigate must not reset the scroll just set.
       placedByNestedNavigate = true;
       return;
     }
-    // A nested navigate (e.g. /p/{id}/ → /t/…/#post-{id}) already placed the view and consumed the flag. Resetting
-    // here would undo that jump, which is what made the page snap back to the top after following an alert.
+    // Nested navigate already placed the view; resetting would undo it.
     if (placedByNestedNavigate) {
       placedByNestedNavigate = false;
       return;

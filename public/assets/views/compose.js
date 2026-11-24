@@ -1,3 +1,4 @@
+/** New thread view. */
 import { app } from '../core/dom.js';
 import { esc } from '../core/utils.js';
 import { forumPath, threadPath } from '../core/paths.js';

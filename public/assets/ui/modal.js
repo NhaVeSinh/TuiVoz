@@ -1,4 +1,4 @@
-// Modal shell + the report dialog. Post editing happens in place (ui/inlineEdit.js).
+/** Modals. */
 
 import { modalRoot } from '../core/dom.js';
 import { esc } from '../core/utils.js';

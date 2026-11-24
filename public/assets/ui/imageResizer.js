@@ -1,6 +1,4 @@
-// Interactive image resize for the visual editor, modelled on voz.vn (Froala's image plugin): a dashed overlay
-// with corner handles tracks the selected picture, and a small dialog lets the width be typed. The result is
-// written to the <img> style; editorCodec folds it back into [IMG=W]/[ATTACH=W].
+/** Image resizer. */
 
 const MIN_WIDTH = 16;
 const HANDLES = ['nw', 'ne', 'sw', 'se'];
@@ -37,7 +35,7 @@ export function attachImageResizer(editor, visual) {
     badge.textContent = `${Math.round(rect.width)}×${Math.round(rect.height)}`;
   };
 
-  // Keeps the aspect ratio when height is unknown, exactly like the plugin's `imageResize` default.
+  // Keeps aspect ratio, like the plugin's `imageResize` default.
   const applyWidth = (width) => {
     if (!target) return;
     const { width: naturalWidth, height: naturalHeight } = natural(target);
@@ -95,7 +93,7 @@ export function attachImageResizer(editor, visual) {
     handle.addEventListener('pointercancel', end);
   }
 
-  // voz's dialog: type a width, Enter applies. The badge doubles as the trigger.
+  // Type-a-width dialog; the badge doubles as the trigger.
   badge.addEventListener('click', (event) => {
     event.stopPropagation();
     if (!target) return;

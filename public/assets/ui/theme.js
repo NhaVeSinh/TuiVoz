@@ -1,5 +1,4 @@
-// Applies the "Giao diện" preferences to the document. Three axes: theme (auto keeps following the OS), font
-// (only a downloadable family pulls in fonts.css) and size (--post-scale / --ui-scale), all as <html> attrs.
+/** Theme applier. */
 
 import { getTheme, getFont, getFontScale, getFullNumbers, FONT_STACKS, FONT_DEFAULT as DEFAULT_FONT_KEY } from '../lib/settings.js';
 import { setFullNumbersMode } from '../core/utils.js';
@@ -8,8 +7,7 @@ const FONT_HREF = '/assets/css/fonts.css';
 
 const media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 
-// Last applied full-numbers mode. `null` until the first applyAppearance(), so the boot call never fires a
-// re-render.
+// Last applied full-numbers mode; null until first apply so boot never re-renders.
 let lastFullNumbers = null;
 
 const CATPPUCCIN_BASE = { 'catppuccin-mocha': 'dark' };
@@ -25,12 +23,11 @@ function applyTheme(mode) {
   const resolved = resolvedTheme(mode);
   root.dataset.themeMode = mode;
   root.dataset.theme = resolved;
-  // Tells the browser which UI to paint for native widgets, so they match the theme.
+  // Themes native widgets to match.
   root.style.colorScheme = resolved;
 }
 
-// The font stylesheet is a single <link> added on first use and never removed, so switching back and forth does
-// not re-download. `be-vietnam` is already declared by font-default.css.
+// One <link>, added once and kept; `be-vietnam` already ships in font-default.css.
 function ensureFontStylesheet() {
   if (document.getElementById('font-faces')) return;
   const link = document.createElement('link');
@@ -44,20 +41,18 @@ function applyFont(font) {
   const root = document.documentElement;
   root.dataset.font = font;
   if (font === DEFAULT_FONT_KEY) {
-    // base.css names the default family and font-default.css declares the face, so clearing the inline value
-    // lets those apply.
+    // Clearing the inline value lets base.css/font-default.css apply.
     root.style.removeProperty('--font');
     return;
   }
   const stack = FONT_STACKS[font];
   if (!stack) return;
-  // Only a vendored family needs fonts.css; `system` must not fetch it.
+  // Only vendored families need fonts.css; `system` must not fetch it.
   if (font !== 'system') ensureFontStylesheet();
   root.style.setProperty('--font', stack);
 }
 
-// Font size follows the same shape: unitless multipliers in --post-scale / --ui-scale, both 1 by default.
-// index.html sets the same two properties before the first paint.
+// Same shape as font/theme: unitless scales, preset by index.html before first paint.
 function applyFontScale({ postSize, uiSize }) {
   const root = document.documentElement;
   root.dataset.postSize = String(postSize);
@@ -70,8 +65,7 @@ export function applyAppearance() {
   applyTheme(getTheme());
   applyFont(getFont());
   applyFontScale(getFontScale());
-  // core/utils.js reads the mode at render time, so it only has to be pushed in before the next render. A real
-  // change asks the current view to re-render (app.js listens).
+  // utils reads the mode at render time; a real change re-renders via app.js.
   const mode = getFullNumbers();
   const changed = lastFullNumbers !== null && mode !== lastFullNumbers;
   lastFullNumbers = mode;
@@ -79,7 +73,7 @@ export function applyAppearance() {
   if (changed) window.dispatchEvent(new CustomEvent('voz:format-change'));
 }
 
-// Called once at boot. The media listener is permanent; it reads the current setting.
+// Called once at boot; the media listener is permanent.
 export function wireTheme() {
   applyAppearance();
   if (!media) return;
@@ -89,6 +83,6 @@ export function wireTheme() {
   };
   if (media.addEventListener) media.addEventListener('change', onChange);
   else if (media.addListener) media.addListener(onChange);
-  // Settings changed in another tab arrive through the same event saveSettings fires.
+  // Cross-tab settings changes arrive via this event.
   window.addEventListener('voz:settings', applyAppearance);
 }

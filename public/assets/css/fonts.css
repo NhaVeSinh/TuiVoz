@@ -1,7 +1,4 @@
-/* Vendored webfonts, built by tools/build-fonts.py from the upstream OFL files: subset to latin +
-   vietnamese at 400/500/700 as woff2, with `swap`. Only linked when the reader picks a family.
-   Weight slots: the UI asks for 600 far more often than 700, so Roboto and SF Pro Display declare
-   their 700 file in the 600 slot. Be Vietnam declares a single 400 face, like voz.vn. */
+/* Optional fonts. */
 
 @font-face {
   font-family: "Roboto";

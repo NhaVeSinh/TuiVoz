@@ -1,5 +1,4 @@
-// Bộ lọc — lưu trữ và chuẩn hoá dữ liệu (localStorage `voz-filters:v1`).
-// Thứ tự trong mảng = độ ưu tiên: filter phía trên được kiểm tra trước, filter đầu tiên khớp sẽ thắng.
+/** Filter storage. */
 
 import { makeId } from '../lib/settings.js';
 import { FIELD_DEFS, ACTIONS, SCOPES, JOINS, customUrlMatches, normalizeUrlRule } from './match.js';
@@ -9,7 +8,7 @@ const MAX_FILTERS = 200;
 const MAX_NAME = 80;
 const DEFAULT_COLOR = '#ff6600';
 
-// 'custom' keeps each condition's own AND/OR connector; 'all'/'any' force every connector.
+// 'custom' keeps per-condition connectors; 'all'/'any' force them all.
 const joinIds = new Set(['all', 'any', 'custom']);
 
 function normalizeCondition(raw) {
@@ -36,9 +35,7 @@ export function normalizeFilter(raw) {
     .slice(0, 20);
   const color = /^#[0-9a-f]{6}$/i.test(String(raw.color ?? '')) ? String(raw.color) : DEFAULT_COLOR;
   const name = String(raw.name ?? '').replace(/\s+/g, ' ').trim().slice(0, MAX_NAME);
-  // Mỗi URL rule là {v: pattern, m: 'plain'|'wildcard'|'regex'}; full/partial URLs
-  // chỉ giữ pathname (host/port/query bị bỏ) nên mẫu chạy trên mọi origin. Chuỗi
-  // trần cũ được suy ra mode (có `*`/`?` → wildcard, còn lại plain).
+  // URL rules {v, m}; only the pathname is kept, legacy strings infer mode.
   const seenUrls = new Set();
   const customUrls = [];
   for (const rule of (Array.isArray(raw.customUrls) ? raw.customUrls : []).map(normalizeUrlRule)) {
@@ -85,7 +82,7 @@ export function saveFilters(list) {
   try {
     localStorage.setItem(KEY, JSON.stringify(filters));
   } catch {
-    /* Storage full/disabled — the change still applies for this session via the in-memory array. */
+    /* Storage full/disabled — the in-memory copy still serves this session. */
   }
   window.dispatchEvent(new CustomEvent('voz:filters-change'));
   return filters;
@@ -116,7 +113,7 @@ export function removeFilter(id) {
   saveFilters(loadFilters().filter((item) => item.id !== id));
 }
 
-// Swap a filter to another index (reorder = re-prioritise).
+// Reorder = re-prioritise.
 export function moveFilter(id, toIndex) {
   const filters = loadFilters();
   const from = filters.findIndex((item) => item.id === id);
@@ -136,7 +133,7 @@ export function setFilterEnabled(id, enabled) {
   saveFilters(filters);
 }
 
-// Restore path: replace the whole list from a backup payload. `addOnly` merges new ids.
+// Replace the list from a backup; addOnly merges new ids.
 export function restoreFilters(list, { addOnly = false } = {}) {
   const incoming = (Array.isArray(list) ? list : []).map(normalizeFilter).filter(Boolean);
   if (addOnly) {
@@ -148,9 +145,7 @@ export function restoreFilters(list, { addOnly = false } = {}) {
   return saveFilters(incoming);
 }
 
-// Only the scopes a filter is enabled for decide whether it can act; kept here so callers can short-circuit
-// a whole render when no filter covers the scope at all. Scope 'custom' (Tự chọn) tham gia mọi scope
-// khi URL trang hiện tại khớp một trong `customUrls`.
+// Enabled filters covering this scope; 'custom' joins on a page-URL match.
 export function filtersForScope(scope) {
   if (!SCOPES[scope]) return [];
   const pathname = typeof window !== 'undefined' ? window.location?.pathname : '';

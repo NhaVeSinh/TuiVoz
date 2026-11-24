@@ -1,5 +1,4 @@
-// Browser-local preferences. Nothing is sent to voz.vn; it lives in localStorage and is included in JSON
-// backup/restore.
+/** Settings storage. */
 
 const KEY = 'voz-settings:v1';
 const MAX_SHORTCUTS = 200;
@@ -50,9 +49,8 @@ export const emptySettings = () => ({
   vozSupport: VOZ_SUPPORT_DEFAULT,
 });
 
-// Colour scheme for the content area; the chrome keeps its dark styling in both modes.
-//   auto — follow the OS and keep following it; light / dark — fixed; catppuccin-mocha — a fixed
-//   palette that resolves to dark for the shared rules and re-points the tokens by data-theme-mode.
+// Colour scheme for the content area; chrome stays dark in both modes.
+// auto follows the OS; catppuccin-mocha is a fixed palette driven by data-theme-mode.
 export const THEME_MODES = ['auto', 'light', 'dark', 'catppuccin-mocha'];
 export const THEME_DEFAULT = 'auto';
 export const THEME_LABELS = {
@@ -62,8 +60,8 @@ export const THEME_LABELS = {
   'catppuccin-mocha': 'Catppuccin Mocha',
 };
 
-// Typography. The list order is the radio group order in Cài đặt → Giao diện. `be-vietnam` is the default and
-// index.html links its 400 face directly; the other families stay lazy.
+// List order matches the settings radio group. Only be-vietnam's 400
+// face is linked eagerly; other families stay lazy.
 export const FONTS = ['be-vietnam', 'be-vietnam-pro', 'system', 'segoe-ui', 'cantarell', 'roboto', 'sf-pro-display'];
 export const FONT_DEFAULT = 'be-vietnam';
 export const FONT_LABELS = {
@@ -75,25 +73,24 @@ export const FONT_LABELS = {
   roboto: 'Roboto',
   'sf-pro-display': 'SF Pro Display',
 };
-// Family name + stylesheet per downloadable option. `null` injects nothing.
+// Family stack per option; `null` injects nothing.
 export const FONT_STACKS = {
-  // The default carries no stack: base.css names "Be Vietnam" first, so clearing the inline --font applies it.
+  // No stack: clearing --font falls back to base.css's "Be Vietnam".
   'be-vietnam': null,
-  // `system` must name the OS fonts explicitly: clearing --font would fall back to the vendored default in
-  // base.css.
+  // Names OS fonts explicitly, or --font would fall back to the vendored default.
   system: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   roboto: 'Roboto, "Segoe UI", "Helvetica Neue", Arial, sans-serif',
-  // Cantarell has no Medium/Semibold master, so 600/700 are served by the Bold face.
+  // Cantarell has no Medium/Semibold; Bold serves 600/700.
   cantarell: '"Cantarell", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   'be-vietnam-pro': '"Be Vietnam Pro", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  // San Francisco first, then Apple-first fallbacks for other platforms.
+  // San Francisco first, then Apple-first fallbacks.
   'sf-pro-display': '"SF Pro Display", -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  // The vendored face is "Segoe UI Local" so it cannot shadow the OS "Segoe UI". Local first.
+  // Vendored as "Segoe UI Local" so it can't shadow the OS face.
   'segoe-ui': '"Segoe UI Local", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
 };
 
-// Cỡ chữ. Two independent axes: `postSize` scales prose inside a post, `uiSize` everything else. Both are
-// percentages applied as --post-scale / --ui-scale.
+// Two axes: postSize scales post prose, uiSize everything else.
+// Percentages applied as --post-scale / --ui-scale.
 export const FONT_SCALE_MIN = 80;
 export const FONT_SCALE_MAX = 200;
 export const FONT_SCALE_STEP = 5;
@@ -102,11 +99,8 @@ export const FONT_SCALE_DEFAULT = 100;
 export const IMAGE_DOWNLOAD_DEFAULT = false;
 export const POST_SCREENSHOT_DEFAULT = true;
 export const STATIC_AVATARS_DEFAULT = false;
-// Strike through members whose account is banned ("KIA"), like voz.vn does for moderators.
-//   off   — never look anybody up (default)
-//   smart — only when the reader opens a member tooltip or visits their profile, so the cost is one request per
-//           member the reader actually asked about
-//   all   — every username that scrolls near the viewport
+// Strike through banned members ("KIA") like voz.vn.
+// smart checks only members the reader opens; all checks every username near the viewport.
 export const BANNED_USER_MODES = ['off', 'smart', 'all'];
 export const BANNED_USERS_DEFAULT = 'off';
 export const BANNED_USERS_LABELS = {
@@ -120,8 +114,7 @@ export const BANNED_USERS_HELP = {
   all: 'Gạch ngang mọi nick bị ban ngay trong bài viết và danh sách chủ đề. Tốn nhiều lượt gọi API nhất.',
 };
 
-// Full (unrounded) statistics and absolute dates. off — voz.vn's rounded numbers; thread — inside a thread
-// only; all — everywhere.
+// Unrounded stats and absolute dates; off keeps voz.vn's rounding.
 export const FULL_NUMBERS_MODES = ['off', 'thread', 'all'];
 export const FULL_NUMBERS_DEFAULT = 'off';
 export const FULL_NUMBERS_LABELS = {
@@ -130,17 +123,14 @@ export const FULL_NUMBERS_LABELS = {
   all: 'Áp dụng cho toàn bộ web',
 };
 
-// Tiết kiệm dữ liệu — the switch behind every Tier-1 saving lever (paused unread polling, counts-only
-// reaction strips, tap-to-load video embeds, no avatar sniffing, no prefetch, no analytics):
-//   auto — on when the device itself signals saving (Android Data Saver via navigator.connection.saveData,
-//          slow effective types, or cellular); iOS exposes none of these, so there the manual toggle is the
-//          only path; on — always; off — never.
+// Master switch for every data-saving lever (polling, reactions, embeds,
+// prefetch, analytics). `auto` follows the device signal (saveData, slow
+// effective type, cellular); iOS exposes none, so only the manual toggle works there.
 export const DATA_SAVING_MODES = ['auto', 'on', 'off'];
 export const DATA_SAVING_DEFAULT = 'auto';
 
-// "Hỗ trợ tăng điểm voz" — fires voz.vn's adblock-check beacon (/xfmg.php) with a clean report on each
-// navigation so TuiVoz usage counts toward the supporter score like browsing voz.vn with ads allowed.
-// Default off: nothing is sent unless the user opts in.
+// Fires voz.vn's adblock-check beacon (/xfmg.php) so usage counts toward
+// the supporter score. Off by default.
 export const VOZ_SUPPORT_DEFAULT = false;
 export const DATA_SAVING_LABELS = {
   auto: 'Tự động theo thiết bị',
@@ -154,8 +144,7 @@ export const DATA_SAVING_HELP = {
 };
 
 export function normalizeFontScale(value) {
-  // Number(null) and Number('') are 0, which would clamp to the floor, so only accept a number or a numeric
-  // string.
+  // Number(null)/'' are 0 and would clamp to the floor; accept only numbers or numeric strings.
   if (typeof value === 'string') {
     if (value.trim() === '') return FONT_SCALE_DEFAULT;
   } else if (typeof value !== 'number') {
@@ -167,8 +156,7 @@ export function normalizeFontScale(value) {
   return Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, rounded));
 }
 
-// Infinite scroll for thread lists and threads:
-//   on — load automatically; manual — only after the pager button; off — pager only.
+// Infinite scroll: on loads automatically; manual waits for the pager button.
 export const SCROLL_MODES = ['on', 'manual', 'off'];
 export const SCROLL_DEFAULT = 'manual';
 export const SCROLL_LABELS = {
@@ -177,7 +165,7 @@ export const SCROLL_LABELS = {
   off: 'Tắt',
 };
 
-// Shown until the user edits the list; saved on first change so removals stick.
+// Shown until the user edits; saved on first change so removals stick.
 export const DEFAULT_SHORTCUTS = [
   { name: 'F33', url: '/f/diem-bao.33/' },
   { name: 'F17', url: '/f/chuyen-tro-linh-tinh.17/' },
@@ -191,10 +179,10 @@ export function normalizeSettings(raw) {
   out.postSize = normalizeFontScale(raw?.postSize);
   out.uiSize = normalizeFontScale(raw?.uiSize);
   out.imageDownload = raw?.imageDownload === true;
-  // Default-on: only an explicit `false` opts out; anything unset follows POST_SCREENSHOT_DEFAULT.
+  // Default-on: only explicit `false` opts out.
   out.postScreenshot = raw?.postScreenshot === true || (raw?.postScreenshot !== false && POST_SCREENSHOT_DEFAULT);
   out.staticAvatars = raw?.staticAvatars === true;
-  // Older builds stored a boolean here; `true` meant "always show".
+  // Older builds stored a boolean; `true` meant "always".
   out.bannedUsers = raw?.bannedUsers === true
     ? 'all'
     : BANNED_USER_MODES.includes(raw?.bannedUsers)
@@ -229,7 +217,7 @@ export function saveSettings(next) {
   try {
     localStorage.setItem(KEY, JSON.stringify(settings));
   } catch {
-    /* Storage may be full or disabled; keep the in-memory result. */
+    /* Storage may be full or disabled. */
   }
   window.dispatchEvent(new CustomEvent('voz:settings', { detail: settings }));
   return settings;
@@ -407,7 +395,7 @@ export function exportSettingsJson({ albums = [], recent = [], filters = [] } = 
     fullNumbers: settings.fullNumbers,
     vozSupport: settings.vozSupport,
   };
-  // Sticker payload mirrors the userscript backup so either file can be restored.
+  // Sticker payload mirrors the userscript backup format for cross-import.
   if (albums.length || recent.length) {
     payload.version = '1.2';
     payload.albums = albums;
@@ -430,7 +418,7 @@ export function importSettingsJson(text) {
   if (!source || typeof source !== 'object') {
     return { ok: false, error: 'JSON phải là một object.' };
   }
-  // A userscript backup has no navShortcuts — accept it as album-only.
+  // Userscript backups have no navShortcuts; accept as album-only.
   const albumSource = Array.isArray(source.albums) ? source.albums : null;
   const filterSource = Array.isArray(source.filters) ? source.filters : null;
   if (!Array.isArray(source.navShortcuts) && !albumSource && !filterSource) {

@@ -1,13 +1,11 @@
-// Long quotes would push the rest of the thread off screen. voz.vn clips any quote whose content passes 800px
-// and fades it into a "Click to expand..." button.
+/** Quote collapse. */
 export const MAX_QUOTE_HEIGHT = 800;
 
 function expandableQuote(quote) {
-  // The threshold is on the content, not the blockquote, so a barely-over quote gains no button that reveals
-  // two pixels.
+  // Threshold on content, not the blockquote, so a barely-over quote gets no button.
   const content = quote.scrollHeight;
   if (content <= MAX_QUOTE_HEIGHT) return;
-  // The header stays outside the clip so the reader always sees whose post is quoted.
+  // Header stays outside the clip so the quotee stays visible.
   const head = quote.querySelector('.quote-source');
   const body = quote.ownerDocument.createElement('div');
   body.className = 'quote-expand-content';
@@ -46,7 +44,7 @@ export function wireQuoteExpansion(root = document) {
 
 let scheduled = false;
 
-// Quotes can only be measured once laid out, so this runs on an animation frame.
+// Quotes can only be measured after layout, so run on a frame.
 function scheduleQuoteExpansion() {
   if (scheduled) return;
   scheduled = true;
@@ -58,10 +56,10 @@ function scheduleQuoteExpansion() {
 
 export function wireAllQuoteExpansion() {
   scheduleQuoteExpansion();
-  // Watch the whole body: views replace #app and appended pages arrive later.
+  // Views replace #app and pages append later, so observe the whole body.
   new MutationObserver(scheduleQuoteExpansion).observe(document.body, { childList: true, subtree: true });
   window.addEventListener('resize', scheduleQuoteExpansion);
-  // A quote holding a picture measures short until it decodes, so re-measure on image load.
+  // A quote with a picture measures short until decode; re-measure on load.
   document.addEventListener('load', (event) => {
     if (event.target instanceof HTMLImageElement && event.target.closest('blockquote.xfBb-quote')) scheduleQuoteExpansion();
   }, true);

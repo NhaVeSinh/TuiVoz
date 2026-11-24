@@ -1,4 +1,4 @@
-/* Posts (.message) — metrics copied from voz.vn, plus the BBCode renderer. */
+/* Post styles. */
 
 .message {
   background: var(--content-bg);
@@ -10,7 +10,7 @@
 .message:target { outline: 2px solid var(--nav-active); }
 .message-inner { display: flex; gap: 0; }
 
-/* Transparent block so the page background separates posts. */
+/* transparent block: page bg separates posts */
 .block--messages { background: transparent; }
 .block--messages .block-body { background: transparent; }
 .block--messages > .block-header { background: transparent; padding: 7px 0; }
@@ -28,7 +28,6 @@
 .member-card-banned { margin-top: 4px; font-size: calc(12px * var(--ui-scale)); font-weight: var(--fw-bold); color: #b3261e; }
 :root[data-theme="dark"] .member-card-banned { color: #f2b8b5; }
 
-/* Top row above the first post: page navigator. */
 .block-outer {
   display: flex;
   align-items: center;
@@ -39,7 +38,6 @@
 .block-outer-main { flex: 1 1 auto; min-width: 0; }
 .block-outer .pageNav { padding: 0; }
 
-/* Icon button inside the blue block header (watch / unwatch). */
 .block-header-title { flex: 1 1 auto; min-width: 0; }
 .block-header-icon {
   flex: 0 0 auto;
@@ -74,7 +72,7 @@
 }
 .message-main { display: flex; flex-direction: column; min-height: 100%; }
 
-/* Inline edit: the body is swapped for the editor inside the same cell. */
+/* inline edit swaps the body for an editor in-cell */
 .message-cell--main.is-editing { padding: 10px; }
 .message-main[hidden] { display: none !important; }
 .inline-edit { display: block; }
@@ -161,7 +159,7 @@
 }
 .message-postNumber:hover { color: var(--link-hover) !important; }
 
-/* Share menu behind a post number. Fixed so it escapes the post's stacking context. */
+/* fixed so it escapes the post's stacking context */
 .post-share-popup {
   position: fixed;
   z-index: 300;
@@ -194,12 +192,11 @@
   font-size: calc(16px * var(--post-scale));
   line-height: 1.5;
   overflow-wrap: anywhere;
-  /* Nested blocks are prose, so they scale with --post-scale, not the page. */
+  /* nested blocks are prose; scale with --post-scale */
   --ui-scale: var(--post-scale);
 }
 .message-body img { border-radius: 3px; }
-/* Mirrors voz.vn's .bbImageWrapper: an inline-block on the text baseline. `vertical-align:
-   top` lifted a tall image above its line and overlapped the line above. */
+/* voz .bbImageWrapper; vertical-align:top overlaps the line above */
 .downloadable-image {
   position: relative;
   display: inline-block;
@@ -236,7 +233,7 @@
 .image-download-button.is-loading { cursor: wait; opacity: .35; }
 .image-download-button.is-saved { opacity: 1; background: rgba(22, 128, 67, .9); border-color: rgba(255, 255, 255, .6); }
 
-/* Per-post screenshot control, in the attribution row next to the bookmark. */
+/* screenshot control, beside the bookmark */
 .post-screenshot-button {
   display: inline-flex;
   align-items: center;
@@ -262,17 +259,15 @@
 .post-screenshot-button.is-loading svg { animation: post-screenshot-spin 0.9s linear infinite; }
 @keyframes post-screenshot-spin { to { transform: rotate(360deg); } }
 .post-screenshot-button.is-saved { opacity: 1; color: var(--link); }
-/* No hover on touch, so the control must stay findable. */
+/* no hover on touch: keep findable */
 @media (hover: none) {
   .post-screenshot-button { opacity: .75; }
 }
 
-/* Off-screen capture sheet: the wrapper drawn into the PNG, plus the title band. The page backdrop is the dark
-   chrome, so the post card reads as a card sitting on the site rather than on a flat light field. */
+/* capture sheet drawn into the PNG; page bg = dark chrome */
 .screenshot-sheet { background: var(--page-bg); color: var(--text); padding: 16px; font-family: var(--font); }
 .screenshot-title {
-  /* Mirrors .block--messages > .block-header: no background of its own, near-white text directly on the page
-     backdrop. */
+  /* mirrors the block header: light text straight on the page */
   margin: 0 0 10px;
   padding: 7px 0;
   font-size: calc(19px * var(--ui-scale));
@@ -281,12 +276,11 @@
   color: var(--block-header-fg);
 }
 .screenshot-sheet .message { margin: 0; overflow: visible; }
-/* Must stay `stretch`: on narrow widths `.message-inner` is a column, and `flex-start` would shrink-wrap the main
-   cell so a wide child (a [code] block, a long URL) pushes it past the sheet, cropping the capture horizontally. */
+/* must stay stretch: flex-start shrink-wraps, cropping the capture */
 .screenshot-sheet .message-inner { align-items: stretch; }
-/* The control is stripped from the clone, but a leftover list item would hold its gap. */
+/* leftover empty item would hold the control's gap */
 .screenshot-sheet .message-attribution-opposite > li:empty { display: none; }
-/* Touch devices have no hover, so the control stays visible. */
+/* no hover on touch: keep visible */
 @media (hover: none) {
   .image-download-button { opacity: .75; }
 }
@@ -353,7 +347,7 @@
   cursor: pointer;
 }
 
-/* Grey strip listing who reacted, like voz.vn. */
+/* grey "who reacted" strip (voz) */
 .reactionsBar {
   display: flex;
   align-items: center;
@@ -373,7 +367,7 @@
 .reactionsBar-user:hover { color: var(--link-hover); }
 .reactionsBar-loading { color: var(--dimmed); }
 
-/* ---------- bbcode rendering ---------- */
+/* bbcode rendering */
 .post-spoiler { margin: 8px 0; }
 .post-spoiler > summary { display: list-item; width: fit-content; max-width: 100%; padding: 5px 10px; border: 1px solid var(--border); border-radius: 3px; background: var(--quote-bg); color: var(--link); font-size: calc(13px * var(--ui-scale)); cursor: pointer; }
 .post-spoiler[open] { padding-bottom: 8px; }
@@ -401,7 +395,7 @@
 .bbWrapper blockquote.has-quote-source::before { content: none; }
 .bbWrapper .quote-source { display: block; margin-bottom: 4px; font-size: calc(12px * var(--ui-scale)); font-weight: var(--fw-bold); }
 
-/* Long quotes are clipped to 800px with a fade, like voz.vn's .bbCodeBlock--expandable. */
+/* long quotes clip at 800px with a fade (voz) */
 .bbWrapper blockquote.is-expandable { position: relative; }
 .bbWrapper blockquote .quote-expand-content { max-height: 800px; overflow: hidden; }
 .bbWrapper blockquote.is-expanded .quote-expand-content { max-height: none; }
@@ -466,14 +460,14 @@
 .bbWrapper .smilie { vertical-align: middle; }
 .bbWrapper .username { color: var(--link); font-weight: var(--fw-bold); }
 
-/* member card banner: white text over image */
+/* white text over the banner image */
 .member-card-header[style*="background-image"] { position: relative; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.55); }
 .member-card-header[style*="background-image"]::before { content: ""; position: absolute; inset: 0; background: rgba(0,0,0,.35); }
 .member-card-header[style*="background-image"] > * { position: relative; }
 .member-card-header[style*="background-image"] .member-card-name,
 .member-card-header[style*="background-image"] .u-dimmed { color: #fff; }
 
-/* Thread moderation menu — voz's "More options" structural menu, anchored under the header button. */
+/* voz "More options" menu under the header button */
 .block-header { position: relative; }
 .block-header-menu {
   position: absolute;
@@ -503,7 +497,7 @@
 }
 .block-header-menu .menu-linkRow:hover { background: var(--surface-tint); color: var(--link); }
 
-/* Attachments block — mirrors XenForo's .block-attachments under the post body. */
+/* mirrors XenForo's .block-attachments */
 .attachments { margin-top: 12px; }
 .attachments-title {
   margin: 0 0 6px;
@@ -562,8 +556,7 @@
 }
 .attachment-file-size svg { width: 13px; height: 13px; }
 
-/* Image lightbox overlay. Full-viewport on every viewport, so small phones keep the image fitted inside
-   the chrome instead of overflowing. */
+/* lightbox stays full-viewport even on small phones */
 .lb-overlay {
   position: fixed;
   inset: 0;

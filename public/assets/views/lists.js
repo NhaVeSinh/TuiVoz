@@ -1,4 +1,4 @@
-// Alerts, bookmarks and watched threads.
+/** List views. */
 
 import { app } from '../core/dom.js';
 import { esc, num, timeAgo } from '../core/utils.js';
@@ -44,13 +44,13 @@ export async function viewAlerts(page) {
         ${pagination(res.pagination, (p) => withPage('/alerts', p))}
       </div>`;
     wirePageJump((p) => withPage('/alerts', p));
-    // Clicking an alert marks it read like the app's POST /alerts/{id}/mark (viewed all happens server-side).
+    // Click marks alert read; viewed-all is handled server-side.
     app.addEventListener('click', (event) => {
       const link = event.target.closest('[data-alert]');
       if (!link) return;
       api.markAlertRead(Number(link.dataset.alert)).catch(() => {});
       link.closest('.alert-row')?.classList.remove('is-unread');
-      // The header badge counts unviewed alerts; the throttled refresh would otherwise lag up to 30s.
+      // Badge counts unviewed alerts; throttled refresh would lag ~30s.
       refreshUnreadCounts(true);
     });
   } catch (err) {

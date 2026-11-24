@@ -1,9 +1,8 @@
-// Page titles, mirroring voz.vn's own composition: "<name> | VOZ", with "| Page N" between the name and the
-// brand on any page after the first. Page 1 never gets the suffix.
+/** document.title. */
 
 const BRAND = 'VOZ';
 
-// Single writer for document.title, so a route change never leaves a stale title.
+// Single writer for document.title, so routes never leave a stale one.
 export function setTitle(name, page) {
   const label = String(name == null ? '' : name).trim();
   const n = Number(page) || 1;
@@ -14,13 +13,12 @@ export function setTitle(name, page) {
   document.title = parts.join(' | ');
 }
 
-// The home and login pages carry the bare brand, with no page segment.
+// Home and login show the bare brand.
 export function setBrandTitle() {
   document.title = BRAND;
 }
 
-// Thread titles put the prefix after the title, joined with a hyphen — the opposite order from the on-page
-// heading, which shows the label first.
+// Prefix goes after the title here — reversed vs the on-page heading.
 export function setThreadTitle(thread, page) {
   const title = String(thread?.title || '').trim();
   const prefix = String(thread?.prefix || '').trim();

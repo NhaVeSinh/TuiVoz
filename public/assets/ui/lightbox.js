@@ -1,6 +1,4 @@
-// Post image lightbox: click any post image or attachment thumbnail and a fullscreen overlay opens with the
-// original, plus prev/next navigation (arrows, swipe, keyboard). One delegated listener is enough because the
-// overlay lives on <body> and gallery items are collected at click time, so appended pages just work.
+/** Lightbox. */
 
 const EXCLUDED_IMAGE_CLASSES = ['smilie', 'bbCodeBlockUnfurl-image', 'bbCodeBlockUnfurl-icon', 'reaction-image'];
 const EXCLUDED_ANCESTOR =
@@ -23,9 +21,7 @@ function isExcludedImage(img) {
   return Boolean(img.closest(EXCLUDED_ANCESTOR));
 }
 
-// The original to show in the lightbox: an attachment block carries data-lightbox-src, an <a> wrapping an
-// image usually points at the full size, and the data-saving thumbnail swap keeps the original in
-// data-save-original. Relative voz.vn attachment paths (guest-blocked) are routed through the image proxy.
+// Resolve the full-size source; relative attachment paths go through the proxy.
 function fullSrc(img) {
   const explicit = img.closest('[data-lightbox-src]')?.getAttribute('data-lightbox-src');
   if (explicit) return explicit;
@@ -107,24 +103,23 @@ export function openLightbox(items, startIndex) {
     if (event.target.closest('.lb-zoom-out')) return setZoom(zoom / ZOOM_STEP, false);
     if (event.target.closest('.lb-prev')) return move(-1);
     if (event.target.closest('.lb-next')) return move(1);
-    // Only the ✕ button (or Escape) closes; clicking the image or backdrop does nothing.
+    // Backdrop/image clicks do not close; only ✕ or Escape.
   });
 
-  // Double-click/double-tap toggles zoom — the single-tap close would fire first otherwise.
+  // Double-click toggles zoom.
   overlay.addEventListener('dblclick', (event) => {
     if (event.target.closest('.lb-btn')) return;
     event.preventDefault();
     setZoom(zoom > 1 ? 1 : 2);
   });
 
-  // Wheel zoom keeps the desktop behaviour readers expect from a lightbox.
+  // Wheel zoom, expected on desktop lightboxes.
   overlay.addEventListener('wheel', (event) => {
     event.preventDefault();
     setZoom(zoom * (event.deltaY < 0 ? 1.25 : 0.8), false);
   }, { passive: false });
 
-  // Drag to pan once the image exceeds the frame; pointer events cover mouse and touch. `draggable="false"`
-  // and preventDefault keep Firefox's native image drag from swallowing the gesture.
+  // Drag pans when zoomed; draggable=false + preventDefault stop Firefox image drag.
   let panStart = null;
   let justPanned = false;
   overlay.addEventListener('pointerdown', (event) => {
@@ -177,8 +172,7 @@ export function closeLightbox() {
   document.body.style.overflow = '';
 }
 
-// Every zoomable image in a post: parsed-body images plus attachment thumbnails. Order follows the document,
-// and the same img is not listed twice when it sits inside an attachment block.
+// Zoomable images in document order; de-duplicates attachment wrappers.
 export function galleryItems(scope) {
   const items = [];
   const seen = new Set();
@@ -191,8 +185,7 @@ export function galleryItems(scope) {
 }
 
 export function wireLightbox() {
-  // Runs in the capture phase so an image wrapped in a link opens the overlay before the SPA link handler
-  // navigates, and before the attachment thumbnail's own <a> would leave the page.
+  // Capture phase so linked images open the overlay before navigation.
   document.addEventListener('click', (event) => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     const img = event.target.closest?.('img');

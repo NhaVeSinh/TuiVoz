@@ -1,6 +1,4 @@
-// /voz/signals batched analytics, same shapes as the app: impression / open / read. Events queue in memory and
-// flush on pagehide via sendBeacon-safe fetch; nothing is sent to guests (the endpoint ignores anonymous calls
-// anyway, but this avoids wasted requests).
+/** Analytics signals. */
 
 import { api } from '../api.js';
 import { isDataSaving } from './dataSaving.js';
@@ -16,7 +14,7 @@ function flush() {
 }
 
 export function signal(event) {
-  // Data-saving skips the analytics POSTs entirely; nothing user-visible depends on them.
+  // Data-saving skips analytics POSTs; nothing user-visible depends on them.
   if (!state.loggedIn || !event?.type || isDataSaving()) return;
   queue.push({ timestamp: Math.floor(Date.now() / 1000), ...event });
   clearTimeout(timer);

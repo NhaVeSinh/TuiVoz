@@ -1,3 +1,5 @@
+/** User badges. */
+
 import { esc } from '../core/utils.js';
 
 export function userBadges(user) {

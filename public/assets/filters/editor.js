@@ -1,5 +1,4 @@
-// Bộ lọc — giao diện tab "Bộ lọc" trong Cài đặt: danh sách ưu tiên (kéo thả / ↑↓) + form modal
-// thêm/sửa filter. Chỉ lo UI; logic khớp nằm ở match.js, lưu trữ ở filters.js.
+/** Filter settings UI. */
 
 import { esc } from '../core/utils.js';
 import { openModal } from '../ui/modal.js';
@@ -13,10 +12,10 @@ import {
   fieldsForScope, patternError, URL_MODES, urlRuleError,
 } from './match.js';
 
-// Màu viền gợi ý cho hành động "Nổi bật" — người dùng vẫn nhập mã màu tuỳ ý.
+// Suggested colours for "Nổi bật"; free input is still allowed.
 const COLOR_PRESETS = ['#ff6600', '#e74c3c', '#f1c40f', '#2ecc71', '#3498db', '#9b59b6', '#e84393', '#95a5a6'];
 
-// Chuẩn hoá giá trị màu người dùng nhập: chấp nhận #hex, hex trần và mọi màu CSS hợp lệ.
+// Accept #hex, bare hex, or any valid CSS colour.
 function normalizeColor(value) {
   let color = String(value ?? '').trim();
   if (!color) return '';
@@ -28,7 +27,7 @@ const dragIcon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentC
 const moveUpIcon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 14 6-6 6 6"/></svg>';
 const moveDownIcon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 10 6 6 6-6"/></svg>';
 
-// Human summary of a condition row for the list ("username ~ /bot/i").
+// One-line summary of a condition for the list.
 function conditionLabel(c) {
   const def = FIELD_DEFS[c.field];
   if (!def) return c.field;
@@ -78,7 +77,7 @@ export function filterRowsHtml() {
   </li>`).join('');
 }
 
-// ---- Filter editor modal -------------------------------------------------
+// Filter editor modal
 
 const newCondition = (scope = 'posts') => ({ field: fieldsForScope(scope)[0], op: 'eq', mode: 'contains', or: false, value: '' });
 
@@ -113,9 +112,7 @@ function conditionRowHtml(cond, index, scope = 'posts') {
   </div>`;
 }
 
-// Scope 'custom' (Tự chọn): ô nhập danh sách URL áp dụng — một dòng một mẫu,
-// nút + thêm dòng vô hạn. Mỗi dòng có select cách khớp (Đường dẫn / Wildcard / Regex)
-// để tránh nhầm lẫn khi mẫu chứa ký tự đặc biệt. Chỉ hiện khi radio Tự chọn được chọn.
+// Custom-scope URL rule row; the per-row mode select avoids glob-char ambiguity.
 function urlRowHtml(rule = { v: '', m: 'plain' }) {
   const mode = URL_MODES.some(([id]) => id === rule.m) ? rule.m : 'plain';
   const placeholder = mode === 'regex' ? 'vd: /\\/t\\/.*\\.\\d+\\//i' : mode === 'wildcard' ? '/t/ten-thread.12345/ hoặc /f/box.13/*' : '/t/ten-thread.12345/ hoặc tong-hop-addon';
@@ -135,7 +132,7 @@ function readCustomUrls(root) {
   })).filter((rule) => rule.v);
 }
 
-// Syncs the in-memory condition list from the DOM before any re-render.
+// Snapshot condition rows from the DOM before a re-render.
 function readConditions(root) {
   return [...root.querySelectorAll('.filter-cond')].map((row, index) => ({
     or: index > 0 ? row.querySelector('.cond-joiner')?.value === 'or' : false,
@@ -150,7 +147,7 @@ function renderConditions(root, conditions, scope = 'posts') {
   root.querySelector('#filter-conditions').innerHTML = conditions.map((c, i) => conditionRowHtml(c, i, scope)).join('');
 }
 
-// Validates a gathered condition for save-time errors (per-row, Vietnamese message).
+// Per-row save-time validation message.
 function conditionError(cond, scope) {
   const def = FIELD_DEFS[cond.field];
   if (!def || !fieldsForScope(scope).includes(cond.field)) return 'Chọn trường dữ liệu cho điều kiện.';
@@ -225,8 +222,7 @@ export function openFilterEditor(filter, onSaved) {
   let conditions = draft.conditions;
   let scope = draft.scopes[0] || 'posts';
 
-  // A condition whose field belongs to the other scope is reset to that scope's
-  // default field (value kept); same-kind fields keep their op/mode.
+  // Foreign-scope fields reset to the default; same-kind keeps op/mode.
   const normalizeForScope = (cond) => {
     if (fieldsForScope(scope).includes(cond.field)) return cond;
     const def = FIELD_DEFS[cond.field];
@@ -244,7 +240,7 @@ export function openFilterEditor(filter, onSaved) {
   conditions = conditions.map(normalizeForScope);
   rerenderConds();
 
-  // 'Tự chọn' URL rows — keep at least one empty row for easy input.
+  // Keep at least one empty URL row for easy input.
   const urlsBox = root.querySelector('#filter-urls');
   const urlsWrap = root.querySelector('#filter-urls-wrap');
   const readUrlsDom = () => [...urlsBox.querySelectorAll('.filter-url-row')].map((row) => ({
@@ -267,7 +263,7 @@ export function openFilterEditor(filter, onSaved) {
     remove.closest('.filter-url-row')?.remove();
     if (!urlsBox.querySelector('.filter-url-row')) renderUrls([]);
   });
-  // Mode change ⇒ placeholder đổi theo; re-render giữ lại giá trị đang nhập.
+  // Mode change re-renders rows but keeps typed values.
   urlsBox.addEventListener('change', (event) => {
     if (!event.target.closest('.filter-url-mode')) return;
     renderUrls(readUrlsDom());
@@ -291,8 +287,7 @@ export function openFilterEditor(filter, onSaved) {
     rerenderConds();
   });
 
-  // Field change ⇒ operator list + value widget change; mode change ⇒ placeholder changes. Rebuild the row
-  // but keep every row's current values.
+  // Field/mode change rebuilds the rows, preserving entered values.
   condsBox.addEventListener('change', (event) => {
     if (!event.target.closest('.cond-field, .cond-mode')) return;
     conditions = readConditions(root);
@@ -379,7 +374,7 @@ export function openFilterEditor(filter, onSaved) {
   });
 }
 
-// ---- List wiring ---------------------------------------------------------
+// List wiring
 
 export function wireFilterSettings() {
   const listEl = document.getElementById('filter-list');
@@ -391,7 +386,7 @@ export function wireFilterSettings() {
     listEl.innerHTML = filterRowsHtml();
     if (countEl) countEl.textContent = `${loadFilters().length} bộ lọc`;
   };
-  // Backup/restore redraws the list through this hook while the panel stays mounted.
+  // Backup/restore redraws the list via this hook.
   window.__filterRerender = rerender;
   rerender();
 
@@ -433,7 +428,7 @@ export function wireFilterSettings() {
     toast(toggle.checked ? 'Đã bật bộ lọc' : 'Đã tắt bộ lọc');
   });
 
-  // Drag & drop reorder = thay đổi ưu tiên (trên cao hơn = ưu tiên cao hơn).
+  // Drag reorder = priority (topmost wins).
   listEl.addEventListener('dragstart', (event) => {
     const row = event.target.closest('.filter-row');
     if (!row) return;

@@ -1,22 +1,20 @@
-// The popup behind a post's `#13,661` number: the canonical voz.vn permalink and the permalink of the site
-// being browsed. Not a modal — the number keeps its jump behaviour.
+/** Post-number popup. */
 
 import { esc } from '../core/utils.js';
 import { threadPath, withPage } from '../core/paths.js';
 import { toast } from './feedback.js';
 
-// `voz.vn` is the upstream forum, independent of where this client is deployed.
+// Upstream forum origin, independent of this client's host.
 const VOZ_ORIGIN = 'https://voz.vn';
 
-// voz.vn's canonical permalink. XenForo resolves /t/<slug>.<id>/post-<postId> server-side, so the page number
-// is not guessed here.
+// Canonical voz permalink; XenForo resolves /post-<id> server-side.
 export function vozPostUrl(thread, postId) {
   if (!thread?.thread_id || !postId) return '';
-  // `threadPath` already produces the slugged form.
+  // threadPath already produces the slugged form.
   return `${VOZ_ORIGIN}${threadPath(thread).replace(/\/$/, '')}/post-${postId}`;
 }
 
-// The permalink as the reader sees it: current origin, current page, `#post-…` fragment.
+// Permalink as the reader sees it: current origin and page.
 export function webPostUrl(thread, page, postId) {
   if (!thread?.thread_id || !postId) return '';
   return `${location.origin}${withPage(threadPath(thread), page)}#post-${postId}`;
@@ -30,7 +28,7 @@ async function copy(text) {
       return true;
     }
   } catch {
-    // Falls through to the legacy path: clipboard access needs a secure context.
+    // Legacy path: clipboard API needs a secure context.
   }
   try {
     const field = document.createElement('textarea');
@@ -51,9 +49,7 @@ async function copy(text) {
 let open = null;
 let watchRaf = 0;
 
-// The number is also the permalink of its own post, so the same click opens the menu *and* scrolls the page to
-// that post. That programmatic scroll used to close the menu immediately — measured as
-// `doc-click → popup add → popup remove → scroll`. Inside this window a scroll only re-anchors the menu.
+// The same click scrolls to the post; inside this window scrolls only re-anchor the menu.
 const JUMP_GRACE_MS = 700;
 
 export function closePostNumberPopup() {
@@ -73,7 +69,7 @@ export function closePostNumberPopup() {
   window.removeEventListener('touchmove', onUserScroll, { capture: true });
 }
 
-// Anchored below the number and kept inside the viewport. Fixed so it escapes the post's stacking context.
+// Anchored below the number; fixed to escape the post's stacking context.
 function place() {
   if (!open) return;
   const { root, trigger } = open;
@@ -86,7 +82,7 @@ function place() {
 
 function onScroll() {
   if (!open) return;
-  // Still settling from the anchor jump this click caused: follow the number instead of dying.
+  // Still settling from the anchor jump: re-anchor, don't close.
   if (performance.now() - open.openedAt < JUMP_GRACE_MS) {
     place();
     return;
@@ -98,21 +94,20 @@ function onUserScroll() {
   closePostNumberPopup();
 }
 
-// The post list is replaced by innerHTML on some navigations, detaching the trigger with no event to listen
-// for. Closing on every render would kill the popup the same click opened.
+// innerHTML swaps detach the trigger silently; close only once it is gone.
 function watchTrigger() {
   cancelAnimationFrame(watchRaf);
   const tick = () => {
     if (!open) return;
     if (!open.trigger.isConnected) return closePostNumberPopup();
-    // The anchor jump moves the number under the menu; keep the menu attached to it until it settles.
+    // Keep the menu attached until the anchor jump settles.
     if (performance.now() - open.openedAt < JUMP_GRACE_MS) place();
     watchRaf = requestAnimationFrame(tick);
   };
   watchRaf = requestAnimationFrame(tick);
 }
 
-// A click on the trigger is a no-op here: the `thread` handler owns toggling, so a second click can close it.
+// Trigger clicks no-op here; the thread handler owns toggling.
 function onDocumentClick(event) {
   if (!open) return;
   if (open.root.contains(event.target) || open.trigger.contains(event.target)) return;
@@ -128,7 +123,7 @@ function onKeydown(event) {
 }
 
 export function openPostNumberPopup(trigger, thread, page, postId) {
-  // A click on the same number while its menu is open closes it.
+  // Re-clicking the same number closes its menu.
   const wasOpen = open?.trigger === trigger;
   closePostNumberPopup();
   if (wasOpen) return;
@@ -165,15 +160,14 @@ export function openPostNumberPopup(trigger, thread, page, postId) {
     if (ok) closePostNumberPopup();
   });
 
-  // Registered on the next task: a capture listener added mid-gesture would run for the opening click and close
-  // the menu immediately.
+  // Next task: a capture listener added mid-gesture would see the opening click.
   setTimeout(() => {
     if (!open || open.trigger !== trigger) return;
     document.addEventListener('click', onDocumentClick, true);
     document.addEventListener('keydown', onKeydown, true);
     window.addEventListener('scroll', onScroll, true);
     window.addEventListener('resize', closePostNumberPopup, true);
-    // A wheel or touch is unambiguously the reader scrolling, so it closes at once even inside the grace window.
+    // Wheel/touch means a real user scroll: close even inside the grace window.
     window.addEventListener('wheel', onUserScroll, { capture: true, passive: true });
     window.addEventListener('touchmove', onUserScroll, { capture: true, passive: true });
   }, 0);

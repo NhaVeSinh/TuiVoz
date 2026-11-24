@@ -1,3 +1,5 @@
+/** Smilies. */
+
 import { xf } from '../api.js';
 import { cachedCatalog } from './catalogs.js';
 
@@ -15,7 +17,7 @@ export async function loadSmilies() {
       const escaped = [...codes.keys()].filter(Boolean).sort((a, b) => b.length - a.length).map((code) => code.replace(/[.*+?${}()|[\]\\]/g, '\\$&'));
       pattern = escaped.length ? new RegExp(escaped.join('|'), 'g') : null;
     } catch {
-      // Not cached: the next thread view retries.
+      // Retry on the next thread view.
       catalog = null;
     }
   }
@@ -23,7 +25,7 @@ export async function loadSmilies() {
 
 export const smiliesReady = () => Boolean(pattern);
 
-// Shared tokenizer: the editor and the post body must agree on which codes are smilies.
+// Shared tokenizer: editor and post body must agree on smilie codes.
 export function splitSmilieText(text) {
   if (!pattern || !text) return [text];
   pattern.lastIndex = 0;
@@ -35,7 +37,7 @@ export function splitSmilieText(text) {
     const code = match[0];
     const smilie = codes.get(code);
     if (!smilie || !/^https:\/\/data\.voz\.vn\//.test(smilie.image_url)) continue;
-    // Avoid turning fragments inside words or URLs into images.
+    // Skip fragments inside words or URLs.
     if (!code.startsWith(':') || !code.endsWith(':')) {
       if ((match.index && !/\s/.test(text[match.index - 1])) || (text[match.index + code.length] && !/\s|[.,!?]/.test(text[match.index + code.length]))) continue;
     }
@@ -70,7 +72,7 @@ export function renderSmilies(root) {
       if (/^https:\/\/data\.voz\.vn\//.test(smilie.image_url_2x || '')) image.srcset = `${smilie.image_url} 1x, ${smilie.image_url_2x} 2x`;
       image.alt = code;
       image.title = `${smilie.title} ${code}`;
-      // Editors need the source code back; an <img> cannot be serialized on its own.
+      // Editors read the source code back from data-smilie.
       image.dataset.smilie = code;
       image.width = Number(smilie.width) || 24;
       image.height = Number(smilie.height) || 24;

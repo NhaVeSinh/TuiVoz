@@ -1,4 +1,4 @@
-// Avatars. voz.vn serves them from data.voz.vn and falls back to a coloured initial.
+/** Avatars. */
 
 import { esc } from '../core/utils.js';
 
@@ -9,7 +9,7 @@ export function avatarUrlById(userId, size = 's') {
   return `https://data.voz.vn/avatars/${size}/${Math.floor(id / 1000)}/${id}.jpg`;
 }
 
-// XenForo's generated avatars cycle through a fixed palette; each pair clears WCAG AA.
+// XenForo generated-avatar palette; each pair clears WCAG AA.
 const DYNAMIC_AVATAR = [
   ['#66cc66', '#0d2b0d'],
   ['#669966', '#0a140a'],
@@ -20,18 +20,16 @@ const DYNAMIC_AVATAR = [
   ['#99cc66', '#203010'],
 ];
 
-// Avatar over a coloured initial, so a missing image degrades to voz.vn's generated one.
+// Coloured initial underneath so a missing image degrades gracefully.
 export function avatarMarkup(user, size = 's') {
   const id = Number(user && user.user_id) || 0;
   const urls = (user && user.avatar_urls) || {};
-  // A stub user has no avatar_urls, so guess the canonical path. All-null means the member genuinely has no
-  // avatar — guessing there would only produce 404s.
+  // Stub users lack avatar_urls → guess path; all-null = no avatar.
   const known = Object.keys(urls).length > 0;
   const src = known
     ? urls[size] || urls.m || urls.l || urls.o || ''
     : avatarUrlById(id, size);
-  // voz pairs each avatar with a 2x source so hi-dpi screens do not upscale the small file. The bucket above the
-  // requested one is exactly double, so an `s` avatar gets `m`, an `m`/`l` gets `l`/`o`.
+  // The next bucket up is exactly the 2x retina source.
   const RETINA = { xxs: 's', xs: 's', s: 'm', m: 'l', l: 'o', o: 'o' };
   const retinaSize = RETINA[size] || 'm';
   const retina = known

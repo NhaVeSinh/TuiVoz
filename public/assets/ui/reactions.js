@@ -1,5 +1,4 @@
-// Reaction buttons and the "who reacted" strip. The member list is not in the REST API: it is scraped from
-// /p/{id}/reactions, which only the browser can reach.
+/** Reactions. */
 
 import { state } from '../core/dom.js';
 import { esc } from '../core/utils.js';
@@ -65,8 +64,7 @@ export function reactionSummary(post) {
   const total = Object.values(counts).reduce((sum, n) => sum + (Number(n) || 0), 0);
   if (!total) return '';
   if (isDataSaving()) {
-    // Counts are already in the post payload; the names would cost one full voz.vn HTML page per post, so
-    // save mode shows the icons + total now and loads names only when the reader taps the strip.
+    // Save mode: names cost one voz.vn page each, so load them only on tap.
     return `<div class="reactionsBar" data-reaction-list="${post.post_id}" title="Bấm để xem ai đã thả cảm xúc">
       <span class="reactionsBar-icons">${countIcons(counts)}</span>
       <span class="reactionsBar-users">${total}</span>
@@ -85,7 +83,7 @@ function countIcons(counts) {
     .join('');
 }
 
-// Save mode only: the counts strip carries no names, so a tap loads the member list on demand.
+// Save mode only: a tap loads names on demand.
 document.addEventListener('click', (event) => {
   const strip = event.target.closest('.reactionsBar[data-reaction-list]');
   if (!strip || !isDataSaving() || strip.dataset.namesLoaded) return;
@@ -95,8 +93,7 @@ document.addEventListener('click', (event) => {
 
 export async function hydrateReactionLists(root) {
   if (isDataSaving()) return; // strips are complete already; names load on tap
-  // The member list is a cross-origin scrape per post, so a page of 20 posts would fire 20 requests right after
-  // render. Each strip waits until it is near the viewport, keeping the numbers in `reaction_counts` immediate.
+  // Names are a cross-origin scrape per post; defer each strip until near the viewport.
   for (const strip of root.querySelectorAll('.reactionsBar[data-reaction-list]')) {
     if (strip.dataset.reactionWired) continue;
     strip.dataset.reactionWired = 'true';
@@ -119,7 +116,7 @@ function observeReactionStrip(strip) {
         fillReactionStrip(entry.target);
       }
     },
-    // Start early enough that the strip is filled before it scrolls into view.
+    // Fill the strip before it scrolls into view.
     { rootMargin: '400px 0px' }
   );
   stripObserver.observe(strip);
@@ -152,10 +149,7 @@ async function fillReactionStrip(strip) {
     <span class="reactionsBar-users">${names}${more}</span>`;
 }
 
-// A screenshot clone is parked off-screen, so the visibility observer never fires inside it and the
-// "Đang tải thành viên…" placeholder would be baked into the PNG. Strips that already resolved keep their list;
-// the rest are dropped. No request is made — voz.vn sends no CORS header on /p/{id}/reactions, so fetching from
-// here can only fail and would still leave the placeholder.
+// Screenshot clones stay off-screen so strips never resolve there (no CORS either); drop unresolved ones.
 export function pruneUnloadedReactionStrips(root) {
   for (const strip of root.querySelectorAll('.reactionsBar[data-reaction-list]')) {
     if (!strip.querySelector('.reactionsBar-users')) strip.remove();

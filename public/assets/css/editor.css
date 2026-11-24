@@ -1,8 +1,8 @@
+/* Editor styles. */
+
 .reply-submit-row { display: flex; justify-content: flex-end; margin-top: 10px; }
 
-/* ---------- quick reply (.js-quickReply) ----------
-   voz.vn wraps the reply editor in the same .message grid as a post: left column with the reader's avatar and the
-   arrow pointing at the editor, right column with the editor and its submit row. */
+/* quick reply: voz reuses the post's .message grid */
 .js-quickReply { margin: 0 0 14px; overflow: visible; }
 .js-quickReply .message { margin-bottom: 0; background: transparent; overflow: visible; }
 .js-quickReply .message-cell--user { display: block; position: relative; flex: 0 0 140px; padding: 10px; background: var(--quote-bg); border-radius: 3px 0 0 3px; }
@@ -10,7 +10,7 @@
 .js-quickReply .message-avatar { margin-bottom: 0; }
 .js-quickReply .message-avatar-wrapper { position: relative; display: inline-block; vertical-align: bottom; margin-bottom: .5em; }
 .js-quickReply .message-cell--main { padding: 10px; }
-/* Border triangle plus an inner one in the content colour, so only the outer edge shows. */
+/* outer border triangle + inner content-coloured one */
 .message-userArrow { position: absolute; top: 20px; right: -1px; width: 0; height: 0; border-style: solid; border-width: 10px 10px 10px 0; border-color: transparent var(--border) transparent transparent; }
 .message-userArrow::after { content: ''; position: absolute; top: -9px; right: -10px; border-style: solid; border-width: 9px 9px 9px 0; border-color: transparent var(--content-bg) transparent transparent; }
 .formButtonGroup { display: flex; flex-wrap: wrap; align-items: center; margin-top: 10px; margin-bottom: -5px; }
@@ -27,16 +27,15 @@
 .rich-editor button:focus-visible, .rich-editor select:focus-visible, .rich-editor input:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
 .rich-editor .editor-toolbar button { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 32px; margin: 2px 1px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--editor-button-fg); flex: 0 0 auto; transition: background-color .25s, color .25s; }
 .rich-editor .editor-toolbar button:hover:not(:disabled), .rich-editor .editor-toolbar button[aria-expanded="true"], .rich-editor button[aria-pressed="true"] { background: var(--editor-button-hover-bg); color: var(--editor-button-fg); }
-/* Same box as voz.vn: a 24x16 sprite area centred in the 30x32 button, filled glyphs. */
+/* voz sprite: 24x16 centred in the 30x32 button */
 .rich-editor .editor-toolbar svg { width: 24px; height: 16px; flex: 0 0 auto; pointer-events: none; }
 .rich-editor .editor-toolbar .editor-more { width: 22px; }
 .editor-group { display: flex; align-items: center; padding: 4px 12px 0; }
 .editor-group:first-child { padding-left: 12px; }
 .editor-history { margin-left: auto; }
-/* voz.vn opens the "more" buttons as a second row *inside* the toolbar, not a floating panel: the row grows from
-   height 0 and the editor slides down with it. */
+/* voz "more" row grows inside the toolbar, not floating */
 .editor-overflow { flex: 0 0 100%; order: 99; display: flex; flex-wrap: wrap; align-items: center; gap: 0; width: 100%; margin: 0; padding: 0 12px; overflow: hidden; border-radius: 0 0 var(--radius) var(--radius); background: var(--editor-more-bg); transition: height .25s ease; }
-/* The row's buttons sit where their toggle sits: voz pads the row to that offset, we align to the group. */
+/* row buttons align under their toggle */
 .editor-overflow[data-menu-panel="rich"] { padding-left: 80px; }
 .editor-overflow[data-menu-panel="misc"] { justify-content: flex-end; }
 .editor-menu-icons { display: flex; align-items: center; }
@@ -48,17 +47,17 @@
 .editor-drafts { display: flex; gap: 6px; align-items: center; padding: 0 8px; }
 
 .editor-visual, .rich-editor .editor-source { border: 0; border-radius: 0; min-height: 190px; max-height: 70vh; overflow: auto; padding: 10px 20px 20px; line-height: 1.5; width: 100%; font-size: calc(15px * var(--ui-scale)); outline-offset: -2px; background: transparent; }
-/* voz.vn's quick reply box is short by default and grows with what is typed. */
+/* voz quick reply starts short, grows while typing */
 .js-quickReply .editor-visual, .js-quickReply .rich-editor .editor-source { min-height: 100px; }
 .editor-visual { overflow-wrap: anywhere; white-space: pre-wrap; }
 .editor-visual:empty::before { content: attr(data-placeholder); color: var(--dimmed); pointer-events: none; }
 .rich-editor .editor-source { font-family: ui-monospace, Consolas, monospace; resize: vertical; }
 .editor-visual img, .editor-preview img { max-width: 100%; max-height: 450px; object-fit: contain; }
-/* Stickers and attachments carry an explicit size; do not clamp it. */
+/* stickers/attachments carry explicit size; don't clamp */
 .editor-visual img[data-bb-tag="img"], .editor-preview img[data-bb-tag="img"],
 .editor-visual img[data-bb-tag="attach"], .editor-preview img[data-bb-tag="attach"] { max-height: none; }
 .editor-visual img[style*="width:"], .editor-preview img[style*="width:"] { max-width: none; }
-/* A block-level picture follows the editor's alignment. */
+/* inline-block lets a picture follow text alignment */
 .editor-visual img[data-bb-tag="attach"] { display: inline-block; }
 .editor-visual blockquote, .editor-preview blockquote { margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(--link); background: var(--surface-quote); }
 .editor-visual blockquote[aria-label]::before { content: attr(aria-label); display: block; font-size: calc(12px * var(--ui-scale)); color: var(--dimmed); }
@@ -71,32 +70,29 @@
 .editor-atomic { display: inline-block; max-width: 100%; padding: 3px 6px; background: var(--surface-code); border: 1px dashed var(--border-atomic); font-family: ui-monospace, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 .editor-visual table, .editor-preview table { border-collapse: collapse; margin: 6px 0; max-width: 100%; }
 .editor-visual td, .editor-visual th, .editor-preview td, .editor-preview th { border: 1px solid var(--border-code); padding: 5px 10px; min-width: 36px; }
-/* Every tool opens a floating card below the toolbar, like voz.vn: the editor never moves. */
+/* tools open as floating cards; editor never moves (voz) */
 .editor-panel { position: absolute; top: var(--editor-toolbar-h, 41px); left: 12px; z-index: 30; display: block; width: 260px; max-width: calc(100vw - 24px); margin: 0; padding: 0; border: 0; background: transparent; }
 .editor-panel[data-panel-kind="smilies"] { width: 412px; }
-/* The sticker picker brings its own frame, so the panel supplies only spacing and a card. */
+/* sticker picker brings its own frame */
 .editor-panel[data-panel-kind="stickers"] { width: 520px; max-width: calc(100vw - 24px); padding: 10px; border-radius: 6px; background: var(--content-bg); box-shadow: 0 3px 5px -1px rgba(0,0,0,.2), 0 6px 10px 0 rgba(0,0,0,.14), 0 1px 18px 0 rgba(0,0,0,.12); }
 .editor-panel:empty { display: none; }
-/* @mention suggestions, copied from voz.vn's ul.autoCompleteList: a 180px card pinned to the caret, three rows
-   with a 24px avatar and the typed prefix in bold; the selected row is the only highlight. */
+/* @mention card copied from voz's ul.autoCompleteList */
 .mention-menu { position: fixed; top: 0; left: 0; z-index: 40; display: block; width: 180px; max-height: 280px; margin: 2px 0 0; padding: 0; overflow: hidden auto; border: 1px solid var(--border); background: var(--content-bg-alt); box-shadow: 0 3px 5px rgba(0, 0, 0, .3); list-style: none; font-size: calc(14px * var(--ui-scale)); line-height: 21px; }
 .mention-menu[hidden] { display: none; }
 .mention-menu li { display: flex; align-items: center; gap: 6px; padding: 6px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 .mention-menu li.is-selected { background: var(--surface-tint); }
-/* The name lives in one inline block: as a direct flex child the `<strong>` prefix would become its own flex item
-   and pick up a flex gap mid-word. */
+/* one inline block avoids a flex gap mid-word */
 .mention-menu .mention-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .mention-menu .mention-name strong { font-weight: 700; }
 .mention-menu .mention-icon { display: inline-flex; flex: 0 0 auto; width: 24px; height: 24px; }
 .mention-menu .mention-icon .avatar { width: 24px; height: 24px; font-size: 14px; }
-/* voz.vn's editor popups: a 6px-radius card on --content-bg with a three-layer material shadow, an 8px grip at the
-   top and 10px of padding around the body. */
+/* voz popup: card, material shadow, 8px top grip */
 .editor-popup { position: relative; min-width: 260px; width: 100%; border-radius: 6px; background: var(--content-bg); box-shadow: 0 3px 5px -1px rgba(0,0,0,.2), 0 6px 10px 0 rgba(0,0,0,.14), 0 1px 18px 0 rgba(0,0,0,.12); }
 .editor-popup::before { content: ''; display: block; width: 60px; height: 8px; }
 .editor-popup-body { padding: 0 10px 10px; }
 .editor-popup--emoji { min-width: 0; width: 100%; max-width: none; }
 .editor-popup--emoji .editor-popup-body { padding: 6px; }
-/* Floating-label field: the label rests on the field and shrinks to the top edge once it has content. */
+/* floating label shrinks to the top edge when filled */
 .editor-field { position: relative; padding: 18px 0 8px; }
 .editor-field input {
   display: block;
@@ -119,15 +115,13 @@
 .editor-popup-alert { display: block; padding-top: 6px; color: var(--danger-text); font-size: calc(12px * var(--ui-scale)); line-height: 1.5; }
 .editor-popup-alert:empty { display: none; }
 .editor-footer button { padding: 5px 8px; border: 1px solid var(--border); border-radius: 3px; background: var(--surface); color: var(--text); }
-/* Copied from voz.vn's .emojiList: a flex-wrapped list of 32px cells with 3px gaps and a 4px hover radius.
-   Images are drawn at their natural size capped at 32px, so 24px smilies stay 24px and 48px sources render 32px —
-   voz shows exactly these two sizes, not one uniform box. */
+/* voz .emojiList: 32px cells, natural size capped at 32px */
 .editor-smilies { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 0; width: 100%; max-height: 215px; margin: 0 -3px -3px 0; padding: 0; overflow-y: auto; }
 .editor-smilies button { display: flex; align-items: center; justify-content: center; min-width: 32px; width: auto; height: 32px; margin: 0 3px 3px 0; padding: 0; border: 0; border-radius: 4px; background: transparent; font-size: 24px; cursor: pointer; overflow: hidden; }
 .editor-smilies button:hover, .editor-smilies button:focus { background: var(--surface-accent); }
 .editor-smilies img { width: auto; height: auto; max-width: 32px; max-height: 32px; }
 .editor-status { display: block; min-height: 0; padding: 0 8px; text-align: right; font-size: calc(10px * var(--ui-scale)); line-height: 1.6; color: var(--dimmed); }
-/* pik.vn upload strip inside the image popup. */
+/* pik.vn upload strip */
 .editor-upload-slot { display: block; width: 100%; }
 .editor-upload { display: flex; flex-direction: column; gap: 6px; width: 100%; }
 .editor-upload-drop { display: flex; flex: 0 0 auto; flex-direction: row; align-items: center; justify-content: center; gap: 6px; width: auto; margin: 0; padding: 6px 10px; border: 1px dashed var(--border); border-radius: 4px; background: var(--surface); color: var(--text); font-size: calc(12px * var(--ui-scale)); line-height: 1.4; text-align: center; cursor: pointer; }
@@ -145,7 +139,7 @@
 @media (max-width: 600px) {
   .rich-editor .editor-toolbar { padding: 2px 3px 0; flex-wrap: wrap; row-gap: 0; }
   .editor-group { padding: 0 2px 2px; }
-  /* The history group can only push right on the row it starts; once it wraps it leads the second row. */
+  /* once wrapped, the history group leads the second row */
   .editor-history { margin-left: auto; }
   .editor-visual { min-height: 160px; }
 }
@@ -155,7 +149,7 @@
   .editor-group { padding: 0 1px; }
 }
 
-/* Native voz attachment strip under the editor. */
+/* voz attachment strip */
 .attach-strip { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .attach-row { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--content-bg, transparent); font-size: calc(13px * var(--ui-scale)); max-width: 100%; }
 .attach-thumb { width: 32px; height: 32px; object-fit: cover; border-radius: 4px; }
@@ -166,11 +160,11 @@
 .attach-state [data-attach-remove] { border: 0; background: none; color: var(--dimmed); cursor: pointer; font-size: 16px; line-height: 1; padding: 2px 4px; }
 .attach-state [data-attach-remove]:hover { color: var(--text); }
 
-/* "Đính kèm tệp" — voz's paperclip button, same row as the submit button. */
+/* voz paperclip button, beside submit */
 .editor-attach-button { order: 1; margin-right: 6px; margin-bottom: 5px; align-self: center; }
 .editor-attach-button svg { width: 1em; height: 1em; flex: 0 0 auto; }
 
-/* Image resize overlay — voz/Froala's .fr-image-resizer, themed with our tokens. */
+/* voz/Froala image resizer, themed */
 .image-resizer {
   position: fixed;
   z-index: 900;

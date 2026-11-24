@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- SPA shell. -->
 <html lang="vi">
 <head>
 <meta charset="utf-8">
@@ -11,16 +12,13 @@
 <link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#193458">
 <link rel="preconnect" href="https://data.voz.vn">
-<!-- The default reading face, preloaded before any stylesheet so the first text paint already has it. The
-     inline script below drops this link when the reader picked a different family. -->
+<!-- Default-font preload; the script below drops it for other families. -->
 <link rel="preload" id="font-preload" href="/assets/fonts/be-vietnam-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/css/base.css">
 <link rel="stylesheet" href="/assets/css/font-default.css">
 <link rel="stylesheet" href="/assets/css/theme.css">
 <script>
-  // Runs while the head is still parsing, before anything paints, so a dark-mode reader never
-  // sees a white flash. Only the attributes the CSS keys off, read from localStorage;
-  // everything else lives in ui/theme.js.
+  // Pre-paint theme attributes so dark mode never flashes white.
   (function () {
     try {
       var s = JSON.parse(localStorage.getItem('voz-settings:v1') || '{}');
@@ -30,9 +28,7 @@
       var r = document.documentElement;
       r.dataset.themeMode = mode;
       r.dataset.theme = dark ? 'dark' : 'light';
-      // Family stacks mirror FONT_STACKS in lib/settings.js. The default `be-vietnam` is already
-      // declared by font-default.css, so only a different family needs --font set. Unknown
-      // values fall back to the default, matching normalizeSettings().
+      // Mirrors FONT_STACKS in lib/settings.js; the default needs no --font.
       var FONT_STACKS = {
         system: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
         roboto: 'Roboto, "Segoe UI", "Helvetica Neue", Arial, sans-serif',
@@ -43,15 +39,12 @@
       };
       var font = Object.prototype.hasOwnProperty.call(FONT_STACKS, s.font) ? s.font : 'be-vietnam';
       r.dataset.font = font;
-      // The default is already applied by base.css, so its inline value is cleared; every other
-      // choice needs its own stack here.
+      // base.css already applies the default; others need an inline stack.
       if (font === 'be-vietnam') r.style.removeProperty('--font');
       else r.style.setProperty('--font', FONT_STACKS[font]);
-      // The preload in the head is unconditional so it starts with the first byte; drop it when the reader reads
-      // in another family, so the 20 KB is not spent for nothing.
+      // Drop the unconditional font preload when another family is set.
       if (font !== 'be-vietnam') document.getElementById('font-preload')?.remove();
-              // Font size percentages, applied pre-paint; mirrored by applyFontScale() in
-              // ui/theme.js.
+              // Pre-paint font scales; mirrors applyFontScale() in ui/theme.js.
               var scale = function (v) {
                 var isText = typeof v === 'string';
                 if (isText && v.trim() === '') return 100;
@@ -79,8 +72,7 @@
 <link rel="stylesheet" href="/assets/css/responsive.css">
 <link rel="stylesheet" href="/assets/css/headerMenus.css">
 <link rel="stylesheet" href="/assets/css/home.css">
-<!-- Route-only stylesheets: `async` keeps them out of the critical path, and `onload` promotes them once they
-     arrive. Render-blocking CSS is what pushed Speed Index to 4.1s. -->
+<!-- Route-only stylesheets load async; render-blocking CSS hurt Speed Index. -->
 <link rel="stylesheet" href="/assets/css/settings.css" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="/assets/css/stickers.css" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="/assets/css/filters.css" media="print" onload="this.media='all'">
