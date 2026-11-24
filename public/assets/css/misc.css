@@ -105,11 +105,12 @@
 .reactor-list li {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
   padding: 8px 14px;
   border-bottom: 1px solid var(--border);
 }
+.reactor-list .reactor-list-avatar { width: 36px; height: 36px; flex: 0 0 auto; }
+.reactor-list .reaction-image { margin-left: auto; }
 .reactor-list li:last-child { border-bottom: 0; }
 .reactor-list-user { color: var(--link); font-size: calc(15px * var(--ui-scale)); }
 .reactor-list .reaction-image { width: calc(20px * var(--ui-scale)); height: calc(20px * var(--ui-scale)); }

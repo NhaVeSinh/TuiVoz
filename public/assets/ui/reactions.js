@@ -5,6 +5,8 @@ import { esc } from '../core/utils.js';
 import { userPath } from '../core/paths.js';
 import { isDataSaving } from '../lib/dataSaving.js';
 import { openModal } from './modal.js';
+import { avatarMarkup } from '../lib/avatar.js';
+import { wireMemberTooltips } from './memberTooltip.js';
 
 export function reactionBar(post) {
   const counts = post.reaction_counts || {};
@@ -40,11 +42,14 @@ function parseReactionUsers(html) {
     if (!user) continue;
     const reaction = row.querySelector('.reaction[data-reaction-id]');
     const img = row.querySelector('.reaction-image');
+    // voz rows carry the member's real avatar img; grab it for the modal.
+    const avatarImg = row.querySelector('img.avatar, .avatar img, img[src*="avatars"]');
     rows.push({
       userId: Number(user.getAttribute('data-user-id')),
       username: user.textContent.trim(),
       reactionId: reaction ? Number(reaction.getAttribute('data-reaction-id')) : null,
       reactionTitle: img ? img.getAttribute('alt') : null,
+      avatarUrl: avatarImg ? avatarImg.getAttribute('src') || '' : '',
     });
   }
   return rows;
@@ -169,11 +174,18 @@ async function openReactionUsersModal(strip) {
   }
   const catalogue = state.reactions || [];
   const byId = new Map(catalogue.map((r) => [r.reaction_id, r]));
-  body.innerHTML = `<ul class="reactor-list">${users.map((u) => {
+  const stubs = users.map((u) => ({
+    user_id: u.userId,
+    username: u.username,
+    avatar_urls: u.avatarUrl ? { m: u.avatarUrl, s: u.avatarUrl } : {},
+  }));
+  body.innerHTML = `<ul class="reactor-list">${users.map((u, i) => {
     const r = u.reactionId ? byId.get(u.reactionId) : null;
     const icon = r ? `<img src="${esc(r.image_url)}" alt="${esc(r.title)}" title="${esc(r.title)}" referrerpolicy="no-referrer" class="reaction-image">` : '';
-    return `<li><a class="reactor-list-user" href="${userPath({ user_id: u.userId, username: u.username })}">${esc(u.username)}</a>${icon}</li>`;
+    return `<li><span class="avatar avatar--xs reactor-list-avatar">${avatarMarkup(stubs[i], 'm')}</span><a class="reactor-list-user" data-member-id="${u.userId}" href="${userPath({ user_id: u.userId, username: u.username })}">${esc(u.username)}</a>${icon}</li>`;
   }).join('')}</ul>`;
+  // Hover card on desktop; tap toggles it on mobile (same as elsewhere).
+  wireMemberTooltips(body, stubs);
   // Name links inside the modal navigate in-app; close first.
   body.addEventListener('click', (event) => {
     if (event.target.closest('a')) close();
