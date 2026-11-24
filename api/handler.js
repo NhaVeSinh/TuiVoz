@@ -300,7 +300,12 @@ async function handleForumProxy(request, url) {
     let loc = location;
     try {
       const u = new URL(location, SITE);
-      if (u.host === 'voz.vn') loc = proxyOrigin + FORUM_VISIBLE_PREFIX + u.pathname + u.search + u.hash;
+      if (u.protocol === 'vozma26:') {
+        // OAuth callback: the custom scheme can't reach the SPA — hand it the code.
+        loc = proxyOrigin + '/oauth-callback' + u.search + u.hash;
+      } else if (u.host === 'voz.vn') {
+        loc = proxyOrigin + FORUM_VISIBLE_PREFIX + u.pathname + u.search + u.hash;
+      }
     } catch {
       loc = location.replace(SITE, proxyOrigin + FORUM_VISIBLE_PREFIX);
     }

@@ -3,7 +3,7 @@
 **TuiVoz**: SPA thin-client phong cách voz.vn — Vanilla ES modules, **zero build tool** — + Edge Proxy (Vercel `sin1` / `dev-server.mjs` local). Không database riêng: mọi đọc/ghi đi qua XenForo 2 REST API của `voz.vn`.
 
 - **Token**: client không giữ Bearer/Guest Key. Session lưu trong cookie HttpOnly `voz_session`; Edge proxy gắn `Authorization`/`XF-Api-Key`.
-- **OAuth2 + PKCE**: userscript `public/userscript/` bắt `authorization_code` trên voz.vn → `/api/oauth/exchange`. Yêu cầu đủ 14 scope (`SCOPES` trong `api/handler.js`).
+- **OAuth2 + PKCE**: nút một-chạm mở `/forum/oauth2/authorize` qua proxy → proxy bắt redirect `vozma26://` → `/oauth-callback` → `/api/oauth/exchange` (§7.8). Fallback: userscript `public/userscript/` hoặc nhập tay `authorization_code`. Yêu cầu đủ 14 scope (`SCOPES` trong `api/handler.js`).
 - **Upstream**: voz.vn API + HTML scrape (`/p/:id/reactions`), data.voz.vn (avatar, Range), api.imgur.com, pik.vn/api/upload, v.douyin.com, Flickr oEmbed.
 - **Comments**: mọi file JS/CSS/HTML mở đầu bằng 1 dòng kdoc mô tả file (`/** … */` / `/* … */` / `<!-- … -->`; userscript đặt sau khối `==UserScript==`); mọi comment trong code đều 1 dòng ngắn (~≤10 từ) chỉ giữ "why"/gotcha, comment nói-lại-code bị xoá, divider `// foo` / `/* foo */`.
 - **Verify**: `node --check` từng file JS/MJS
@@ -121,7 +121,7 @@ TuiVoz/
 | `lists.js` | `viewAlerts` (mark read), `viewBookmarks`, `viewWatched`. |
 | `search.js` | `/search`. |
 | `user.js` | `/u/<slug>.<id>/` + `/pp/{id}` — memberHeader, 4 tab (tường/hoạt động/bài đăng/giới thiệu); follow/ignore không có API → link voz.vn. |
-| `login.js` | `/login` — OAuth2 PKCE qua userscript hoặc nhập tay. |
+| `login.js` | `/login` một-chạm qua proxy + `/oauth-callback` (userscript/nhập tay còn lại trong `<details>`). |
 | `settings.js` | `/cai-dat-tuivoz` — tab: Giao diện, Hệ thống, Phím tắt, **Bộ lọc**, Sticker, Sao lưu (export/import JSON kèm `filters`). |
 
 ### `css/` (tên = vai trò)
@@ -190,3 +190,10 @@ voz.vn có XenForo push sẵn (`service_worker.js`, `enablePush:true`, `pushAppS
 - **Lỗi browser `AbortError "Error retrieving push subscription."`**: DOMException của **Firefox** (`Push.sys.mjs`) khi autopush (push.services.mozilla.com) tắt/không kết nối được — Camoufox/hardened Firefox tắt sẵn (`dom.push.enabled=false`). Reproduced trên Camoufox local. Không phải lỗi code/proxy; user phải dùng trình duyệt push-enabled (Chrome/Edge/Firefox gốc bật `dom.push.enabled`). Chrome ẩn danh cũng không hỗ trợ Push (`NotAllowedError`).
 - **HTML rewrite**: ngoài `voz.vn`→`/forum`, còn rewrite **root-relative** `src/href/action/formaction/poster/data-*` (`="/` → `="/forum/`), từng URL trong `srcset`, và `XF.config.basePath: '/'` → `'/forum/'` — `<base>` chỉ cứu URL tương đối, URL bắt đầu `/` vẫn trốn khỏi `/forum/` (login hỏng vì XF JS 404).
 - **Gotcha**: subscribe endpoint là POST form (XenForo `XF.ajax`), **không** phải REST JSON. Chỉ test được trên deploy (Vercel `sin1` bypass Cloudflare **khi** UA giống browser — curl UA vẫn bị challenge); local VN IP bị chặn HTML mọi path.
+
+### §7.8 Login OAuth một-chạm qua proxy (không userscript)
+`redirect_uri` của client vẫn cố định `vozma26://oauth` (custom scheme app — trang web không bắt được, nên trước đây phải copy code tay). Proxy `/forum` giờ tự capture:
+- **Flow**: `/login` bấm "Đăng nhập với voz.vn" → `makePkce()` + lưu `{verifier,state}` vào `sessionStorage.voz_pkce` → `location.href = /forum/oauth2/authorize?…redirect_uri=vozma26://oauth…` (qua proxy, kế thừa `xf_session`; chưa login voz thì form login của voz hiện trong luồng) → user bấm **Authorize** → voz `302 Location: vozma26://oauth?code=…&state=…` → `handleForumProxy` detect `u.protocol === 'vozma26:'` → rewrite `Location` thành `proxyOrigin + '/oauth-callback' + u.search` → SPA route `/oauth-callback` → `viewOauthCallback` đọc `code`+`state`, check state khớp PKCE → `/api/oauth/exchange` → `navigate('/')`.
+- **`vercel.json`**: catch-all SPA đã gửi `/oauth-callback` → `index.html` (không cần route mới).
+- **`/login` còn `<details>` "Cách cũ"**: userscript/popup + paste code (fallback nếu proxy OAuth hỏng) — vẫn `redirect_uri` + PKCE như cũ, mở `authorizeUrl` **trực tiếp** voz.vn (`proxied:false`).
+- **Lưu ý**: `Location` rewrite có 2 nhánh — `vozma26:` → `/oauth-callback`; `host===voz.vn` → `/forum<path>` (giữ nguyên). XenForo trả cả absolute + relative Location, `new URL(location, SITE)` normalize hết.

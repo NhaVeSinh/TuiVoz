@@ -41,6 +41,8 @@
 .input:focus, .textarea:focus { outline: 2px solid var(--focus-ring); outline-offset: -1px; }
 .textarea { min-height: 130px; resize: vertical; font-family: inherit; }
 .formHint { font-size: calc(12px * var(--ui-scale)); color: var(--dimmed); margin-top: 4px; }
+.formHint--prominent { font-size: calc(15px * var(--ui-scale)); color: var(--text); margin: 0 0 8px; }
+.formHint--prominent a { color: var(--link); font-weight: 600; }
 .formError {
   background: var(--danger-bg);
   border: 1px solid var(--danger-border);

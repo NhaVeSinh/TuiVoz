@@ -253,6 +253,7 @@ function settingsHtml(active = settingsTabFromHash()) {
             <input type="checkbox" id="voz-support"${vozSupport ? ' checked' : ''}>
           </label>
           <h3 class="settings-subhead">Thông báo đẩy</h3>
+          <p class="formHint formHint--prominent">Cần đăng nhập voz qua <a href="/forum" target="_blank" rel="noopener">proxy forum</a> một lần trước.</p>
           <label class="settings-toggle" for="push-enabled">
             <span class="settings-toggle-copy">
               <span class="settings-toggle-name">Nhận thông báo voz</span>
@@ -260,7 +261,6 @@ function settingsHtml(active = settingsTabFromHash()) {
             </span>
             <input type="checkbox" id="push-enabled"${pushEnabled ? ' checked' : ''}>
           </label>
-          <p class="formHint">Cần đăng nhập voz qua <a href="/forum" target="_blank" rel="noopener">proxy forum</a> một lần trước.</p>
           <p class="formHint" id="push-status" hidden></p>
         </div>
       </section>

@@ -68,6 +68,7 @@ export async function route() {
   if (head !== 't') window.dispatchEvent(new Event('voz:leave-thread'));
 
   try {
+    if (head === 'oauth-callback') return await (await import('../views/login.js')).viewOauthCallback(params);
     if (!head) return await viewHome();
     if (head === 'p' && /^\d+$/.test(segments[1] || '')) {
       const target = await postLocation(Number(segments[1]));
