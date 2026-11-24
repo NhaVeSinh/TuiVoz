@@ -78,7 +78,12 @@ export async function viewLogin() {
       <div class="block">
         <div class="block-header">Đăng nhập bằng voz.vn</div>
         <div class="block-body block-body--pad">
-          <p class="formHint">Đăng nhập trực tiếp với voz.vn — không cần userscript hay copy mã nữa. Nếu chưa đăng nhập, trang login của voz sẽ hiện ngay trong luồng.</p>
+          <ol class="login-steps">
+            <li>Nhấn <b>Đăng nhập với voz.vn</b>.</li>
+            <li>Trình duyệt điều hướng tới trang proxy voz.vn của vercel.</li>
+            <li>Đăng nhập vào trang này.</li>
+            <li>Sau khi đăng nhập xong quay trở lại trang chủ. Bấm đăng thêm một lần nữa. Sẽ đăng nhập được</li>
+          </ol>
           <div class="formRow">
             <button class="button button--primary" type="button" id="oauth-login">Đăng nhập với voz.vn</button>
           </div>
