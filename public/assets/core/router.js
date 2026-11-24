@@ -8,15 +8,9 @@ import { setRouteHandler } from './nav.js';
 import { errorBox, finishLoading } from '../ui/feedback.js';
 import { resolveUnread } from '../lib/unread.js';
 import { supportPing } from '../lib/supportBeacon.js';
+// Home + thread are the hot routes; the rest lazy-load on first hit.
 import { viewHome, viewForum, viewSearchForum, viewNewThreads } from '../views/forum.js';
 import { viewThread } from '../views/thread.js';
-import { viewSearch } from '../views/search.js';
-import { viewDmList, viewDm, viewNewDm } from '../views/dm.js';
-import { viewAlerts, viewBookmarks, viewWatched } from '../views/lists.js';
-import { viewUser, viewProfilePost } from '../views/user.js';
-import { viewLogin } from '../views/login.js';
-import { viewCompose } from '../views/compose.js';
-import { viewSettings } from '../views/settings.js';
 import { refreshUnreadCounts } from '../ui/unreadCounts.js';
 import { teardownInfiniteScroll } from '../ui/infiniteScroll.js';
 import { setTitle } from '../ui/title.js';
@@ -80,7 +74,7 @@ export async function route() {
       if (!target) throw new Error('Không xác định được trang của bài viết');
       return navigate(`${withPage(threadPath({ thread_id: target.threadId, title: target.title }), target.page)}#post-${segments[1]}`, { replace: true });
     }
-    if (head === 'f' && segments[2] === 'post-thread') return await viewCompose(idFromSegment(segments[1]));
+    if (head === 'f' && segments[2] === 'post-thread') return await (await import('../views/compose.js')).viewCompose(idFromSegment(segments[1]));
     if (head === 'f') return await viewForum(idFromSegment(segments[1]), page);
     if (head === 's') return await viewSearchForum(idFromSegment(segments[1]), page);
     if (head === 't') {
@@ -105,7 +99,7 @@ export async function route() {
       return await viewThread(threadId, page, focusPost);
     }
     if (head === 'new') return await viewNewThreads(page);
-    if (head === 'search') return await viewSearch(params.get('q') || '', params.get('id'), page);
+    if (head === 'search') return await (await import('../views/search.js')).viewSearch(params.get('q') || '', params.get('id'), page);
     if (head === 'direct-messages' || head === 'dm') {
       // voz.vn alert URLs point here; resolve the message's conversation.
       if (segments[1] === 'replies' && /^\d+$/.test(segments[2] || '')) {
@@ -117,15 +111,16 @@ export async function route() {
         const conversation = result.conversation || { conversation_id: conversationId, title: '' };
         return navigate(`${dmPath(conversation)}#conversation-message-${messageId}`, { replace: true });
       }
-      if (segments[1] === 'new') return await viewNewDm(params.get('to') || '');
-      if (segments[1]) return await viewDm(idFromSegment(segments[1]), page);
-      return await viewDmList(page);
+      const dm = await import('../views/dm.js');
+      if (segments[1] === 'new') return await dm.viewNewDm(params.get('to') || '');
+      if (segments[1]) return await dm.viewDm(idFromSegment(segments[1]), page);
+      return await dm.viewDmList(page);
     }
-    if (head === 'alerts') return await viewAlerts(page);
-    if (head === 'bookmarks') return await viewBookmarks(page);
-    if (head === 'watched') return await viewWatched(page);
-    if (head === 'u') return await viewUser(idFromSegment(segments[1]), params, segments[2] || '');
-    if (head === 'pp' && /^\d+$/.test(segments[1] || '')) return await viewProfilePost(Number(segments[1]), page);
+    if (head === 'alerts') return await (await import('../views/lists.js')).viewAlerts(page);
+    if (head === 'bookmarks') return await (await import('../views/lists.js')).viewBookmarks(page);
+    if (head === 'watched') return await (await import('../views/lists.js')).viewWatched(page);
+    if (head === 'u') return await (await import('../views/user.js')).viewUser(idFromSegment(segments[1]), params, segments[2] || '');
+    if (head === 'pp' && /^\d+$/.test(segments[1] || '')) return await (await import('../views/user.js')).viewProfilePost(Number(segments[1]), page);
     // /profile-posts/{id}/ → post; /comments/{id}/ → comment → parent post.
     if (head === 'profile-posts') {
       if (segments[1] === 'comments' && /^\d+$/.test(segments[2] || '')) {
@@ -133,14 +128,14 @@ export async function route() {
         try {
           const res = await api.profilePostComment(commentId);
           const postId = res?.comment?.profile_post_id || res?.profile_post_comment?.profile_post_id;
-          if (postId) return await viewProfilePost(postId, page, `profile-post-comment-${commentId}`);
+          if (postId) return await (await import('../views/user.js')).viewProfilePost(postId, page, `profile-post-comment-${commentId}`);
         } catch { /* fall through */ }
         return navigate('/alerts', { replace: true });
       }
-      if (/^\d+$/.test(segments[1] || '')) return await viewProfilePost(Number(segments[1]), page);
+      if (/^\d+$/.test(segments[1] || '')) return await (await import('../views/user.js')).viewProfilePost(Number(segments[1]), page);
     }
-    if (head === 'cai-dat-tuivoz') return viewSettings();
-    if (head === 'login') return await viewLogin();
+    if (head === 'cai-dat-tuivoz') return (await import('../views/settings.js')).viewSettings();
+    if (head === 'login') return await (await import('../views/login.js')).viewLogin();
     setTitle('Oops! We ran into some problems.');
     app.innerHTML = '<div class="empty">Không tìm thấy trang.</div>';
   } catch (err) {

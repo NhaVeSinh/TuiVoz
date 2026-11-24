@@ -91,18 +91,28 @@ window.addEventListener('voz:banned-users-change', async (event) => {
   if (location.hash.startsWith('#/')) {
     history.replaceState({ ...(history.state || {}) }, '', location.hash.slice(1));
   }
-  // Maintenance gate; a 404 means the custom router isn't deployed — tolerate.
-  try {
-    const { api } = await import('./api.js');
-    const cfg = await api.appConfig();
-    const m = cfg && cfg.maintenance;
-    if (m && m.active) {
-      const host = document.getElementById('app');
-      host.innerHTML = '<div class="block"><div class="block-header">Bảo trì</div><div class="block-body block-body--pad"><p></p></div></div>';
-      host.querySelector('p').textContent = m.message || 'voz.vn đang bảo trì, thử lại sau.';
-    }
-    document.dispatchEvent(new CustomEvent('voz:app-config', { detail: cfg }));
-  } catch { /* 404 tolerated: endpoint absent on this deployment */ }
-  await loadSession();
+  // app-config + session run in parallel; maintenance gate handled when config lands.
+  const configPromise = (async () => {
+    try {
+      const { api } = await import('./api.js');
+      const cfg = await api.appConfig();
+      document.dispatchEvent(new CustomEvent('voz:app-config', { detail: cfg }));
+      return cfg;
+    } catch { return null; } // 404 tolerated: endpoint absent on this deployment
+  })();
+  await Promise.all([configPromise, loadSession()]);
+  // Maintenance gate checked after config resolves (before route paints content).
+  const cfg = await configPromise;
+  const m = cfg && cfg.maintenance;
+  if (m && m.active) {
+    const host = document.getElementById('app');
+    host.innerHTML = '<div class="block"><div class="block-header">Bảo trì</div><div class="block-body block-body--pad"><p></p></div></div>';
+    host.querySelector('p').textContent = m.message || 'voz.vn đang bảo trì, thử lại sau.';
+  }
   await route();
 })();
+
+// Service worker caches static assets for repeat loads (non-blocking).
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}

@@ -19,7 +19,7 @@ TuiVoz/
 ├── package.json · README.md · LICENSE · AGENTS.md   # AGENTS.md: hướng dẫn AI agent (đọc file này trước)
 ├── public/
 │   ├── index.html        # SPA shell (font preload, anti-FOUC theme script, route-only CSS load async print-onload + noscript)
-│   ├── favicon.ico · robots.txt · site.webmanifest
+│   ├── favicon.ico · robots.txt · site.webmanifest · sw.js
 │   ├── userscript/voz-oauth-helper.user.js   # Tampermonkey: PKCE + bắt OAuth code trên voz.vn
 │   └── assets/
 │       ├── api.js        # Client SDK gọi /api/*
@@ -56,7 +56,7 @@ TuiVoz/
 | File | Chức năng |
 |---|---|
 | `dom.js` | Handle DOM gốc + `state` toàn cục (`me`, `loggedIn`, `reactions`, `activeNav`, `breadcrumbs`). |
-| `router.js` | History router: tách `page-N`, dispatch view, redirect `/p/:id` và `/t/:id/unread`, chuẩn hoá `?post=<id>` → `/t/<slug>.<id>/page-N/#post-<id>` (`postLocation`, §7.1). |
+| `router.js` | History router: tách `page-N`, dispatch view, redirect `/p/:id` và `/t/:id/unread`, `?post=<id>` → `/t/<slug>.<id>/page-N/#post-<id>` (`postLocation`, §7.1). Views lazy `await import()` trừ forum/thread (§7.6). |
 | `nav.js` | `navigate()` không reload; lưu/khôi phục scroll per history entry; `keepCurrentScroll`/`keepScroll` cho anchor. |
 | `paths.js` | Path chuẩn SEO: `threadPath`, `forumPath`, `userPath`, `dmPath`, `withPage`, `postPage`/`postPath` → `/t/<slug>.<id>/page-N/#post-<id>`. |
 | `icons.js` | SVG icon inline dạng hàm. |
@@ -129,7 +129,7 @@ TuiVoz/
 
 ## Định tuyến & Cache (`vercel.json` + `handler.js`)
 
-- `vercel.json`: `regions:["sin1"]`, `outputDirectory:"public"`; rewrite `/api` + `/api/(.*)` → `/api/handler?__path=`; SPA fallback → `index.html` trừ `api/`, `assets/`, `userscript/`, `robots.txt`, `sitemap.xml`.
+- `vercel.json`: `regions:["sin1"]`, `outputDirectory:"public"`; rewrite `/api` + `/api/(.*)` → `/api/handler?__path=`; SPA fallback → `index.html` trừ `api/`, `assets/`, `userscript/`, `robots.txt`, `sitemap.xml`, `sw.js`.
 - Headers trong `vercel.json` chỉ có: `/assets/fonts/*` → `max-age=31536000, immutable`; `/assets/*` còn lại → `max-age=3600, stale-while-revalidate=86400`; `robots.txt` → `text/plain` + `max-age=3600`.
 - `/api/*` **không** có header trong `vercel.json` — `handler.js` tự set `Cache-Control` per route: GET `/voz/*` pass-through ETag/`max-age` theo upstream (86400/3600/300 tuỳ tier), còn lại `private, no-store, max-age=0`.
 - `image-download` có **in-memory server cache** (`IMAGE_CACHE` Map, 6h TTL, max 500, ≤512KB) — avatar URL immutable nên tránh gọi lại `data.voz.vn` mỗi trang; `X-Image-Cache: hit`; probe `limit=` không cache (sniff 64KB cho GIF frame-1).
@@ -173,3 +173,10 @@ Engine client-side RES-style ở `filters/`; storage `voz-filters:v1`; filter đ
 ### §7.5 Beacon `/xfmg.php` (hỗ trợ tăng điểm voz)
 - `lib/supportBeacon.js` `supportPing()`: gate `getVozSupport()` + `state.loggedIn`, throttle 60s, `new Image()` → `voz.vn/xfmg.php?s=<m|d>:u:p1b0r1e0&n=<rand>`; gọi trong `finally` của `route()` (1 ping/navigation).
 - `xf_session` là `SameSite=None` nên cross-site vẫn kèm cookie. **Gotcha**: trình duyệt chặn 3rd-party cookie → beacon đến như guest (vô hại).
+
+### §7.6 Hiệu năng tải trang (code split + cache)
+- `core/router.js`: chỉ `forum.js`/`thread.js` eager; còn lại lazy `await import()` (compose/search/dm/lists/user/login/settings).
+- `app.js`: `appConfig()` ∥ `loadSession()` chạy `Promise.all`; đăng ký `sw.js` (guard `serviceWorker in navigator`, no-op nếu không hỗ trợ).
+- `index.html`: `editor.css`/`account.css` chuyển sang async `media="print" onload` (+ `<noscript>`).
+- `public/sw.js`: cache-first chỉ `/assets/{css,icons,lib,ui,views,fonts}/`; `/api/*` + cross-origin bỏ qua. `vercel.json`: exclude `sw.js` khỏi SPA rewrite + header `no-cache`.
+- `/api/image-download`: `IMAGE_CACHE` Map 6h/500 mục/≤512KB (`X-Image-Cache: hit`); probe `limit=` không cache.

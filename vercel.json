@@ -5,9 +5,16 @@
   "rewrites": [
     { "source": "/api", "destination": "/api/handler?__path=" },
     { "source": "/api/(.*)", "destination": "/api/handler?__path=$1" },
-    { "source": "/((?!api/|assets/|userscript/|robots\\.txt$|sitemap\\.xml$).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|assets/|userscript/|robots\\.txt$|sitemap\\.xml$|sw\\.js$).*)", "destination": "/index.html" }
   ],
   "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Content-Type", "value": "application/javascript; charset=utf-8" },
+        { "key": "Cache-Control", "value": "no-cache" }
+      ]
+    },
     {
       "source": "/assets/((?!fonts/).*)",
       "headers": [
