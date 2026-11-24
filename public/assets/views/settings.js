@@ -253,7 +253,7 @@ function settingsHtml(active = settingsTabFromHash()) {
             <input type="checkbox" id="voz-support"${vozSupport ? ' checked' : ''}>
           </label>
           <h3 class="settings-subhead">Thông báo đẩy</h3>
-          <p class="formHint formHint--prominent">Cần đăng nhập voz qua <a href="/forum" target="_blank" rel="noopener">proxy forum</a> một lần trước.</p>
+          <p class="formHint formHint--prominent" id="push-login-hint" hidden>Cần đăng nhập voz qua <a href="/forum" target="_blank" rel="noopener">proxy forum</a> một lần trước.</p>
           <label class="settings-toggle" for="push-enabled">
             <span class="settings-toggle-copy">
               <span class="settings-toggle-name">Nhận thông báo voz</span>
@@ -891,7 +891,7 @@ async function wirePushToggle() {
   const box = document.getElementById('push-enabled');
   const statusEl = document.getElementById('push-status');
   if (!box) return;
-  const { enablePush, disablePush, pushSupported, pushStatus } = await import('../lib/push.js');
+  const { enablePush, disablePush, pushSupported, pushStatus, fetchPushConfig } = await import('../lib/push.js');
   if (!pushSupported()) {
     box.disabled = true;
     if (statusEl) {
@@ -900,6 +900,11 @@ async function wirePushToggle() {
     }
     return;
   }
+  // Login hint only shows while the proxied forum session is a guest.
+  const loginHint = document.getElementById('push-login-hint');
+  fetchPushConfig()
+    .then((cfg) => { if (loginHint) loginHint.hidden = cfg.loggedIn; })
+    .catch(() => { if (loginHint) loginHint.hidden = false; });
   pushStatus().then((s) => {
     // Reflect reality: subscribed on voz but flag lost, or vice-versa.
     if (s.subscribed && !box.checked) box.checked = true;

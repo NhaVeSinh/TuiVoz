@@ -26,13 +26,18 @@ function bytesToB64(bytes) {
 }
 
 // Scrape XF.config from a proxied forum page: csrf, userId (0 = guest), vapid key.
-async function fetchPushConfig() {
+// Cached briefly — settings hint + subscribe + unsubscribe all scrape the same page.
+let pushConfigCache = null;
+export async function fetchPushConfig() {
+  if (pushConfigCache && Date.now() - pushConfigCache.at < 30_000) return pushConfigCache.cfg;
   const res = await fetch(`${FORUM}/index.php`, { credentials: 'same-origin' });
   const html = await res.text();
   const csrf = /csrf:\s*'([^']+)'/.exec(html)?.[1] || '';
   const userId = parseInt(/userId:\s*(\d+)/.exec(html)?.[1] || '0', 10);
   const vapid = /pushAppServerKey:\s*'([^']+)'/.exec(html)?.[1] || DEFAULT_VAPID;
-  return { csrf, userId, vapid, loggedIn: userId > 0 };
+  const cfg = { csrf, userId, vapid, loggedIn: userId > 0 };
+  pushConfigCache = { at: Date.now(), cfg };
+  return cfg;
 }
 
 async function postSubscription(params) {
