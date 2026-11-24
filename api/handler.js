@@ -327,9 +327,15 @@ async function handleForumProxy(request, url) {
   bodyText = bodyText
     .replaceAll(SITE, proxyOrigin + FORUM_VISIBLE_PREFIX)
     .replaceAll(`//voz.vn`, `//${proxyHost}${FORUM_VISIBLE_PREFIX}`);
-  // Base tag fixes XF's relative URLs (index.php?… forms/links/assets).
   if (contentType.includes('text/html')) {
-    bodyText = bodyText.replace(/<head(\s[^>]*)?>/i, `<head$1><base href="${proxyOrigin}${FORUM_VISIBLE_PREFIX}/">`);
+    bodyText = bodyText
+      // Base tag fixes relative URLs (index.php?…, css/xf/…); root-relative need rewrites.
+      .replace(/<head(\s[^>]*)?>/i, `<head$1><base href="${proxyOrigin}${FORUM_VISIBLE_PREFIX}/">`)
+      .replace(/((?:src|href|action|formaction|poster|data-src|data-url)\s*=\s*["'])\/(?!\/|forum\/)/gi, `$1${FORUM_VISIBLE_PREFIX}/`)
+      .replace(/(\bsrcset\s*=\s*["'])([^"']*)(["'])/gi, (m, pre, list, post) =>
+        pre + list.replace(/(^|,)\s*\/(?!\/|forum\/)/g, `$1${FORUM_VISIBLE_PREFIX}/`) + post)
+      // XF JS builds URLs off XF.config.basePath — repoint it under /forum/.
+      .replace(/(basePath['"]?\s*:\s*['"])\/(['"])/g, `$1${FORUM_VISIBLE_PREFIX}/$2`);
   }
   return new Response(bodyText, { status: upstream.status, statusText: upstream.statusText, headers });
 }
