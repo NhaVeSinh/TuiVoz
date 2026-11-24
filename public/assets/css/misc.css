@@ -98,6 +98,21 @@
   line-height: 1;
 }
 .modal-body { padding: 14px; }
+/* reactor list modal (reactionsBar tap) */
+.modal--reactors { max-width: 420px; }
+.modal--reactors .modal-body { max-height: 70vh; overflow-y: auto; padding: 6px 0; }
+.reactor-list { margin: 0; padding: 0; list-style: none; }
+.reactor-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.reactor-list li:last-child { border-bottom: 0; }
+.reactor-list-user { color: var(--link); font-size: calc(15px * var(--ui-scale)); }
+.reactor-list .reaction-image { width: calc(20px * var(--ui-scale)); height: calc(20px * var(--ui-scale)); }
 .modal-footer {
   padding: 10px 14px;
   border-top: 1px solid var(--border);

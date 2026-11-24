@@ -4,6 +4,7 @@ import { state } from '../core/dom.js';
 import { esc } from '../core/utils.js';
 import { userPath } from '../core/paths.js';
 import { isDataSaving } from '../lib/dataSaving.js';
+import { openModal } from './modal.js';
 
 export function reactionBar(post) {
   const counts = post.reaction_counts || {};
@@ -84,12 +85,17 @@ function countIcons(counts) {
     .join('');
 }
 
-// Save mode only: a tap loads names on demand.
-document.addEventListener('click', (event) => {
+// Tapping the strip (not a name link) opens the full reactor list, like voz.
+// Save mode uses the first tap to load names, the second opens the modal.
+document.addEventListener('click', async (event) => {
   const strip = event.target.closest('.reactionsBar[data-reaction-list]');
-  if (!strip || !isDataSaving() || strip.dataset.namesLoaded) return;
-  strip.dataset.namesLoaded = 'true';
-  fillReactionStrip(strip);
+  if (!strip || event.target.closest('a')) return;
+  if (isDataSaving() && !strip.dataset.namesLoaded) {
+    strip.dataset.namesLoaded = 'true';
+    await fillReactionStrip(strip);
+    return;
+  }
+  openReactionUsersModal(strip);
 });
 
 export async function hydrateReactionLists(root) {
@@ -137,7 +143,7 @@ async function fillReactionStrip(strip) {
   const names = shown
     .map((u) => `<a href="${userPath({ user_id: u.userId, username: u.username })}" class="reactionsBar-user">${esc(u.username)}</a>`)
     .join(', ');
-  const more = users.length > shown.length ? ` và ${users.length - shown.length} người khác` : '';
+  const more = users.length > shown.length ? `<span class="reactionsBar-more"> và ${users.length - shown.length} người khác</span>` : '';
   const icons = [...new Set(users.map((u) => u.reactionId))]
     .filter(Boolean)
     .map((id) => {
@@ -148,6 +154,34 @@ async function fillReactionStrip(strip) {
     .join('');
   strip.innerHTML = `<span class="reactionsBar-icons">${icons}</span>
     <span class="reactionsBar-users">${names}${more}</span>`;
+}
+
+// Full reactor list modal, mirroring voz.vn's overlay.
+async function openReactionUsersModal(strip) {
+  const postId = strip.dataset.reactionList;
+  const { close } = openModal('Người đã bày tỏ cảm xúc', '<p class="reactionsBar-loading">Đang tải thành viên…</p>', '', { className: 'modal--reactors' });
+  const users = await loadReactionUsers(postId);
+  const body = modalBody();
+  if (!body) return; // user closed before the fetch resolved
+  if (!users.length) {
+    body.innerHTML = '<p class="reactionsBar-loading">Chưa có ai bày tỏ cảm xúc.</p>';
+    return;
+  }
+  const catalogue = state.reactions || [];
+  const byId = new Map(catalogue.map((r) => [r.reaction_id, r]));
+  body.innerHTML = `<ul class="reactor-list">${users.map((u) => {
+    const r = u.reactionId ? byId.get(u.reactionId) : null;
+    const icon = r ? `<img src="${esc(r.image_url)}" alt="${esc(r.title)}" title="${esc(r.title)}" referrerpolicy="no-referrer" class="reaction-image">` : '';
+    return `<li><a class="reactor-list-user" href="${userPath({ user_id: u.userId, username: u.username })}">${esc(u.username)}</a>${icon}</li>`;
+  }).join('')}</ul>`;
+  // Name links inside the modal navigate in-app; close first.
+  body.addEventListener('click', (event) => {
+    if (event.target.closest('a')) close();
+  });
+}
+
+function modalBody() {
+  return document.querySelector('.modal--reactors .modal-body');
 }
 
 // Screenshot clones stay off-screen so strips never resolve there (no CORS either); drop unresolved ones.

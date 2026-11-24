@@ -366,6 +366,11 @@
 .reactionsBar-user { color: var(--link); }
 .reactionsBar-user:hover { color: var(--link-hover); }
 .reactionsBar-loading { color: var(--dimmed); }
+/* whole strip opens the reactor list (voz overlay parity) */
+.reactionsBar { cursor: pointer; }
+.reactionsBar-user, .reactionsBar-more { cursor: default; }
+.reactionsBar-more { text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 2px; }
+.reactionsBar-more:hover { color: var(--link); }
 
 /* bbcode rendering */
 .post-spoiler { margin: 8px 0; }
