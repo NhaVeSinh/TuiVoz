@@ -10,7 +10,7 @@ import {
   loadSettings, addShortcut, updateShortcut, removeShortcut, moveShortcut,
   exportSettingsJson, importSettingsJson, setInfiniteScroll, setDataSaving,
   SCROLL_MODES, SCROLL_LABELS,
-  setTheme, setFont, setFontScale, getFontScale, setImageDownload, setPostScreenshot, setStaticAvatars, setBannedUsers, setVozSupport, setPushEnabled,
+  setTheme, setFont, setFontScale, getFontScale, setImageDownload, setPostScreenshot, setStaticAvatars, setBannedUsers, setVozSupport, setPushEnabled, setReactorNames,
   BANNED_USER_MODES, BANNED_USERS_LABELS, BANNED_USERS_HELP,
   setFullNumbers, FULL_NUMBERS_MODES, FULL_NUMBERS_LABELS,
   DATA_SAVING_MODES, DATA_SAVING_LABELS, DATA_SAVING_HELP,
@@ -184,7 +184,7 @@ function tabsHtml(active) {
 }
 
 function settingsHtml(active = settingsTabFromHash()) {
-  const { navShortcuts, infiniteScroll, theme, font, postSize, uiSize, imageDownload, postScreenshot, staticAvatars, bannedUsers, fullNumbers, dataSaving, vozSupport, pushEnabled } = loadSettings();
+  const { navShortcuts, infiniteScroll, theme, font, postSize, uiSize, imageDownload, postScreenshot, staticAvatars, bannedUsers, fullNumbers, dataSaving, vozSupport, pushEnabled, reactorNames } = loadSettings();
   const albums = getAlbums();
   return `<div class="block settings-block">
       <h1 class="block-header">Cài đặt</h1>
@@ -236,6 +236,13 @@ function settingsHtml(active = settingsTabFromHash()) {
               <span class="option-card-desc">Ảnh đại diện động (GIF/WebP) chỉ hiện khung hình đầu, không chạy. Ảnh tĩnh giữ nguyên.</span>
             </span>
             <input type="checkbox" id="static-avatars"${staticAvatars ? ' checked' : ''}>
+          </label>
+          <label class="settings-toggle" for="reactor-names">
+            <span class="settings-toggle-copy">
+              <span class="settings-toggle-name">Hiển thị tên người dùng đã thả cảm xúc</span>
+              <span class="option-card-desc">Hiện tên thành viên ngay dưới mỗi bài viết giống voz.vn. Bật tính năng sẽ gửi thêm dữ liệu tới voz.vn làm chậm và tốn thêm data — mặc định tắt, strip chỉ hiện biểu tượng + tổng số, bấm vào vẫn mở danh sách đầy đủ.</span>
+            </span>
+            <input type="checkbox" id="reactor-names"${reactorNames ? ' checked' : ''}>
           </label>
           <h3 class="settings-subhead">Thành viên bị ban</h3>
           <p class="formHint">Gạch ngang tên nick đã bị ban.</p>
@@ -986,6 +993,11 @@ export function viewSettings() {
     const enabled = event.currentTarget.checked;
     setStaticAvatars(enabled);
     toast(`Tắt ảnh động ảnh đại diện: ${enabled ? 'Bật' : 'Tắt'}`);
+  });
+  document.getElementById('reactor-names')?.addEventListener('change', (event) => {
+    const enabled = event.currentTarget.checked;
+    setReactorNames(enabled);
+    toast(`Hiển thị tên người thả cảm xúc: ${enabled ? 'Bật' : 'Tắt'}`);
   });
   document.getElementById('voz-support')?.addEventListener('change', (event) => {
     const enabled = event.currentTarget.checked;

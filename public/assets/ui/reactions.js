@@ -4,6 +4,7 @@ import { state } from '../core/dom.js';
 import { esc } from '../core/utils.js';
 import { userPath } from '../core/paths.js';
 import { isDataSaving } from '../lib/dataSaving.js';
+import { getReactorNames } from '../lib/settings.js';
 import { openModal } from './modal.js';
 import { avatarMarkup } from '../lib/avatar.js';
 import { wireMemberTooltips } from './memberTooltip.js';
@@ -66,12 +67,15 @@ async function loadReactionUsers(postId) {
   return promise;
 }
 
+// Names cost one /p/:id/reactions scrape per post; data-saving OR the
+// reactorNames-off default show icons+count, full list opens on tap.
+const namesEager = () => !isDataSaving() && getReactorNames();
+
 export function reactionSummary(post) {
   const counts = post.reaction_counts || {};
   const total = Object.values(counts).reduce((sum, n) => sum + (Number(n) || 0), 0);
   if (!total) return '';
-  if (isDataSaving()) {
-    // Save mode: names cost one voz.vn page each, so load them only on tap.
+  if (!namesEager()) {
     return `<div class="reactionsBar" data-reaction-list="${post.post_id}" title="Bấm để xem ai đã thả cảm xúc">
       <span class="reactionsBar-icons">${countIcons(counts)}</span>
       <span class="reactionsBar-users">${total}</span>
@@ -91,11 +95,16 @@ function countIcons(counts) {
 }
 
 // Tapping the strip (not a name link) opens the full reactor list, like voz.
-// Save mode uses the first tap to load names, the second opens the modal.
+// With names-eager on (reactorNames + no data-saving), tap opens the modal;
+// otherwise the first tap fills names, the second opens it.
 document.addEventListener('click', async (event) => {
   const strip = event.target.closest('.reactionsBar[data-reaction-list]');
   if (!strip || event.target.closest('a')) return;
-  if (isDataSaving() && !strip.dataset.namesLoaded) {
+  if (namesEager()) {
+    openReactionUsersModal(strip);
+    return;
+  }
+  if (!strip.dataset.namesLoaded) {
     strip.dataset.namesLoaded = 'true';
     await fillReactionStrip(strip);
     return;
@@ -104,7 +113,7 @@ document.addEventListener('click', async (event) => {
 });
 
 export async function hydrateReactionLists(root) {
-  if (isDataSaving()) return; // strips are complete already; names load on tap
+  if (!namesEager()) return; // strips already show icons+count; tap loads names
   // Names are a cross-origin scrape per post; defer each strip until near the viewport.
   for (const strip of root.querySelectorAll('.reactionsBar[data-reaction-list]')) {
     if (strip.dataset.reactionWired) continue;

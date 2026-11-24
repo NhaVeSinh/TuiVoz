@@ -81,7 +81,7 @@ TuiVoz/
 | `postScreenshot.js` | `renderPostPng` (SVG foreignObject, proxy ảnh → dataURI chống taint; `data:` SVG cho Chrome) + popup Sao chép / Chia sẻ / Tải xuống (Web Share L2; Firefox không share file → fallback URL). |
 | `prefix.js` / `userBadges.js` | Màu/nhãn prefix thread; huy hiệu member. |
 | `quotes.js` / `spoilers.js` / `signature.js` | Collapse quote >800px; toggle spoiler; render chữ ký. |
-| `settings.js` | `localStorage['voz-settings:v1']`: theme, font, scale, auto-hide, sticker albums, `vozSupport`, `postScreenshot` (default BẬT); import/export JSON. |
+| `settings.js` | `localStorage['voz-settings:v1']`: theme, font, scale, auto-hide, sticker albums, `vozSupport`, `postScreenshot` (default BẬT), `reactorNames` (default TẮT — strip cảm xúc chỉ hiện icon+count, tap mở modal; bật mới eager-load tên như voz); import/export JSON. |
 | `signals.js` | Analytics `/voz/signals`: queue open/read, flush 5s/20 events/pagehide (chỉ logged-in). |
 | `smilies.js` | Danh mục `/voz/smilies` + regex thay emoticon → `<img>`. |
 | `stickers.js` | Sticker IndexedDB (`TuiVozStickerStorage`): album, recent, cache offline. |

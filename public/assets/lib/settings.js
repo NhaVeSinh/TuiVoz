@@ -48,6 +48,7 @@ export const emptySettings = () => ({
   dataSaving: DATA_SAVING_DEFAULT,
   vozSupport: VOZ_SUPPORT_DEFAULT,
   pushEnabled: false,
+  reactorNames: REACTOR_NAMES_DEFAULT,
 });
 
 // Colour scheme for the content area; chrome stays dark in both modes.
@@ -133,6 +134,10 @@ export const DATA_SAVING_DEFAULT = 'auto';
 // Fires voz.vn's adblock-check beacon (/xfmg.php) so usage counts toward
 // the supporter score. Off by default.
 export const VOZ_SUPPORT_DEFAULT = false;
+
+// Names under posts cost one page scrape per post; show icons+count by
+// default and let a tap open the full list instead.
+export const REACTOR_NAMES_DEFAULT = false;
 export const DATA_SAVING_LABELS = {
   auto: 'Tự động theo thiết bị',
   on: 'Luôn bật',
@@ -193,6 +198,7 @@ export function normalizeSettings(raw) {
   out.dataSaving = DATA_SAVING_MODES.includes(raw?.dataSaving) ? raw.dataSaving : DATA_SAVING_DEFAULT;
   out.vozSupport = raw?.vozSupport === true;
   out.pushEnabled = raw?.pushEnabled === true;
+  out.reactorNames = raw?.reactorNames === true;
   const list = Array.isArray(raw?.navShortcuts) ? raw.navShortcuts : [];
   const seen = new Set();
   for (const item of list.slice(0, MAX_SHORTCUTS)) {
@@ -283,6 +289,16 @@ export function setPushEnabled(enabled) {
 
 export function getPushEnabled() {
   return loadSettings().pushEnabled === true;
+}
+
+export function setReactorNames(enabled) {
+  const settings = loadSettings();
+  settings.reactorNames = enabled === true;
+  return saveSettings(settings);
+}
+
+export function getReactorNames() {
+  return loadSettings().reactorNames === true;
 }
 
 export function setInfiniteScroll(mode) {
@@ -406,6 +422,7 @@ export function exportSettingsJson({ albums = [], recent = [], filters = [] } = 
     bannedUsers: settings.bannedUsers,
     fullNumbers: settings.fullNumbers,
     vozSupport: settings.vozSupport,
+    reactorNames: settings.reactorNames,
   };
   // Sticker payload mirrors the userscript backup format for cross-import.
   if (albums.length || recent.length) {
