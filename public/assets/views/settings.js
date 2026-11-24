@@ -923,6 +923,7 @@ async function wirePushToggle() {
         denied: 'Trình duyệt đang chặn thông báo cho trang này — mở khoá site trong thanh địa chỉ để cho phép.',
         dismissed: 'Đã huỷ — chưa cấp quyền thông báo.',
         guest: 'Chưa đăng nhập voz qua proxy. Bấm liên kết “proxy forum” bên trên, đăng nhập, rồi quay lại bật.',
+        browser: 'Dịch vụ push của trình duyệt không khả dụng (Firefox: kiểm tra dom.push.enabled trong about:config / mạng chặn autopush; Chrome ẩn danh không hỗ trợ push). Không phải lỗi voz.',
         upstream: `voz từ chối đăng ký: ${err.detail || err.message}`,
       };
       if (statusEl) {

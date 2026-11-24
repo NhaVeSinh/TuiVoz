@@ -18,10 +18,11 @@ function b64uToBytes(b64url) {
   return bytes;
 }
 
-function bytesToB64u(bytes) {
+// XenForo posts keys as plain btoa() output (standard base64, with padding).
+function bytesToB64(bytes) {
   let bin = '';
   for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return btoa(bin);
 }
 
 // Scrape XF.config from a proxied forum page: csrf, userId (0 = guest), vapid key.
@@ -64,18 +65,25 @@ export async function enablePush() {
   }
 
   const reg = await navigator.serviceWorker.ready;
-  const sub = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: b64uToBytes(cfg.vapid),
-  });
+  let sub;
+  try {
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: b64uToBytes(cfg.vapid),
+    });
+  } catch (e) {
+    // Browser-side failure (Firefox autopush down/blocked, Chrome incognito…).
+    // voz was never contacted — surface it distinctly from an upstream reject.
+    throw Object.assign(new Error(e.message), { code: 'browser', name: e.name });
+  }
   const p256dh = sub.getKey('p256dh');
   const auth = sub.getKey('auth');
 
   const { ok, payload, raw } = await postSubscription({
     endpoint: sub.endpoint,
-    key: p256dh ? bytesToB64u(new Uint8Array(p256dh)) : '',
-    token: auth ? bytesToB64u(new Uint8Array(auth)) : '',
-    encoding: 'aesgcm',
+    key: p256dh ? bytesToB64(new Uint8Array(p256dh)) : '',
+    token: auth ? bytesToB64(new Uint8Array(auth)) : '',
+    encoding: (PushManager.supportedContentEncodings || ['aesgcm'])[0],
     unsubscribed: '0',
     _xfToken: cfg.csrf,
   });
@@ -101,9 +109,9 @@ export async function disablePush() {
         const auth = sub.getKey('auth');
         await postSubscription({
           endpoint: sub.endpoint,
-          key: p256dh ? bytesToB64u(new Uint8Array(p256dh)) : '',
-          token: auth ? bytesToB64u(new Uint8Array(auth)) : '',
-          encoding: 'aesgcm',
+          key: p256dh ? bytesToB64(new Uint8Array(p256dh)) : '',
+          token: auth ? bytesToB64(new Uint8Array(auth)) : '',
+          encoding: (PushManager.supportedContentEncodings || ['aesgcm'])[0],
           unsubscribed: '1',
           _xfToken: cfg.csrf,
         });
