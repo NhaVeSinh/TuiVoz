@@ -256,10 +256,11 @@ function settingsHtml(active = settingsTabFromHash()) {
           <label class="settings-toggle" for="push-enabled">
             <span class="settings-toggle-copy">
               <span class="settings-toggle-name">Nhận thông báo voz</span>
-              <span class="option-card-desc">Nhận thông báo từ voz.vn (trả lời, tag, hội thoại) ngay cả khi đóng tab. Cần đăng nhập voz qua <a href="/forum/login/" target="_blank" rel="noopener">proxy forum</a> một lần trước.</span>
+              <span class="option-card-desc">Nhận thông báo từ voz.vn (trả lời, tag, hội thoại) ngay cả khi đóng tab.</span>
             </span>
             <input type="checkbox" id="push-enabled"${pushEnabled ? ' checked' : ''}>
           </label>
+          <p class="formHint">Cần đăng nhập voz qua <a href="/forum" target="_blank" rel="noopener">proxy forum</a> một lần trước.</p>
           <p class="formHint" id="push-status" hidden></p>
         </div>
       </section>
