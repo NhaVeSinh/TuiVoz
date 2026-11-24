@@ -40,9 +40,9 @@ TuiVoz/
 
 | File | Vai trò |
 |---|---|
-| `api/handler.js` | Route: `/api/oauth/*` (exchange/status/logout/refresh, cookie `voz_session` Base64URL); `/api/xf/*` proxy XenForo (Bearer nếu login, fallback `XF-Api-Key` guest; retry refresh khi 401; hỗ trợ multipart); `/api/pik/upload` → pik.vn; `/api/image-download` (bypass Cloudflare, Range cho GIF); `/api/attachment-download?id=[&name=]` (voz.vn `/attachments/<id>/` trả **403 guest**, phải tải server-side: metadata → `direct_url` → stream; `?name=` → `inline` cho `<img>`/lightbox, ngược lại `attachment`); `/api/xf/imgur/*`; `/api/xf/douyin`; `/api/xf/oembed`; scrape `/p/:id/reactions` (cache 60s). |
+| `api/handler.js` | Route: `/api/oauth/*` (exchange/status/logout/refresh, cookie `voz_session` Base64URL); `/api/xf/*` proxy XenForo (Bearer nếu login, fallback `XF-Api-Key` guest; retry refresh khi 401; hỗ trợ multipart); `/api/pik/upload` → pik.vn; `/api/image-download` (bypass Cloudflare, Range cho GIF); `/api/attachment-download?id=[&name=]` (voz.vn `/attachments/<id>/` trả **403 guest**, phải tải server-side: metadata → `direct_url` → stream; `?name=` → `inline` cho `<img>`/lightbox, ngược lại `attachment`); `/api/xf/imgur/*`; `/api/xf/douyin`; `/api/xf/oembed`; `/api/forum/*` full-page voz.vn proxy (login/`xf_session`/push — §7.7); scrape `/p/:id/reactions` (cache 60s). |
 | `api/index.js` | Re-export handler. |
-| `dev-server.mjs` | `node dev-server.mjs [port]` (`argv[2]`/`PORT`, default 3000) — chuyển `http.IncomingMessage` → web `Request`, gọi `handler()` cho `/api/*` (kèm multi `set-cookie`); static `public/` `no-store`; asset/root-file (`/assets`, `/userscript`, `favicon.ico`, `site.webmanifest`, `robots.txt`) thiếu → **404** không fallback shell; route khác → `index.html`. |
+| `dev-server.mjs` | `node dev-server.mjs [port]` (`argv[2]`/`PORT`, default 3000) — chuyển `http.IncomingMessage` → web `Request`, gọi `handler()` cho `/api/*` + `/forum/*` (map `/forum/x` → `/api/forum/x`, kèm multi `set-cookie`); static `public/` `no-store`; asset/root-file (`/assets`, `/userscript`, `favicon.ico`, `site.webmanifest`, `robots.txt`) thiếu → **404** không fallback shell; route khác → `index.html`. |
 
 ### `assets/` gốc
 
@@ -129,7 +129,7 @@ TuiVoz/
 
 ## Định tuyến & Cache (`vercel.json` + `handler.js`)
 
-- `vercel.json`: `regions:["sin1"]`, `outputDirectory:"public"`; rewrite `/api` + `/api/(.*)` → `/api/handler?__path=`; SPA fallback → `index.html` trừ `api/`, `assets/`, `userscript/`, `robots.txt`, `sitemap.xml`, `sw.js`.
+- `vercel.json`: `regions:["sin1"]`, `outputDirectory:"public"`; rewrite `/api` + `/api/(.*)` → `/api/handler?__path=`, `/forum(.*)` → `/api/handler?__path=forum$1`; SPA fallback → `index.html` trừ `api/`, `assets/`, `userscript/`, `robots.txt`, `sitemap.xml`, `sw.js` (`/forum/*` đã khớp rewrite riêng trước catch-all).
 - Headers trong `vercel.json` chỉ có: `/assets/fonts/*` → `max-age=31536000, immutable`; `/assets/*` còn lại → `max-age=3600, stale-while-revalidate=86400`; `robots.txt` → `text/plain` + `max-age=3600`.
 - `/api/*` **không** có header trong `vercel.json` — `handler.js` tự set `Cache-Control` per route: GET `/voz/*` pass-through ETag/`max-age` theo upstream (86400/3600/300 tuỳ tier), còn lại `private, no-store, max-age=0`.
 - `image-download` có **in-memory server cache** (`IMAGE_CACHE` Map, 6h TTL, max 500, ≤512KB) — avatar URL immutable nên tránh gọi lại `data.voz.vn` mỗi trang; `X-Image-Cache: hit`; probe `limit=` không cache (sniff 64KB cho GIF frame-1).
@@ -180,3 +180,11 @@ Engine client-side RES-style ở `filters/`; storage `voz-filters:v1`; filter đ
 - `index.html`: `editor.css`/`account.css` chuyển sang async `media="print" onload` (+ `<noscript>`).
 - `public/sw.js`: cache-first chỉ `/assets/{css,icons,lib,ui,views,fonts}/`; `/api/*` + cross-origin bỏ qua. `vercel.json`: exclude `sw.js` khỏi SPA rewrite + header `no-cache`.
 - `/api/image-download`: `IMAGE_CACHE` Map 6h/500 mục/≤512KB (`X-Image-Cache: hit`); probe `limit=` không cache.
+
+### §7.7 Thông báo đẩy XenForo (web push)
+voz.vn có XenForo push sẵn (`service_worker.js`, `enablePush:true`, `pushAppServerKey`). Hai rào cản cũ: `_xfToken` + `xf_session` chỉ sống trong phiên HTML của voz.vn (TuiVoz dùng OAuth Bearer, không có cookie session).
+- **`/forum/*` proxy** (`handleForumProxy` trong `api/handler.js`, port từ `vercel-proxy`): full-page proxy `voz.vn` cùng origin → rebind `Set-Cookie` (`xf_session`/`xf_user`/`xf_csrf`) về domain TuiVoz, rewrite `https://voz.vn`→`/forum`, inject `<base href="/forum/">`, strip CF headers + `accept-encoding`. Đây là chỗ **login forum lần đầu** (`/forum/login/`) để có `xf_session`.
+- **Subscribe flow** (`lib/push.js`): `fetchPushConfig()` scrape `XF.config.csrf`+`userId`+`pushAppServerKey` từ `/forum/index.php` → `pushManager.subscribe({applicationServerKey: <voz VAPID>})` → POST `application/x-www-form-urlencoded` tới `/forum/index.php?misc/update-push-subscription` với `{endpoint,key(p256dh),token(auth),encoding:'aesgcm',unsubscribed:0,_xfToken}`. Endpoint của browser thuộc domain TuiVoz → push vẫn về SW của TuiVoz. Toggle-off POST `unsubscribed:1` + `sub.unsubscribe()`.
+- **SW** (`sw.js`): thêm `push` (parse `{title,body,dir,icon,badge,total_unread}` → `showNotification` + `setAppBadge`) và `notificationclick` (`data.url` rewrite `voz.vn`→same-origin rồi `navigate`/`openWindow`).
+- **UI**: toggle "Nhận thông báo voz" trong `/cai-dat-tuivoz#system` (setting `pushEnabled`, chỉ UI state — trạng thái thật check qua `pushManager.getSubscription()`). Lỗi map: `guest` → chưa login qua `/forum/login/`; `denied` → browser chặn; `upstream` → voz từ chối.
+- **Gotcha**: subscribe endpoint là POST form (XenForo `XF.ajax`), **không** phải REST JSON. Chỉ test được trên deploy (Vercel `sin1` bypass Cloudflare); local VN IP bị chặn HTML.

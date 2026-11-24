@@ -236,6 +236,104 @@ async function fetchMe(tokens) {
 
 // No /reactions proxy: Cloudflare blocks server-side fetch; browser scrapes it.
 
+// Full-page voz.vn proxy under /forum/: carries xf_session for login + push subscribe.
+// Browser hits /forum/<x> which vercel maps to /api/forum/<x>; rewrites use visible /forum/.
+const FORUM_VISIBLE_PREFIX = '/forum';
+
+async function handleForumProxy(request, url) {
+  const proxyOrigin = url.origin;
+  const proxyHost = url.host;
+  const sub = url.pathname.replace(/^\/api\/forum/, '') || '/';
+  const targetUrl = new URL(sub + url.search, SITE);
+
+  const newHeaders = new Headers(request.headers);
+  newHeaders.set('Host', 'voz.vn');
+  newHeaders.set('Origin', SITE);
+  const referer = request.headers.get('referer');
+  if (referer) {
+    newHeaders.set('Referer', referer.replace(proxyOrigin + FORUM_VISIBLE_PREFIX, SITE).replace(proxyOrigin, SITE));
+  } else {
+    newHeaders.set('Referer', `${SITE}${sub}`);
+  }
+  // Drop cookies that aren't voz.vn's (e.g. our voz_session) before forwarding.
+  const cookie = (request.headers.get('cookie') || '')
+    .split(';')
+    .map((c) => c.trim())
+    .filter((c) => c && !c.startsWith(`${SESSION_COOKIE}=`))
+    .join('; ');
+  if (cookie) newHeaders.set('Cookie', cookie);
+  else newHeaders.delete('Cookie');
+  for (const h of ['x-forwarded-for', 'x-real-ip', 'x-vercel-ip-country', 'x-vercel-forwarded-for', 'cf-connecting-ip', 'cf-ipcountry', 'cf-ray', 'accept-encoding']) {
+    newHeaders.delete(h);
+  }
+
+  const hasBody = !['GET', 'HEAD'].includes(request.method);
+  let upstream;
+  try {
+    // duplex:half required by Node fetch when forwarding a stream body.
+    upstream = await fetch(new Request(targetUrl.toString(), {
+      method: request.method,
+      headers: newHeaders,
+      body: hasBody ? request.body : null,
+      ...(hasBody ? { duplex: 'half' } : {}),
+      redirect: 'manual',
+    }));
+  } catch (err) {
+    return new Response(`Forum proxy error: ${err.message}`, { status: 502 });
+  }
+  // Read before wrapping: getSetCookie keeps each cookie intact.
+  const setCookies = typeof upstream.headers.getSetCookie === 'function' ? upstream.headers.getSetCookie() : [];
+
+  const headers = new Headers(upstream.headers);
+  // Authenticated pages must never be shared-cached.
+  headers.set('Cache-Control', 'private, no-cache, no-store, must-revalidate, max-age=0');
+  headers.set('CDN-Cache-Control', 'no-store');
+  headers.set('Vercel-CDN-Cache-Control', 'no-store');
+  headers.delete('Age');
+  headers.delete('Expires');
+  headers.delete('x-frame-options');
+  headers.delete('content-security-policy');
+  headers.delete('content-security-policy-report-only');
+
+  const location = headers.get('Location');
+  if (location) {
+    let loc = location;
+    try {
+      const u = new URL(location, SITE);
+      if (u.host === 'voz.vn') loc = proxyOrigin + FORUM_VISIBLE_PREFIX + u.pathname + u.search + u.hash;
+    } catch {
+      loc = location.replace(SITE, proxyOrigin + FORUM_VISIBLE_PREFIX);
+    }
+    headers.set('Location', loc);
+  }
+
+  // Rebind cookies to this origin (xf_session, xf_user, xf_csrf).
+  if (setCookies.length) {
+    headers.delete('Set-Cookie');
+    for (const c of setCookies) {
+      headers.append('Set-Cookie', c.replace(/Domain=[^;]+;?/gi, ''));
+    }
+  }
+
+  const contentType = headers.get('Content-Type') || '';
+  const isText = /text\/html|application\/(json|javascript)|text\/javascript/.test(contentType);
+  if (!isText || upstream.status === 204 || upstream.status === 304) {
+    return new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers });
+  }
+
+  headers.delete('Content-Encoding');
+  headers.delete('Content-Length');
+  let bodyText = await upstream.text();
+  bodyText = bodyText
+    .replaceAll(SITE, proxyOrigin + FORUM_VISIBLE_PREFIX)
+    .replaceAll(`//voz.vn`, `//${proxyHost}${FORUM_VISIBLE_PREFIX}`);
+  // Base tag fixes XF's relative URLs (index.php?… forms/links/assets).
+  if (contentType.includes('text/html')) {
+    bodyText = bodyText.replace(/<head(\s[^>]*)?>/i, `<head$1><base href="${proxyOrigin}${FORUM_VISIBLE_PREFIX}/">`);
+  }
+  return new Response(bodyText, { status: upstream.status, statusText: upstream.statusText, headers });
+}
+
 // Cacheable GET tiers: /voz/* pass through ETag/max-age; rest no-store.
 function cacheControlFor(method, sub, upstreamHeaders, headers) {
   if (method !== 'GET') return 'private, no-store, max-age=0';
@@ -580,6 +678,10 @@ export default async function handler(request) {
     const headers = new Headers();
     headers.append('Set-Cookie', sessionCookie(null, 0));
     return json({ ok: true }, { headers });
+  }
+
+  if (path === '/api/forum' || path.startsWith('/api/forum/')) {
+    return handleForumProxy(request, url);
   }
 
   if (path === '/api/xf' || path.startsWith('/api/xf/')) {

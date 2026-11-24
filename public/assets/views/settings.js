@@ -10,7 +10,7 @@ import {
   loadSettings, addShortcut, updateShortcut, removeShortcut, moveShortcut,
   exportSettingsJson, importSettingsJson, setInfiniteScroll, setDataSaving,
   SCROLL_MODES, SCROLL_LABELS,
-  setTheme, setFont, setFontScale, getFontScale, setImageDownload, setPostScreenshot, setStaticAvatars, setBannedUsers, setVozSupport,
+  setTheme, setFont, setFontScale, getFontScale, setImageDownload, setPostScreenshot, setStaticAvatars, setBannedUsers, setVozSupport, setPushEnabled,
   BANNED_USER_MODES, BANNED_USERS_LABELS, BANNED_USERS_HELP,
   setFullNumbers, FULL_NUMBERS_MODES, FULL_NUMBERS_LABELS,
   DATA_SAVING_MODES, DATA_SAVING_LABELS, DATA_SAVING_HELP,
@@ -184,7 +184,7 @@ function tabsHtml(active) {
 }
 
 function settingsHtml(active = settingsTabFromHash()) {
-  const { navShortcuts, infiniteScroll, theme, font, postSize, uiSize, imageDownload, postScreenshot, staticAvatars, bannedUsers, fullNumbers, dataSaving, vozSupport } = loadSettings();
+  const { navShortcuts, infiniteScroll, theme, font, postSize, uiSize, imageDownload, postScreenshot, staticAvatars, bannedUsers, fullNumbers, dataSaving, vozSupport, pushEnabled } = loadSettings();
   const albums = getAlbums();
   return `<div class="block settings-block">
       <h1 class="block-header">Cài đặt</h1>
@@ -252,6 +252,15 @@ function settingsHtml(active = settingsTabFromHash()) {
             </span>
             <input type="checkbox" id="voz-support"${vozSupport ? ' checked' : ''}>
           </label>
+          <h3 class="settings-subhead">Thông báo đẩy</h3>
+          <label class="settings-toggle" for="push-enabled">
+            <span class="settings-toggle-copy">
+              <span class="settings-toggle-name">Nhận thông báo voz</span>
+              <span class="option-card-desc">Nhận thông báo từ voz.vn (trả lời, tag, hội thoại) ngay cả khi đóng tab. Cần đăng nhập voz qua <a href="/forum/login/" target="_blank" rel="noopener">proxy forum</a> một lần trước.</span>
+            </span>
+            <input type="checkbox" id="push-enabled"${pushEnabled ? ' checked' : ''}>
+          </label>
+          <p class="formHint" id="push-status" hidden></p>
         </div>
       </section>
       <section class="settings-panel" id="panel-filters" role="tabpanel" aria-labelledby="tab-filters"${active === 'filters' ? '' : ' hidden'}>
@@ -876,6 +885,56 @@ function openAlbumEditor(albumId, onChange) {
   });
 }
 
+// Async enable/disable — errors map to a hint line so the checkbox can revert.
+async function wirePushToggle() {
+  const box = document.getElementById('push-enabled');
+  const statusEl = document.getElementById('push-status');
+  if (!box) return;
+  const { enablePush, disablePush, pushSupported, pushStatus } = await import('../lib/push.js');
+  if (!pushSupported()) {
+    box.disabled = true;
+    if (statusEl) {
+      statusEl.hidden = false;
+      statusEl.textContent = 'Trình duyệt này không hỗ trợ thông báo đẩy.';
+    }
+    return;
+  }
+  pushStatus().then((s) => {
+    // Reflect reality: subscribed on voz but flag lost, or vice-versa.
+    if (s.subscribed && !box.checked) box.checked = true;
+  });
+  box.addEventListener('change', async () => {
+    box.disabled = true;
+    if (statusEl) { statusEl.hidden = true; statusEl.textContent = ''; }
+    try {
+      if (box.checked) {
+        await enablePush();
+        setPushEnabled(true);
+        toast('Thông báo đẩy: Bật');
+      } else {
+        await disablePush();
+        setPushEnabled(false);
+        toast('Thông báo đẩy: Tắt');
+      }
+    } catch (err) {
+      box.checked = !box.checked;
+      const hints = {
+        unsupported: 'Trình duyệt không hỗ trợ thông báo đẩy.',
+        denied: 'Trình duyệt đang chặn thông báo cho trang này — mở khoá site trong thanh địa chỉ để cho phép.',
+        dismissed: 'Đã huỷ — chưa cấp quyền thông báo.',
+        guest: 'Chưa đăng nhập voz qua proxy. Bấm liên kết “proxy forum” bên trên, đăng nhập, rồi quay lại bật.',
+        upstream: `voz từ chối đăng ký: ${err.detail || err.message}`,
+      };
+      if (statusEl) {
+        statusEl.hidden = false;
+        statusEl.textContent = hints[err.code] || `Lỗi: ${err.message}`;
+      }
+    } finally {
+      box.disabled = false;
+    }
+  });
+}
+
 export function viewSettings() {
   setBreadcrumbs([{ label: 'Diễn đàn', href: '/' }, { label: 'Cài đặt' }]);
   setTitle('Cài đặt');
@@ -926,6 +985,7 @@ export function viewSettings() {
     setVozSupport(enabled);
     toast(`Hỗ trợ tăng điểm voz: ${enabled ? 'Bật' : 'Tắt'}`);
   });
+  wirePushToggle();
   wireOptionGroup('data-saving', (value) => {
     setDataSaving(value);
     toast(`Tiết kiệm dữ liệu: ${DATA_SAVING_LABELS[value]}`);

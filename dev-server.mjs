@@ -92,10 +92,13 @@ async function serveStatic(req, res, pathname) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   try {
-    if (url.pathname === '/api' || url.pathname.startsWith('/api/')) {
+    if (url.pathname === '/api' || url.pathname.startsWith('/api/')
+      || url.pathname === '/forum' || url.pathname.startsWith('/forum/')) {
       const chunks = [];
       for await (const chunk of req) chunks.push(chunk);
       const body = Buffer.concat(chunks);
+      // /forum/* maps to the edge handler's /api/forum route, same as vercel.json.
+      if (url.pathname.startsWith('/forum')) req.url = '/api' + req.url;
       const webRes = await handler(toRequest(req, body));
       await sendWebResponse(res, webRes);
       return;

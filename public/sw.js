@@ -34,3 +34,56 @@ self.addEventListener('fetch', (e) => {
     )
   );
 });
+
+// voz XenForo push payload: {title,body,dir,icon,badge,total_unread,url}.
+self.addEventListener('push', (e) => {
+  if (!(self.Notification && self.Notification.permission === 'granted')) return;
+  let data;
+  try {
+  data = e.data.json();
+  } catch {
+  return;
+  }
+  if (!data || !data.title || !data.body) return;
+
+  const options = { body: data.body, dir: data.dir || 'ltr', data };
+  if (data.badge) options.badge = data.badge;
+  if (data.icon) options.icon = data.icon;
+
+  if ('setAppBadge' in self.navigator && 'clearAppBadge' in self.navigator) {
+  const count = parseInt(String(data.total_unread).replace(/[,. ]/g, ''), 10);
+  if (count) self.navigator.setAppBadge(count);
+  else self.navigator.clearAppBadge();
+  }
+
+  e.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+self.addEventListener('notificationclick', (e) => {
+  const notification = e.notification;
+  notification.close();
+  const raw = notification.data && notification.data.url;
+  if (!raw) return;
+
+  // Open the matching TuiVoz route, not voz.vn itself.
+  let url = raw;
+  try {
+  const u = new URL(raw, location.origin);
+  if (u.host === 'voz.vn') url = location.origin + u.pathname + u.search + u.hash;
+  } catch {
+  /* keep raw */
+  }
+
+  e.waitUntil(
+  clients
+    .matchAll({ type: 'window', includeUncontrolled: true })
+    .then((wins) => {
+      for (const win of wins) {
+        if (win.url === url && 'navigate' in win) {
+          return win.navigate(url).then((c) => (c ? c.focus() : clients.openWindow(url)));
+        }
+      }
+      return clients.openWindow(url);
+    })
+  );
+});

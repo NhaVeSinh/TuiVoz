@@ -5,6 +5,8 @@
   "rewrites": [
     { "source": "/api", "destination": "/api/handler?__path=" },
     { "source": "/api/(.*)", "destination": "/api/handler?__path=$1" },
+    { "source": "/forum", "destination": "/api/handler?__path=forum/" },
+    { "source": "/forum/(.*)", "destination": "/api/handler?__path=forum/$1" },
     { "source": "/((?!api/|assets/|userscript/|robots\\.txt$|sitemap\\.xml$|sw\\.js$).*)", "destination": "/index.html" }
   ],
   "headers": [

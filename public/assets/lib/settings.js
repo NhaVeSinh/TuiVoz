@@ -47,6 +47,7 @@ export const emptySettings = () => ({
   fullNumbers: FULL_NUMBERS_DEFAULT,
   dataSaving: DATA_SAVING_DEFAULT,
   vozSupport: VOZ_SUPPORT_DEFAULT,
+  pushEnabled: false,
 });
 
 // Colour scheme for the content area; chrome stays dark in both modes.
@@ -191,6 +192,7 @@ export function normalizeSettings(raw) {
   out.fullNumbers = FULL_NUMBERS_MODES.includes(raw?.fullNumbers) ? raw.fullNumbers : FULL_NUMBERS_DEFAULT;
   out.dataSaving = DATA_SAVING_MODES.includes(raw?.dataSaving) ? raw.dataSaving : DATA_SAVING_DEFAULT;
   out.vozSupport = raw?.vozSupport === true;
+  out.pushEnabled = raw?.pushEnabled === true;
   const list = Array.isArray(raw?.navShortcuts) ? raw.navShortcuts : [];
   const seen = new Set();
   for (const item of list.slice(0, MAX_SHORTCUTS)) {
@@ -271,6 +273,16 @@ export function setVozSupport(enabled) {
 
 export function getVozSupport() {
   return loadSettings().vozSupport === true;
+}
+
+export function setPushEnabled(enabled) {
+  const settings = loadSettings();
+  settings.pushEnabled = enabled === true;
+  return saveSettings(settings);
+}
+
+export function getPushEnabled() {
+  return loadSettings().pushEnabled === true;
 }
 
 export function setInfiniteScroll(mode) {
