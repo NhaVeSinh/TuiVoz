@@ -80,7 +80,7 @@ function render(node, doc) {
   }
   if (node.tag === 'attach' && /^\d+$/.test(plain(node).trim())) {
     const img = doc.createElement('img');
-    img.src = `https://voz.vn/attachments/${plain(node).trim()}/`;
+    img.src = `/forum/attachments/${plain(node).trim()}/`;
     img.alt = 'Ảnh đính kèm';
     el.append(img);
     return el;

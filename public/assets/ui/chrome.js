@@ -44,7 +44,7 @@ export function wireNavShortcuts() {
 function utilityMenus() {
   return menuButton('dm', 'Hộp thư', ICON_MAIL, '<div class="header-menu-body"></div><a class="menu-footer" href="/direct-messages">Xem tất cả hộp thư</a>') +
     menuButton('alerts', 'Thông báo', ICON_BELL, '<div class="header-menu-body"></div><a class="menu-footer" href="/alerts">Xem tất cả thông báo</a>') +
-    menuButton('search', 'Tìm kiếm', ICON_SEARCH, `<form id="header-search" class="quick-search"><input class="input" type="search" name="q" placeholder="Từ khoá…" aria-label="Từ khoá"><input class="input" name="member" placeholder="Bởi: tên thành viên" aria-label="Bởi thành viên"><small class="u-dimmed">Nhập từ khoá hoặc thành viên. Kết hợp bộ lọc: dùng tìm nâng cao.</small><button class="button button--primary" type="submit">Tìm kiếm</button><a href="https://voz.vn/search/" target="_blank" rel="noopener">Tìm kiếm nâng cao…</a><a href="/search">Trang tìm kiếm</a></form>`);
+    menuButton('search', 'Tìm kiếm', ICON_SEARCH, `<form id="header-search" class="quick-search"><input class="input" type="search" name="q" placeholder="Từ khoá…" aria-label="Từ khoá"><input class="input" name="member" placeholder="Bởi: tên thành viên" aria-label="Bởi thành viên"><small class="u-dimmed">Nhập từ khoá hoặc thành viên. Kết hợp bộ lọc: dùng tìm nâng cao.</small><button class="button button--primary" type="submit">Tìm kiếm</button><a href="/forum/search/" target="_blank" rel="noopener">Tìm kiếm nâng cao…</a><a href="/search">Trang tìm kiếm</a></form>`);
 }
 
 export function renderAccount() {

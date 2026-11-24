@@ -79,7 +79,7 @@ function memberHeaderHtml(user, tab) {
             <a href="${search('thread')}" class="button button--link"><span class="button-text">Chủ đề đã đăng</span></a>
           </div>
         </div>
-        <a href="https://voz.vn${esc(user.view_url ? new URL(user.view_url).pathname : `/u/${user.user_id}/`)}" target="_blank" rel="noopener" class="button button--link" style="display:none"><span class="button-text">Xem trên voz.vn</span></a>
+        <a href="/forum${esc(user.view_url ? new URL(user.view_url).pathname : `/u/${user.user_id}/`)}" target="_blank" rel="noopener" class="button button--link" style="display:none"><span class="button-text">Xem trên voz.vn</span></a>
       </div>
     </div>
   </div>

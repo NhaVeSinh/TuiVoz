@@ -28,7 +28,8 @@ document.addEventListener('click', (event) => {
   if (!href || link.target === '_blank' || link.hasAttribute('download')) return;
   const url = new URL(link.href, location.origin);
   if (url.origin !== location.origin) return;
-  if (/^\/(api|assets|userscript)\//.test(url.pathname)) return;
+  // /forum/ links load the proxied XenForo page (full nav, same session).
+  if (/^\/(api|assets|userscript|forum)\//.test(url.pathname)) return;
   // Same-page #post links scroll in place; align top, not center.
   if (url.pathname === location.pathname && url.search === location.search && url.hash) {
     const target = document.getElementById(url.hash.slice(1));

@@ -244,7 +244,7 @@
 @media (max-width: 480px) {
   .memberHeader-buttons .buttonGroup { gap: 4px; }
   .memberHeader-buttons .button { padding: 4px 8px; font-size: calc(13px * var(--ui-scale)); }
-  .memberHeader-buttons a[href^="https://voz.vn"] { display: none; }
+  .memberHeader-buttons a[href^="https://voz.vn"], a[href^="/forum/"] { display: none; }
 }
 
 /* one row, scrolls */
@@ -261,7 +261,7 @@
 .memberHeader-buttons .buttonGroup-buttonWrapper .button + .button { border-left: 0; }
 .memberHeader-buttons .buttonGroup-buttonWrapper .button:first-child { border-radius: 4px 0 0 4px; }
 .memberHeader-buttons .buttonGroup-buttonWrapper .button:last-child { border-radius: 0 4px 4px 0; }
-.memberHeader-buttons a[href^="https://voz.vn"] { display: none; }
+.memberHeader-buttons a[href^="https://voz.vn"], a[href^="/forum/"] { display: none; }
 
 /* tighter fused buttons on small screens */
 @media (max-width: 480px) {
@@ -279,7 +279,7 @@
 .memberHeader-buttons .buttonGroup-buttonWrapper .button + .button { border-left: 0; }
 .memberHeader-buttons .buttonGroup-buttonWrapper .button:first-child { border-radius: 4px 0 0 4px; }
 .memberHeader-buttons .buttonGroup-buttonWrapper .button:last-child { border-radius: 0 4px 4px 0; }
-.memberHeader-buttons a[href^="https://voz.vn"] { display: none; }
+.memberHeader-buttons a[href^="https://voz.vn"], a[href^="/forum/"] { display: none; }
 
 /* fuse borders between group buttons */
 .memberHeader-buttons .buttonGroup > .button { border-radius: 4px 0 0 4px; }

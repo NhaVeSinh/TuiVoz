@@ -14,6 +14,27 @@ export async function loadSession() {
     state.me = null;
   }
   renderAccount();
+  startForumKeepAlive();
+}
+
+// XenForo rotates xf_session server-side when the session idles; keep-alive
+// pings (same XHR voz fires itself) hold it + the xf_user remember-cookie warm.
+// voz pings ~every 60s; we match that so the session never looks idle.
+const KEEPALIVE_MS = 60 * 1000;
+let keepAliveTimer = null;
+
+function pingForumKeepAlive() {
+  if (document.hidden || !state.loggedIn) return;
+  fetch('/forum/login/keep-alive', {
+    credentials: 'same-origin',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+  }).catch(() => {});
+}
+
+function startForumKeepAlive() {
+  if (keepAliveTimer) return;
+  keepAliveTimer = setInterval(pingForumKeepAlive, KEEPALIVE_MS);
+  document.addEventListener('visibilitychange', pingForumKeepAlive);
 }
 
 export function requireLogin() {

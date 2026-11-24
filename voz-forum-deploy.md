@@ -76,7 +76,7 @@ TuiVoz/
 | `jumpToAnchor.js` | Scroll tới `#post-N` dưới sticky header; bù ảnh tải muộn; `revealFilteredBlock` cho post bị ẩn. |
 | `media.js` | Embed YouTube/TikTok/Facebook/Reddit/Twitter/SoundCloud/Douyin/Flickr. |
 | `pikUpload.js` | Upload ảnh pik.vn: resize ≤1920px JPEG 0.85, song song 3 luồng → `[IMG]`. |
-| `postLinks.js` | Rewrite link nội bộ voz.vn → URL SPA. |
+| `postLinks.js` | Rewrite link voz.vn → URL SPA (local route) hoặc `/forum/…` (XenForo-only route, qua proxy giữ session). |
 | `postScreenshot.js` | `renderPostPng` (SVG foreignObject, proxy ảnh → dataURI chống taint; `data:` SVG cho Chrome) + popup Sao chép / Chia sẻ / Tải xuống (Web Share L2; Firefox không share file → fallback URL). |
 | `prefix.js` / `userBadges.js` | Màu/nhãn prefix thread; huy hiệu member. |
 | `quotes.js` / `spoilers.js` / `signature.js` | Collapse quote >800px; toggle spoiler; render chữ ký. |
@@ -84,7 +84,7 @@ TuiVoz/
 | `signals.js` | Analytics `/voz/signals`: queue open/read, flush 5s/20 events/pagehide (chỉ logged-in). |
 | `smilies.js` | Danh mục `/voz/smilies` + regex thay emoticon → `<img>`. |
 | `stickers.js` | Sticker IndexedDB (`TuiVozStickerStorage`): album, recent, cache offline. |
-| `supportBeacon.js` | Beacon `voz.vn/xfmg.php` (opt-in `vozSupport`, throttle 60s, 1 ping/route). |
+| `supportBeacon.js` | Beacon `/forum/xfmg.php` qua proxy (opt-in `vozSupport`, throttle 60s, 1 ping/route). |
 | `unread.js` | Dò bài chưa đọc đầu tiên từ `visitor_read_date`. |
 | `bannedUsers.js` | Đánh dấu user bị ban (KIA): phát hiện qua errcode `this_users_profile_is_not_available`, thêm class `username--banned`; `wireBannedUsernames`/`clearBannedMarks` (import động từ `app.js`). |
 | `catalogs.js` | Cache `localStorage` TTL 24h cho catalog ít đổi (nodes, reactions, smilies) + cache memory. |
@@ -171,8 +171,9 @@ Engine client-side RES-style ở `filters/`; storage `voz-filters:v1`; filter đ
 - Mọi `.map(row).join()` ở views đổi sang `threadEntriesHtml`/`postEntriesHtml`; backup export/import kèm `filters` (`lib/settings.js`).
 
 ### §7.5 Beacon `/xfmg.php` (hỗ trợ tăng điểm voz)
-- `lib/supportBeacon.js` `supportPing()`: gate `getVozSupport()` + `state.loggedIn`, throttle 60s, `new Image()` → `voz.vn/xfmg.php?s=<m|d>:u:p1b0r1e0&n=<rand>`; gọi trong `finally` của `route()` (1 ping/navigation).
-- `xf_session` là `SameSite=None` nên cross-site vẫn kèm cookie. **Gotcha**: trình duyệt chặn 3rd-party cookie → beacon đến như guest (vô hại).
+- `lib/supportBeacon.js` `supportPing()`: gate `getVozSupport()` + `state.loggedIn`, throttle 60s, `new Image()` → **`/forum/xfmg.php?s=<m|d>:u:p1b0r1e0&n=<rand>`** (qua proxy — cookie `xf_*` sống trên origin TuiVoz nên hit thẳng `voz.vn` sẽ là **guest không tính điểm**, và fail hẳn trên mạng chặn DNS voz); gọi trong `finally` của `route()` (1 ping/navigation). Proxy forward cookie session → voz tính đúng tài khoản.
+- Điểm chỉ được ghi khi user đã đăng nhập qua `/forum` (có `xf_session`/`xf_user` trên origin proxy); chỉ OAuth mà chưa login forum thì beacon vẫn đi nhưng guest.
+- **Mọi traffic voz đều qua proxy** (đã quét toàn bộ client): fetch `/p/:id/reactions` (`reactions.js`), ảnh `[attach]` trong spoiler (`spoilers.js`), beacon xfmg — tất cả → `/forum/…`. Link `voz.vn` không có route SPA (`/report`, `/ignore`, `/account`…) được `rewriteVozLinks` → `/forum/…` (nav thường, app.js bỏ qua `/forum/` trong SPA click handler). Các link UI tĩnh ("Tạo chủ đề", "Tìm nâng cao", "Xem trên voz.vn") cũng → `/forum/…`. Còn lại `data.voz.vn` (avatar/CDN ảnh attachment) load trực tiếp — domain CDN riêng, thường không bị chặn DNS cùng `voz.vn`.
 
 ### §7.6 Hiệu năng tải trang (code split + cache)
 - `core/router.js`: chỉ `forum.js`/`thread.js` eager; còn lại lazy `await import()` (compose/search/dm/lists/user/login/settings).
@@ -192,6 +193,7 @@ voz.vn có XenForo push sẵn (`service_worker.js`, `enablePush:true`, `pushAppS
 - **Gotcha**: subscribe endpoint là POST form (XenForo `XF.ajax`), **không** phải REST JSON. Chỉ test được trên deploy (Vercel `sin1` bypass Cloudflare **khi** UA giống browser — curl UA vẫn bị challenge); local VN IP bị chặn HTML mọi path.
 
 ### §7.8 Login OAuth một-chạm qua proxy (không userscript)
+- **Session persistence (sliding, không cần login lại)**: `voz_session` cookie được re-issue trên MỌI response `/api/xf/*` và `/api/oauth/status` (Max-Age 30d reset mỗi request — giống session lăn của XenForo). `refresh_token` vẫn tự renew khi access hết hạn. Phía forum, `session.js` chạy `startForumKeepAlive()` sau `loadSession()`: ping `GET /forum/login/keep-alive` (XHR) mỗi 60s + khi tab visible lại — giữ `xf_session`/`xf_user` sống giống voz.vn tự làm (voz cũng ping ~60s). Chỉ mất login khi revoke token, xoá cookie, hoặc >30 ngày không mở app.
 `redirect_uri` của client vẫn cố định `vozma26://oauth` (custom scheme app — trang web không bắt được, nên trước đây phải copy code tay). Proxy `/forum` giờ tự capture:
 - **Flow**: `/login` bấm "Đăng nhập với voz.vn" → `makePkce()` + lưu `{verifier,state}` vào `sessionStorage.voz_pkce` → `location.href = /forum/oauth2/authorize?…redirect_uri=vozma26://oauth…` (qua proxy, kế thừa `xf_session`; chưa login voz thì form login của voz hiện trong luồng) → user bấm **Authorize** → voz `302 Location: vozma26://oauth?code=…&state=…` → `handleForumProxy` detect `u.protocol === 'vozma26:'` → rewrite `Location` thành `proxyOrigin + '/oauth-callback' + u.search` → SPA route `/oauth-callback` → `viewOauthCallback` đọc `code`+`state`, check state khớp PKCE → `/api/oauth/exchange` → `navigate('/')`.
 - **`vercel.json`**: catch-all SPA đã gửi `/oauth-callback` → `index.html` (không cần route mới).

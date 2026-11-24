@@ -124,7 +124,7 @@ export async function viewSearchForum(nodeId, page) {
     const node = nodeRes.search_forum;
     const crumbs = (node.breadcrumbs || []).map((b) => ({ label: b.title }));
     setBreadcrumbs([{ label: 'Diễn đàn', href: '/' }, ...crumbs, { label: node.title }], {
-      href: 'https://voz.vn/f/-/post-thread', label: 'Tạo chủ đề mới',
+      href: '/forum/f/-/post-thread', label: 'Tạo chủ đề mới',
     });
     setTitle(node.title, page);
 

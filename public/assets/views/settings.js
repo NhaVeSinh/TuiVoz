@@ -248,7 +248,7 @@ function settingsHtml(active = settingsTabFromHash()) {
           <label class="settings-toggle" for="voz-support">
             <span class="settings-toggle-copy">
               <span class="settings-toggle-name">Hỗ trợ tăng điểm voz</span>
-              <span class="option-card-desc">Khi đăng nhập, mỗi lần chuyển trang TuiVoz gửi một báo cáo “quảng cáo không bị chặn” tới voz.vn (giống beacon kiểm tra adblock của voz.vn) để lượt dùng app được tính vào điểm ủng hộ như đọc voz.vn trực tiếp. Tắt thì không gửi gì cả.</span>
+              <span class="option-card-desc">Khi đăng nhập, mỗi lần chuyển trang TuiVoz gửi một báo cáo “quảng cáo không bị chặn” tới voz.vn qua proxy forum (giống beacon kiểm tra adblock của voz.vn) để lượt dùng app được tính vào điểm ủng hộ như đọc voz.vn trực tiếp. Tắt thì không gửi gì cả.</span>
             </span>
             <input type="checkbox" id="voz-support"${vozSupport ? ' checked' : ''}>
           </label>

@@ -27,7 +27,7 @@ export async function viewSearch(query, searchId, page) {
               <input class="input" id="search-keywords" name="q" value="${esc(query || '')}" placeholder="Nhập từ khoá…">
             </div>
             <div class="formRow"><label for="search-member">Bởi thành viên</label><input class="input" id="search-member" value="${esc(member)}" placeholder="Tên tài khoản (tuỳ chọn)"></div>
-            <p class="formHint">Tìm bài viết theo từ khoá hoặc thành viên. <a href="https://voz.vn/search/" target="_blank" rel="noopener">Bộ lọc nâng cao đầy đủ trên voz.vn</a></p>
+            <p class="formHint">Tìm bài viết theo từ khoá hoặc thành viên. <a href="/forum/search/" target="_blank" rel="noopener">Bộ lọc nâng cao đầy đủ trên voz.vn</a></p>
             <button class="button button--primary" type="submit">Tìm</button>
           </form>
         </div>

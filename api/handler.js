@@ -415,7 +415,9 @@ async function handleProxy(request, url, tokens) {
     const value = upstream.headers.get(name);
     if (value) headers.set(name, value);
   }
-  if (refreshed) headers.append('Set-Cookie', sessionCookie(refreshed));
+  // Sliding session: re-issue the cookie on every authenticated call so the
+  // 30-day Max-Age renews like XenForo's rolling session (avoid idle expiry).
+  if (refreshed || activeTokens) headers.append('Set-Cookie', sessionCookie(refreshed || activeTokens));
 
   return new Response(upstream.body, { status: upstream.status, headers });
 }
@@ -645,7 +647,8 @@ export default async function handler(request) {
     }
     const me = await fetchMe(active);
     const headers = new Headers();
-    if (active !== tokens) headers.append('Set-Cookie', sessionCookie(active));
+    // Always re-issue: sliding 30-day expiry, same as the /api/xf proxy path.
+    headers.append('Set-Cookie', sessionCookie(active));
     return json({ loggedIn: !!me && me.user_id > 0, me }, { headers });
   }
 

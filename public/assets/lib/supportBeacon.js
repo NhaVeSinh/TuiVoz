@@ -3,7 +3,9 @@
 import { state } from '../core/dom.js';
 import { getVozSupport } from './settings.js';
 
-const ENDPOINT = 'https://voz.vn/xfmg.php';
+// Via /forum proxy: carries the proxied xf session (direct voz.vn hits would
+// be guest — xf_* cookies live on this origin — and fail where voz is blocked).
+const ENDPOINT = '/forum/xfmg.php';
 // voz.vn samples 10% of loads; a floor between pings avoids over-reporting.
 const MIN_INTERVAL_MS = 60_000;
 

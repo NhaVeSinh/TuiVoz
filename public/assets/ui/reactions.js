@@ -51,7 +51,8 @@ function parseReactionUsers(html) {
 
 async function loadReactionUsers(postId) {
   if (reactionUsersCache.has(postId)) return reactionUsersCache.get(postId);
-  const promise = fetch(`https://voz.vn/p/${postId}/reactions`, { credentials: 'omit' })
+  // Via /forum proxy: same-origin, works where voz.vn is DNS-blocked.
+  const promise = fetch(`/forum/p/${postId}/reactions`)
     .then((res) => (res.ok ? res.text() : Promise.reject(new Error(`HTTP ${res.status}`))))
     .then(parseReactionUsers)
     .catch(() => []);
