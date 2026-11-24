@@ -34,6 +34,11 @@ const SCOPES = [
 const SESSION_COOKIE = 'voz_session';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
 
+// Server-side image cache: avatars are immutable per URL, avoids re-hitting data.voz.vn.
+const IMAGE_CACHE = new Map();
+const IMAGE_CACHE_TTL = 6 * 60 * 60 * 1000; // 6h
+const IMAGE_CACHE_MAX = 500;
+
 // Server-side oEmbed targets for [MEDIA=<site>] embeds.
 const OEMBED_TARGETS = {
   flickr: (key) => `https://www.flickr.com/services/oembed/?url=${encodeURIComponent(`https://flic.kr/p/${key}`)}&format=json`,
@@ -401,6 +406,16 @@ export default async function handler(request) {
     }
     // limit= fetches only N bytes so the avatar check skips a full download.
     const limit = Number(url.searchParams.get('limit')) || 0;
+    const cacheKey = `${target.href}|${limit}`;
+    const hit = IMAGE_CACHE.get(cacheKey);
+    if (hit && Date.now() - hit.t < IMAGE_CACHE_TTL) {
+      const h = new Headers(corsHeaders(request));
+      h.set('Content-Type', hit.type);
+      h.set('Cache-Control', 'private, max-age=86400');
+      h.set('X-Image-Cache', 'hit');
+      if (hit.total) h.set('X-Image-Total', hit.total);
+      return new Response(hit.body, { status: 200, headers: h });
+    }
     // Retry 403/429: a Cloudflare challenge is a 403 HTML page.
     const attempt = () => {
       const headers = { Accept: 'image/*', 'User-Agent': UA };
@@ -426,6 +441,15 @@ export default async function handler(request) {
       // Lets the caller detect a truncated prefix.
       const total = upstream.headers.get('content-range')?.split('/')[1] || upstream.headers.get('content-length') || '';
       if (total) headers.set('X-Image-Total', total);
+    }
+    // Cache full images (limit= is a sniff probe, not worth storing).
+    if (!limit) {
+      const body = await upstream.arrayBuffer();
+      if (body.byteLength < 512 * 1024) {
+        if (IMAGE_CACHE.size >= IMAGE_CACHE_MAX) IMAGE_CACHE.delete(IMAGE_CACHE.keys().next().value);
+        IMAGE_CACHE.set(cacheKey, { body, type: contentType, total: headers.get('X-Image-Total') || '', t: Date.now() });
+      }
+      return new Response(body, { status: 200, headers });
     }
     return new Response(upstream.body, { status: 200, headers });
   }

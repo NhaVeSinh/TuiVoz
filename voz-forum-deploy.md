@@ -132,6 +132,7 @@ TuiVoz/
 - `vercel.json`: `regions:["sin1"]`, `outputDirectory:"public"`; rewrite `/api` + `/api/(.*)` → `/api/handler?__path=`; SPA fallback → `index.html` trừ `api/`, `assets/`, `userscript/`, `robots.txt`, `sitemap.xml`.
 - Headers trong `vercel.json` chỉ có: `/assets/fonts/*` → `max-age=31536000, immutable`; `/assets/*` còn lại → `max-age=3600, stale-while-revalidate=86400`; `robots.txt` → `text/plain` + `max-age=3600`.
 - `/api/*` **không** có header trong `vercel.json` — `handler.js` tự set `Cache-Control` per route: GET `/voz/*` pass-through ETag/`max-age` theo upstream (86400/3600/300 tuỳ tier), còn lại `private, no-store, max-age=0`.
+- `image-download` có **in-memory server cache** (`IMAGE_CACHE` Map, 6h TTL, max 500, ≤512KB) — avatar URL immutable nên tránh gọi lại `data.voz.vn` mỗi trang; `X-Image-Cache: hit`; probe `limit=` không cache (sniff 64KB cho GIF frame-1).
 
 ## Triển khai
 
