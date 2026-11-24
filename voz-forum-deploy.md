@@ -7,6 +7,7 @@
 - **Upstream**: voz.vn API + HTML scrape (`/p/:id/reactions`), data.voz.vn (avatar, Range), api.imgur.com, pik.vn/api/upload, v.douyin.com, Flickr oEmbed.
 - **Comments**: mọi file JS/CSS/HTML mở đầu bằng 1 dòng kdoc mô tả file (`/** … */` / `/* … */` / `<!-- … -->`; userscript đặt sau khối `==UserScript==`); mọi comment trong code đều 1 dòng ngắn (~≤10 từ) chỉ giữ "why"/gotcha, comment nói-lại-code bị xoá, divider `// foo` / `/* foo */`.
 - **Verify**: `node --check` từng file JS/MJS
+- **⚠️ BẮT BUỘC khi đổi file trong `public/assets/`** (JS/CSS/font/ảnh — đúng pattern `CACHEABLE` trong `sw.js`): bump `CACHE` version trong `public/sw.js` (`tv-static-vN` → `vN+1`) trước khi deploy. SW cache-first và chỉ dọn cache cũ khi activate version mới — quên bump = user giữ asset cũ tới tận 30+ ngày (đây chính là nguồn bug "deploy rồi mà không thấy đổi gì"). File ngoài `/assets/` (sw.js, index.html, userscript) không bị cache nên không cần bump.
 
 ## Cấu trúc thư mục
 

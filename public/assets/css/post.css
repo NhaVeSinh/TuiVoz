@@ -17,7 +17,7 @@
 
 .bbWrapper img.smilie { display: inline-block; vertical-align: text-bottom; max-width: none; margin: 0; }
 
-.member-card { position: fixed; z-index: 150; width: 360px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow-y: auto; background: var(--content-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; box-shadow: var(--shadow-card); font-size: calc(14px * var(--ui-scale)); }
+.member-card { position: fixed; z-index: 1100; width: 360px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow-y: auto; background: var(--content-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; box-shadow: var(--shadow-card); font-size: calc(14px * var(--ui-scale)); }
 .member-card-header { display: flex; gap: 12px; padding: 12px; background: var(--quote-bg); }
 .member-card-header > div { min-width: 0; overflow-wrap: anywhere; }
 .member-card-header .avatar { flex: 0 0 80px; width: 80px; height: 80px; }
