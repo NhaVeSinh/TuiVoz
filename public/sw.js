@@ -1,6 +1,6 @@
 /** Service worker — cache-first for versioned statics only; never caches /api/*. */
 
-const CACHE = 'tv-static-v6';
+const CACHE = 'tv-static-v7';
 const CACHEABLE = /\/assets\/(css|icons|lib|ui|views|fonts)\//;
 
 self.addEventListener('install', (e) => {
