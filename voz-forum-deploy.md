@@ -176,7 +176,7 @@ Engine client-side RES-style ở `filters/`; storage `voz-filters:v1`; filter đ
 
 ### §7.6 Hiệu năng tải trang (code split + cache)
 - `core/router.js`: chỉ `forum.js`/`thread.js` eager; còn lại lazy `await import()` (compose/search/dm/lists/user/login/settings).
-- `app.js`: `appConfig()` ∥ `loadSession()` chạy `Promise.all`; đăng ký `sw.js` (guard `serviceWorker in navigator`, no-op nếu không hỗ trợ).
+- `app.js`: `appConfig()` ∥ `loadSession()` chạy `Promise.all`; đăng ký `sw.js` ngay (guard `serviceWorker in navigator`, **không** bọc `load` — module eval chậm bỏ lỡ event).
 - `index.html`: `editor.css`/`account.css` chuyển sang async `media="print" onload` (+ `<noscript>`).
 - `public/sw.js`: cache-first chỉ `/assets/{css,icons,lib,ui,views,fonts}/`; `/api/*` + cross-origin bỏ qua. `vercel.json`: exclude `sw.js` khỏi SPA rewrite + header `no-cache`.
 - `/api/image-download`: `IMAGE_CACHE` Map 6h/500 mục/≤512KB (`X-Image-Cache: hit`); probe `limit=` không cache.

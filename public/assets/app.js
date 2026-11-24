@@ -112,7 +112,7 @@ window.addEventListener('voz:banned-users-change', async (event) => {
   await route();
 })();
 
-// Service worker caches static assets for repeat loads (non-blocking).
+// Register SW right away (registration is async/non-blocking); cache statics for repeat loads.
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
