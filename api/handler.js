@@ -339,8 +339,13 @@ async function handleForumProxy(request, url) {
       .replace(/((?:src|href|action|formaction|poster|data-src|data-url)\s*=\s*["'])\/(?!\/|forum\/)/gi, `$1${FORUM_VISIBLE_PREFIX}/`)
       .replace(/(\bsrcset\s*=\s*["'])([^"']*)(["'])/gi, (m, pre, list, post) =>
         pre + list.replace(/(^|,)\s*\/(?!\/|forum\/)/g, `$1${FORUM_VISIBLE_PREFIX}/`) + post)
-      // XF JS builds URLs off XF.config.basePath — repoint it under /forum/.
-      .replace(/(basePath['"]?\s*:\s*['"])\/(['"])/g, `$1${FORUM_VISIBLE_PREFIX}/$2`);
+      // XF JS builds URLs off XF.config — repoint basePath + the root-relative
+      // url.* templates (css/js/icon/iconInline/keepAlive __SENTINEL__ URLs) and
+      // the escaped-slash js/css script-map keys, else dynamic loads 404.
+      // fullBase is absolute so the SITE replaceAll above already covers it.
+      .replace(/(basePath['"]?\s*:\s*['"])\/(['"])/g, `$1${FORUM_VISIBLE_PREFIX}/$2`)
+      .replace(/((?:css|js|icon|iconInline|keepAlive)['"]?\s*:\s*['"])\/(?!\/|forum\/)/g, `$1${FORUM_VISIBLE_PREFIX}/`)
+      .replace(/(["{,]\s*["'])\\\/(?!forum\\\/)/g, `$1\\/forum\\/`);
   }
   return new Response(bodyText, { status: upstream.status, statusText: upstream.statusText, headers });
 }
