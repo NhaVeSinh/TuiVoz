@@ -10,7 +10,7 @@ import {
   loadSettings, addShortcut, updateShortcut, removeShortcut, moveShortcut,
   exportSettingsJson, importSettingsJson, setInfiniteScroll, setDataSaving,
   SCROLL_MODES, SCROLL_LABELS,
-  setTheme, setFont, setFontScale, getFontScale, setImageDownload, setPostScreenshot, setStaticAvatars, setBannedUsers,
+  setTheme, setFont, setFontScale, getFontScale, setImageDownload, setPostScreenshot, setStaticAvatars, setBannedUsers, setVozSupport,
   BANNED_USER_MODES, BANNED_USERS_LABELS, BANNED_USERS_HELP,
   setFullNumbers, FULL_NUMBERS_MODES, FULL_NUMBERS_LABELS,
   DATA_SAVING_MODES, DATA_SAVING_LABELS, DATA_SAVING_HELP,
@@ -187,7 +187,7 @@ function tabsHtml(active) {
 }
 
 function settingsHtml(active = settingsTabFromHash()) {
-  const { navShortcuts, infiniteScroll, theme, font, postSize, uiSize, imageDownload, postScreenshot, staticAvatars, bannedUsers, fullNumbers, dataSaving } = loadSettings();
+  const { navShortcuts, infiniteScroll, theme, font, postSize, uiSize, imageDownload, postScreenshot, staticAvatars, bannedUsers, fullNumbers, dataSaving, vozSupport } = loadSettings();
   const albums = getAlbums();
   return `<div class="block settings-block">
       <h1 class="block-header">Cài đặt</h1>
@@ -247,6 +247,14 @@ function settingsHtml(active = settingsTabFromHash()) {
           <h3 class="settings-subhead">Cuộn trang liên tục</h3>
           <p class="formHint">Áp dụng cho danh sách chủ đề và trong chủ đề: khi cuộn tới cuối trang, trang kế tiếp được nối thêm vào bên dưới thay vì phải bấm số trang.</p>
           ${optionCards('infinite-scroll', SCROLL_MODES, SCROLL_LABELS, SCROLL_HELP, infiniteScroll)}
+          <h3 class="settings-subhead">Hỗ trợ voz.vn</h3>
+          <label class="settings-toggle" for="voz-support">
+            <span class="settings-toggle-copy">
+              <span class="settings-toggle-name">Hỗ trợ tăng điểm voz</span>
+              <span class="option-card-desc">Khi đăng nhập, mỗi lần chuyển trang TuiVoz gửi một báo cáo “quảng cáo không bị chặn” tới voz.vn (giống beacon kiểm tra adblock của voz.vn) để lượt dùng app được tính vào điểm ủng hộ như đọc voz.vn trực tiếp. Tắt thì không gửi gì cả.</span>
+            </span>
+            <input type="checkbox" id="voz-support"${vozSupport ? ' checked' : ''}>
+          </label>
         </div>
       </section>
       <section class="settings-panel" id="panel-filters" role="tabpanel" aria-labelledby="tab-filters"${active === 'filters' ? '' : ' hidden'}>
@@ -918,6 +926,11 @@ export function viewSettings() {
     const enabled = event.currentTarget.checked;
     setStaticAvatars(enabled);
     toast(`Tắt ảnh động ảnh đại diện: ${enabled ? 'Bật' : 'Tắt'}`);
+  });
+  document.getElementById('voz-support')?.addEventListener('change', (event) => {
+    const enabled = event.currentTarget.checked;
+    setVozSupport(enabled);
+    toast(`Hỗ trợ tăng điểm voz: ${enabled ? 'Bật' : 'Tắt'}`);
   });
   wireOptionGroup('data-saving', (value) => {
     setDataSaving(value);

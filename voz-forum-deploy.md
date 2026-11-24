@@ -395,3 +395,26 @@ Toàn bộ 69 tập tin JS, 21 tập tin CSS cùng các tài nguyên font chữ 
 | `css/filters.css` + `app.css` + `index.html` | Style `.filtered-block`/`.filtered-reveal` (mờ, nét đứt), editor modal `.filter-cond`, responsive ≤620px; link CSS tải async theo pattern route-only. |
 
 **Đã kiểm chứng** (Firefox MCP + trình duyệt tích hợp Chromium, desktop 1280px và mobile 390px, dev server local): tạo filter qua UI (2 điều kiện OR "Nội dung bài chứa shopee / Tiêu đề chứa shopee", action Ẩn) lưu và hiển thị đúng trong danh sách; filter wildcard `*` action Nổi bật tô viền xanh cả 22 hàng trong f17; filter Xoá trên cùng gỡ hẳn 1 chủ đề (21/22 hàng) chứng minh ưu tiên trước filter Nổi bật bên dưới; 14/16 bài chứa chữ "e" trong thread bị ẩn thành nút "Đã ẩn bài viết bởi bộ lọc … — Chạm để hiện", click hiện đúng nội dung và đổi nhãn; URL `#post-44373095` tới bài bị ẩn tự reveal nhờ `jumpToAnchor`; nút ↑/↓ đổi thứ tự lưu đúng vào localStorage; export JSON chứa `filters` và import khôi phục đủ 4 filter. Nhãn editor: trường "Tên người đăng", chế độ so khớp "Chứa / Wildcard / Regex"; select "Cách nối các điều kiện" đã bỏ — joiner VÀ/HOẶC luôn hiện ở đầu mỗi điều kiện từ dòng thứ hai, filter mới lưu `join:'custom'`. Màu viền "Nổi bật" không dùng `<input type="color">` nữa: hàng swatch màu gợi sẵn (`COLOR_PRESETS`) + ô nhập mã tuỳ ý, chuẩn hoá bằng `CSS.supports('color', …)` (chấp nhận hex trần, tự thêm `#`), ô đỏ `is-invalid` + chặn lưu "Mã màu viền không hợp lệ" khi sai. Hàng Màu viền chỉ hiện khi chọn Nổi bật — cần rule `.filter-color-pick[hidden]{display:none}` vì `display:flex` của class ghi đè thuộc tính `hidden`.
+
+### 7.5. Setting "Hỗ trợ tăng điểm voz" — beacon `/xfmg.php` giả lập phiên đọc voz.vn
+
+**Yêu cầu:** voz.vn chấm điểm "supporter" dựa trên beacon kiểm tra adblock `GET /xfmg.php?s=<seg>&n=<rand>` mà inline script của voz.vn bắn ~10% pageview. TuiVoz không tải frontend voz.vn nên không gửi report nào → không được tính điểm. Cần cơ chế opt-in để lượt dùng TuiVoz được tính như đọc voz.vn.
+
+**Khảo sát kỹ thuật:**
+- Format segment: `<m|d>:<u|g>:p<p>b<b>r<r>e<early>`; report sạch = `p1` (powerAPITag sẵn sàng) `b0` (decoy ad không bị ẩn) `r1` (script pubpower fetch được) `e0` (không phải early flush).
+- `/xfmg.php` trả `204`, không cần CORS → `new Image()` cross-origin là đủ.
+- `xf_session` của voz.vn là `SameSite=None; Secure; HttpOnly` → request cross-site từ origin TuiVoz **vẫn kèm session cookie** (đã kiểm chứng trên Firefox: request từ `localhost:3111` mang đầy đủ `xf_session`, `xf_user`). Ai hoàn tất OAuth login của TuiVoz đều đã có `xf_session` vì flow OAuth chạy trên domain voz.vn.
+- Attribution phía server không quan sát được (endpoint opaque); beacon chỉ mô phỏng report sạch.
+
+**Cách sửa:**
+
+| Tập tin | Thay đổi |
+|---|---|
+| `lib/supportBeacon.js` (mới) | `supportPing()`: gate bởi `getVozSupport()` + `state.loggedIn`, throttle 60s (`MIN_INTERVAL_MS`), bắn `Image` tới `https://voz.vn/xfmg.php?s=<m\|d>:u:p1b0r1e0&n=<rand>` (`m` khi `matchMedia('(max-width:650px)')`). Tắt/off hoặc chưa login → không gửi gì. |
+| `core/router.js` | Import `supportPing`, gọi trong `finally` của `route()` → một ping mỗi điều hướng SPA (tương đương pageview), kể cả boot/popstate/re-render. |
+| `lib/settings.js` | Setting mới `vozSupport` (default `false`, `VOZ_SUPPORT_DEFAULT`), `setVozSupport`/`getVozSupport`, `normalizeSettings` (`=== true` mới bật), export/import JSON. |
+| `views/settings.js` | Toggle "Hỗ trợ tăng điểm voz" trong tab Hệ thống (mục "Hỗ trợ voz.vn"), wire `change` → `setVozSupport` + toast. |
+
+**Đã kiểm chứng** (Firefox MCP + dev server localhost:3111): bật toggle ở `/cai-dat-tuivoz#system` → reload `/` phát `GET https://voz.vn/xfmg.php?s=d:u:p1b0r1e0&n=…` → `204`, request headers kèm `xf_session`/`xf_user` của user đang login; tắt toggle → điều hướng không phát request nào.
+
+**Lưu ý:** Safari ITP / Firefox ETP strict / trình duyệt chặn third-party cookie có thể làm beacon đến như guest → không tính điểm user đó (không gây hại, chỉ vô hiệu). Server scoring không thấy được — cần quan sát dòng supporter % sau ~1 ngày dùng.

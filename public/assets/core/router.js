@@ -7,6 +7,7 @@ import { navigate } from './nav.js';
 import { setRouteHandler } from './nav.js';
 import { errorBox, finishLoading } from '../ui/feedback.js';
 import { resolveUnread } from '../lib/unread.js';
+import { supportPing } from '../lib/supportBeacon.js';
 import { viewHome, viewForum, viewSearchForum, viewNewThreads } from '../views/forum.js';
 import { viewThread } from '../views/thread.js';
 import { viewSearch } from '../views/search.js';
@@ -154,6 +155,8 @@ export async function route() {
   } finally {
     finishLoading();
     refreshUnreadCounts();
+    // One clean adblock-check report per navigation (throttled inside), like a voz.vn page load.
+    supportPing();
   }
 }
 

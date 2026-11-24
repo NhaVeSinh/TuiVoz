@@ -47,6 +47,7 @@ export const emptySettings = () => ({
   bannedUsers: BANNED_USERS_DEFAULT,
   fullNumbers: FULL_NUMBERS_DEFAULT,
   dataSaving: DATA_SAVING_DEFAULT,
+  vozSupport: VOZ_SUPPORT_DEFAULT,
 });
 
 // Colour scheme for the content area; the chrome keeps its dark styling in both modes.
@@ -136,6 +137,11 @@ export const FULL_NUMBERS_LABELS = {
 //          only path; on — always; off — never.
 export const DATA_SAVING_MODES = ['auto', 'on', 'off'];
 export const DATA_SAVING_DEFAULT = 'auto';
+
+// "Hỗ trợ tăng điểm voz" — fires voz.vn's adblock-check beacon (/xfmg.php) with a clean report on each
+// navigation so TuiVoz usage counts toward the supporter score like browsing voz.vn with ads allowed.
+// Default off: nothing is sent unless the user opts in.
+export const VOZ_SUPPORT_DEFAULT = false;
 export const DATA_SAVING_LABELS = {
   auto: 'Tự động theo thiết bị',
   on: 'Luôn bật',
@@ -196,6 +202,7 @@ export function normalizeSettings(raw) {
       : BANNED_USERS_DEFAULT;
   out.fullNumbers = FULL_NUMBERS_MODES.includes(raw?.fullNumbers) ? raw.fullNumbers : FULL_NUMBERS_DEFAULT;
   out.dataSaving = DATA_SAVING_MODES.includes(raw?.dataSaving) ? raw.dataSaving : DATA_SAVING_DEFAULT;
+  out.vozSupport = raw?.vozSupport === true;
   const list = Array.isArray(raw?.navShortcuts) ? raw.navShortcuts : [];
   const seen = new Set();
   for (const item of list.slice(0, MAX_SHORTCUTS)) {
@@ -266,6 +273,16 @@ export function moveShortcut(id, toIndex) {
   const [item] = settings.navShortcuts.splice(from, 1);
   settings.navShortcuts.splice(target, 0, item);
   return saveSettings(settings);
+}
+
+export function setVozSupport(enabled) {
+  const settings = loadSettings();
+  settings.vozSupport = enabled === true;
+  return saveSettings(settings);
+}
+
+export function getVozSupport() {
+  return loadSettings().vozSupport === true;
 }
 
 export function setInfiniteScroll(mode) {
@@ -388,6 +405,7 @@ export function exportSettingsJson({ albums = [], recent = [], filters = [] } = 
     staticAvatars: settings.staticAvatars,
     bannedUsers: settings.bannedUsers,
     fullNumbers: settings.fullNumbers,
+    vozSupport: settings.vozSupport,
   };
   // Sticker payload mirrors the userscript backup so either file can be restored.
   if (albums.length || recent.length) {
