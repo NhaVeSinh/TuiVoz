@@ -339,13 +339,48 @@ async function handleForumProxy(request, url) {
       .replace(/((?:src|href|action|formaction|poster|data-src|data-url)\s*=\s*["'])\/(?!\/|forum\/)/gi, `$1${FORUM_VISIBLE_PREFIX}/`)
       .replace(/(\bsrcset\s*=\s*["'])([^"']*)(["'])/gi, (m, pre, list, post) =>
         pre + list.replace(/(^|,)\s*\/(?!\/|forum\/)/g, `$1${FORUM_VISIBLE_PREFIX}/`) + post)
-      // XF JS builds URLs off XF.config — repoint basePath + the root-relative
-      // url.* templates (css/js/icon/iconInline/keepAlive __SENTINEL__ URLs) and
-      // the escaped-slash js/css script-map keys, else dynamic loads 404.
-      // fullBase is absolute so the SITE replaceAll above already covers it.
-      .replace(/(basePath['"]?\s*:\s*['"])\/(['"])/g, `$1${FORUM_VISIBLE_PREFIX}/$2`)
-      .replace(/((?:css|js|icon|iconInline|keepAlive)['"]?\s*:\s*['"])\/(?!\/|forum\/)/g, `$1${FORUM_VISIBLE_PREFIX}/`)
-      .replace(/(["{,]\s*["'])\\\/(?!forum\\\/)/g, `$1\\/forum\\/`);
+    // XF JS builds URLs off XF.config — rewrite every root-relative string inside
+    // each `XF.config = {...}` object (basePath, all url.* templates: css/js/icon/
+    // iconInline/keepAlive/alert/iconBadge/contentTitle, escaped-slash js/css map
+    // keys, cookie path). Keys are nested ("url":{"css":…}) so a key whitelist
+    // can't reach them; brace-match the object instead. `/local://` is XF's own
+    // "relative to boardUrl" marker — leave it. fullBase is absolute, covered by
+    // the SITE replaceAll above.
+    {
+      const configRe = /XF\.config\s*=\s*\{/g;
+      let rebuilt = '';
+      let lastIndex = 0;
+      let match;
+      while ((match = configRe.exec(bodyText))) {
+        const objStart = match.index + match[0].length - 1;
+        let depth = 0;
+        let quote = null;
+        let escaped = false;
+        let end = objStart;
+        for (; end < bodyText.length; end++) {
+          const ch = bodyText[end];
+          if (quote) {
+            if (escaped) escaped = false;
+            else if (ch === '\\') escaped = true;
+            else if (ch === quote) quote = null;
+            continue;
+          }
+          if (ch === '"' || ch === "'") quote = ch;
+          else if (ch === '{') depth++;
+          else if (ch === '}') {
+            depth--;
+            if (!depth) { end++; break; }
+          }
+        }
+        rebuilt += bodyText.slice(lastIndex, objStart)
+          + bodyText.slice(objStart, end)
+            .replace(/(['"])\/(?!\/|forum\/|local:)/g, `$1${FORUM_VISIBLE_PREFIX}/`)
+            .replace(/(["{,]\s*["'])\\\/(?!forum\\\/)/g, `$1\\/forum\\/`);
+        lastIndex = end;
+        configRe.lastIndex = end;
+      }
+      bodyText = rebuilt + bodyText.slice(lastIndex);
+    }
   }
   return new Response(bodyText, { status: upstream.status, statusText: upstream.statusText, headers });
 }
